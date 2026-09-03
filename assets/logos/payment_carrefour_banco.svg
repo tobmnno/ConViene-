@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 56">
+  <rect width="96" height="56" rx="8" fill="#ffffff"/>
+  <rect x="1" y="1" width="94" height="54" rx="7" fill="none" stroke="#d9e2f2"/>
+  <path d="M32 15 18 28l14 13 7-7-6-6 6-6z" fill="#e30613"/>
+  <path d="M39 22 45 28l-6 6 7 7 14-13-14-13z" fill="#175cd3"/>
+  <text x="70" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="800" fill="#175cd3">Carrefour</text>
+  <text x="70" y="36" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="800" fill="#102a56">Banco</text>
+</svg>

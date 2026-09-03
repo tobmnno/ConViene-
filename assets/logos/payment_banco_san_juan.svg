@@ -1,0 +1,16 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="164" height="164">
+	<title>45-svg</title>
+	<style>
+		.s0 { fill: #ffffff } 
+		.s1 { fill: #faad29 } 
+	</style>
+	<path id="Capa 1" class="s0" d="m-1-1l-1 37 40-2 2-33 1-5h-22z"/>
+	<path id="Layer" class="s1" d="m16.2 2v14l-2.5-2.4z"/>
+	<path id="Layer" class="s1" d="m8.2 8l5.5 5.6h-1.9z"/>
+	<path id="Layer" class="s1" d="m30.4 16h-14.2l2.4-2.4z"/>
+	<path id="Layer" class="s1" d="m24.3 8.1l-5.7 5.5 0.1-1.9z"/>
+	<path id="Layer" class="s1" d="m16.2 30v-14l2.4 2.4z"/>
+	<path id="Layer" class="s1" d="m24.2 24l-5.6-5.6h2z"/>
+	<path id="Layer" class="s1" d="m2 16h14.2l-2.5 2.4z"/>
+	<path id="Layer" class="s1" d="m8.1 23.9l5.6-5.5v1.9z"/>
+</svg>

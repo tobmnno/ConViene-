@@ -1,0 +1,16 @@
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+coverage/
+android/.gradle/
+android/local.properties
+android/app/build/
+*.iml
+.appdata/
+.localappdata/
+.server_*.log
+__pycache__/
+backend/scraper_api/.venv/
+backend/scraper_api/output.json

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 56">
+  <rect width="96" height="56" rx="8" fill="#00a3e0"/>
+  <rect x="17" y="15" width="28" height="26" rx="4" fill="#ffffff"/>
+  <circle cx="31" cy="26" r="5" fill="#00a3e0"/>
+  <text x="69" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="900" fill="#ffffff">Cuenta</text>
+  <text x="69" y="37" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="900" fill="#ffffff">DNI</text>
+</svg>
