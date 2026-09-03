@@ -17,11 +17,15 @@ class PaymentMethodLogo extends StatelessWidget {
       final logo = isSvg
           ? SvgPicture.asset(
               method.logoAsset,
+              width: size * 1.35,
+              height: size * 0.9,
               fit: BoxFit.contain,
               semanticsLabel: method.displayName,
             )
           : Image.asset(
               method.logoAsset,
+              width: size * 1.35,
+              height: size * 0.9,
               fit: BoxFit.contain,
               semanticLabel: method.displayName,
             );

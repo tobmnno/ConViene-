@@ -12,7 +12,7 @@ class PaymentMethodService {
         entity: 'Visa',
         displayName: 'Visa',
         active: true,
-        logoAsset: 'assets/logos/payment_visa.svg',
+        logoAsset: 'assets/logos/payment_visa.png',
       ),
       PaymentMethod(
         id: 'mastercard',
@@ -20,7 +20,7 @@ class PaymentMethodService {
         entity: 'Mastercard',
         displayName: 'Mastercard',
         active: true,
-        logoAsset: 'assets/logos/payment_mastercard.svg',
+        logoAsset: 'assets/logos/payment_mastercard.png',
       ),
       PaymentMethod(
         id: 'amex',
@@ -28,7 +28,7 @@ class PaymentMethodService {
         entity: 'American Express',
         displayName: 'American Express',
         active: false,
-        logoAsset: 'assets/logos/payment_amex.svg',
+        logoAsset: 'assets/logos/payment_amex.png',
       ),
       PaymentMethod(
         id: 'cabal',
@@ -44,7 +44,7 @@ class PaymentMethodService {
         entity: 'Maestro',
         displayName: 'Maestro',
         active: false,
-        logoAsset: 'assets/logos/payment_maestro.svg',
+        logoAsset: 'assets/logos/payment_maestro.png',
       ),
       PaymentMethod(
         id: 'naranja_x',
@@ -52,7 +52,7 @@ class PaymentMethodService {
         entity: 'Naranja X',
         displayName: 'Naranja X',
         active: false,
-        logoAsset: 'assets/logos/payment_naranja_x.svg',
+        logoAsset: 'assets/logos/payment_naranja_x.png',
       ),
       PaymentMethod(
         id: 'tarjeta_carrefour_banco',
@@ -60,7 +60,7 @@ class PaymentMethodService {
         entity: 'Tarjeta Carrefour Banco',
         displayName: 'Mi Carrefour Mastercard',
         active: false,
-        logoAsset: 'assets/logos/payment_mi_carrefour.svg',
+        logoAsset: 'assets/logos/payment_mi_carrefour.png',
       ),
 
       // Bancos
@@ -69,15 +69,15 @@ class PaymentMethodService {
         type: PaymentMethodType.bank,
         entity: 'Banco Nacion',
         displayName: 'Banco Nacion',
-        active: true,
-        logoAsset: 'assets/logos/payment_banco_nacion.svg',
+        active: false,
+        logoAsset: 'assets/logos/payment_banco_nacion.png',
       ),
       PaymentMethod(
         id: 'banco_galicia',
         type: PaymentMethodType.bank,
         entity: 'Banco Galicia',
         displayName: 'Banco Galicia',
-        active: true,
+        active: false,
         logoAsset: 'assets/logos/payment_galicia.png',
       ),
       PaymentMethod(
@@ -86,7 +86,7 @@ class PaymentMethodService {
         entity: 'Banco Macro',
         displayName: 'Banco Macro',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_macro.svg',
+        logoAsset: 'assets/logos/payment_banco_macro.png',
       ),
       PaymentMethod(
         id: 'banco_patagonia',
@@ -94,7 +94,7 @@ class PaymentMethodService {
         entity: 'Banco Patagonia',
         displayName: 'Banco Patagonia',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_patagonia.svg',
+        logoAsset: 'assets/logos/payment_banco_patagonia.png',
       ),
       PaymentMethod(
         id: 'carrefour_banco',
@@ -102,7 +102,7 @@ class PaymentMethodService {
         entity: 'Carrefour Banco',
         displayName: 'Carrefour Banco',
         active: false,
-        logoAsset: 'assets/logos/payment_mi_carrefour.svg',
+        logoAsset: 'assets/logos/payment_mi_carrefour.png',
       ),
       PaymentMethod(
         id: 'banco_provincia',
@@ -118,7 +118,7 @@ class PaymentMethodService {
         entity: 'Banco Ciudad',
         displayName: 'Banco Ciudad',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_ciudad.svg',
+        logoAsset: 'assets/logos/payment_banco_ciudad.png',
       ),
       PaymentMethod(
         id: 'banco_santander',
@@ -126,7 +126,7 @@ class PaymentMethodService {
         entity: 'Banco Santander',
         displayName: 'Santander',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_santander.svg',
+        logoAsset: 'assets/logos/payment_banco_santander.png',
       ),
       PaymentMethod(
         id: 'bbva',
@@ -134,7 +134,7 @@ class PaymentMethodService {
         entity: 'BBVA',
         displayName: 'BBVA',
         active: false,
-        logoAsset: 'assets/logos/payment_bbva.svg',
+        logoAsset: 'assets/logos/payment_bbva.png',
       ),
       PaymentMethod(
         id: 'icbc',
@@ -142,7 +142,7 @@ class PaymentMethodService {
         entity: 'ICBC',
         displayName: 'ICBC',
         active: false,
-        logoAsset: 'assets/logos/payment_icbc.svg',
+        logoAsset: 'assets/logos/payment_icbc.png',
       ),
       PaymentMethod(
         id: 'banco_supervielle',
@@ -150,7 +150,7 @@ class PaymentMethodService {
         entity: 'Banco Supervielle',
         displayName: 'Supervielle',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_supervielle.svg',
+        logoAsset: 'assets/logos/payment_banco_supervielle.png',
       ),
       PaymentMethod(
         id: 'banco_credicoop',
@@ -158,7 +158,7 @@ class PaymentMethodService {
         entity: 'Banco Credicoop',
         displayName: 'Credicoop',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_credicoop.svg',
+        logoAsset: 'assets/logos/payment_banco_credicoop.png',
       ),
       PaymentMethod(
         id: 'banco_hipotecario',
@@ -166,7 +166,7 @@ class PaymentMethodService {
         entity: 'Banco Hipotecario',
         displayName: 'Hipotecario',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_hipotecario.svg',
+        logoAsset: 'assets/logos/payment_banco_hipotecario.png',
       ),
       PaymentMethod(
         id: 'bancor',
@@ -174,7 +174,7 @@ class PaymentMethodService {
         entity: 'Bancor',
         displayName: 'Bancor',
         active: false,
-        logoAsset: 'assets/logos/payment_bancor.svg',
+        logoAsset: 'assets/logos/payment_bancor.png',
       ),
       PaymentMethod(
         id: 'banco_santa_fe',
@@ -182,7 +182,7 @@ class PaymentMethodService {
         entity: 'Banco Santa Fe',
         displayName: 'Banco Santa Fe',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_santa_fe.svg',
+        logoAsset: 'assets/logos/payment_banco_santa_fe.png',
       ),
       PaymentMethod(
         id: 'banco_san_juan',
@@ -190,7 +190,7 @@ class PaymentMethodService {
         entity: 'Banco San Juan',
         displayName: 'Banco San Juan',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_san_juan.svg',
+        logoAsset: 'assets/logos/payment_banco_san_juan.png',
       ),
       PaymentMethod(
         id: 'banco_santa_cruz',
@@ -198,7 +198,7 @@ class PaymentMethodService {
         entity: 'Banco Santa Cruz',
         displayName: 'Banco Santa Cruz',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_santa_cruz.svg',
+        logoAsset: 'assets/logos/payment_banco_santa_cruz.png',
       ),
       PaymentMethod(
         id: 'banco_entre_rios',
@@ -206,7 +206,7 @@ class PaymentMethodService {
         entity: 'Banco Entre Rios',
         displayName: 'Banco Entre Rios',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_entre_rios.svg',
+        logoAsset: 'assets/logos/payment_banco_entre_rios.png',
       ),
       PaymentMethod(
         id: 'banco_chubut',
@@ -214,7 +214,7 @@ class PaymentMethodService {
         entity: 'Banco Chubut',
         displayName: 'Banco Chubut',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_chubut.svg',
+        logoAsset: 'assets/logos/payment_banco_chubut.png',
       ),
       PaymentMethod(
         id: 'bica',
@@ -222,7 +222,7 @@ class PaymentMethodService {
         entity: 'Bica',
         displayName: 'Bica',
         active: false,
-        logoAsset: 'assets/logos/payment_bica.svg',
+        logoAsset: 'assets/logos/payment_bica.png',
       ),
       PaymentMethod(
         id: 'banco_comafi',
@@ -230,7 +230,7 @@ class PaymentMethodService {
         entity: 'Banco Comafi',
         displayName: 'Comafi',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_comafi.svg',
+        logoAsset: 'assets/logos/payment_banco_comafi.png',
       ),
       PaymentMethod(
         id: 'banco_columbia',
@@ -238,7 +238,7 @@ class PaymentMethodService {
         entity: 'Banco Columbia',
         displayName: 'Columbia',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_columbia.svg',
+        logoAsset: 'assets/logos/payment_banco_columbia.png',
       ),
       PaymentMethod(
         id: 'reba',
@@ -246,7 +246,7 @@ class PaymentMethodService {
         entity: 'Reba',
         displayName: 'Reba',
         active: false,
-        logoAsset: 'assets/logos/payment_reba.svg',
+        logoAsset: 'assets/logos/payment_reba.png',
       ),
       PaymentMethod(
         id: 'banco_corrientes',
@@ -254,7 +254,7 @@ class PaymentMethodService {
         entity: 'Banco Corrientes',
         displayName: 'Banco Corrientes',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_corrientes.svg',
+        logoAsset: 'assets/logos/payment_banco_corrientes.png',
       ),
       PaymentMethod(
         id: 'banco_neuquen',
@@ -262,7 +262,7 @@ class PaymentMethodService {
         entity: 'Banco Neuquen',
         displayName: 'Banco Neuquen',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_neuquen.svg',
+        logoAsset: 'assets/logos/payment_banco_neuquen.png',
       ),
       PaymentMethod(
         id: 'banco_piano',
@@ -270,7 +270,7 @@ class PaymentMethodService {
         entity: 'Banco Piano',
         displayName: 'Banco Piano',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_piano.svg',
+        logoAsset: 'assets/logos/payment_banco_piano.png',
       ),
       PaymentMethod(
         id: 'banco_saenz',
@@ -278,7 +278,7 @@ class PaymentMethodService {
         entity: 'Banco Saenz',
         displayName: 'Banco Saenz',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_saenz.svg',
+        logoAsset: 'assets/logos/payment_banco_saenz.png',
       ),
       PaymentMethod(
         id: 'banco_mariva',
@@ -286,7 +286,7 @@ class PaymentMethodService {
         entity: 'Banco Mariva',
         displayName: 'Banco Mariva',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_mariva.svg',
+        logoAsset: 'assets/logos/payment_banco_mariva.png',
       ),
       PaymentMethod(
         id: 'banco_cmf',
@@ -294,7 +294,7 @@ class PaymentMethodService {
         entity: 'Banco CMF',
         displayName: 'Banco CMF',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_cmf.svg',
+        logoAsset: 'assets/logos/payment_banco_cmf.png',
       ),
       PaymentMethod(
         id: 'banco_yoy',
@@ -302,7 +302,7 @@ class PaymentMethodService {
         entity: 'YOY',
         displayName: 'YOY',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_yoy.svg',
+        logoAsset: 'assets/logos/payment_banco_yoy.jpg',
       ),
 
       // Billeteras y programas de beneficios
@@ -312,15 +312,15 @@ class PaymentMethodService {
         entity: 'Mercado Pago',
         displayName: 'Mercado Pago',
         active: true,
-        logoAsset: 'assets/logos/payment_mercado_pago.svg',
+        logoAsset: 'assets/logos/payment_mercado_pago.png',
       ),
       PaymentMethod(
         id: 'uala',
         type: PaymentMethodType.wallet,
         entity: 'Uala',
         displayName: 'Uala',
-        active: true,
-        logoAsset: 'assets/logos/payment_uala.svg',
+        active: false,
+        logoAsset: 'assets/logos/payment_uala.png',
       ),
       PaymentMethod(
         id: 'modo',
@@ -336,7 +336,7 @@ class PaymentMethodService {
         entity: 'Cuenta Digital Carrefour Banco',
         displayName: 'Cuenta Digital Mi Carrefour',
         active: false,
-        logoAsset: 'assets/logos/payment_mi_carrefour.svg',
+        logoAsset: 'assets/logos/payment_mi_carrefour.png',
       ),
       PaymentMethod(
         id: 'club_la_nacion',
@@ -344,7 +344,7 @@ class PaymentMethodService {
         entity: 'Club La Nacion',
         displayName: 'Club La Nacion',
         active: false,
-        logoAsset: 'assets/logos/payment_club_la_nacion.svg',
+        logoAsset: 'assets/logos/payment_club_la_nacion.png',
       ),
       PaymentMethod(
         id: 'nave_galicia',
@@ -368,7 +368,7 @@ class PaymentMethodService {
         entity: 'Empleado publico',
         displayName: 'Empleado publico',
         active: false,
-        logoAsset: 'assets/logos/payment_empleado_publico.svg',
+        logoAsset: 'assets/logos/payment_empleado_publico.png',
       ),
     ];
   }

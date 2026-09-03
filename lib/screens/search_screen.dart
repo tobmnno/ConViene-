@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/price_quote.dart';
 import '../services/product_search_service.dart';
+import '../state/app_state.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
 import '../utils/money.dart';
@@ -144,11 +145,11 @@ class _SearchScreenState extends State<SearchScreen> {
                         return _ResultCard(
                           result: result,
                           isBest: isBest,
-                          onAdd: () => unawaited(
-                            state.addProductToCart(
-                              result.product.id,
-                              selectedStoreId: result.supermarket.id,
-                            ),
+                          onAdd: () => _addProductToCart(
+                            state,
+                            result.product.id,
+                            result.product.name,
+                            result.supermarket.id,
                           ),
                         );
                       },
@@ -165,6 +166,117 @@ class _SearchScreenState extends State<SearchScreen> {
     _controller.selection = TextSelection.collapsed(offset: query.length);
     _focusNode.unfocus();
     unawaited(AppScope.of(context).searchProducts(query));
+  }
+
+  Future<void> _addProductToCart(
+    AppState state,
+    String productId,
+    String productName,
+    String storeId,
+  ) async {
+    await state.addProductToCart(productId, selectedStoreId: storeId);
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final snackBarWidth = MediaQuery.sizeOf(context).width < 420
+        ? MediaQuery.sizeOf(context).width - 32
+        : 420.0;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          width: snackBarWidth,
+          backgroundColor: AppColors.blue,
+          elevation: 6,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          duration: const Duration(seconds: 3),
+          content: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.78, end: 1),
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.elasticOut,
+            builder: (context, scale, child) {
+              return Transform.scale(
+                scale: scale,
+                alignment: Alignment.center,
+                child: child,
+              );
+            },
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const _AnimatedSuccessIcon(),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      '$productName agregado al changuito',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+  }
+}
+
+class _AnimatedSuccessIcon extends StatefulWidget {
+  const _AnimatedSuccessIcon();
+
+  @override
+  State<_AnimatedSuccessIcon> createState() => _AnimatedSuccessIconState();
+}
+
+class _AnimatedSuccessIconState extends State<_AnimatedSuccessIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+  late final Animation<double> _checkOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..forward();
+    _scale = CurvedAnimation(parent: _controller, curve: Curves.elasticOut);
+    _checkOpacity = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.28, 0.62, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scale,
+      child: FadeTransition(
+        opacity: _checkOpacity,
+        child: Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: AppColors.white.withValues(alpha: 0.18),
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.white, width: 1.5),
+          ),
+          child: const Icon(Icons.check, color: AppColors.white, size: 19),
+        ),
+      ),
+    );
   }
 }
 
@@ -243,7 +355,7 @@ class _SortChip extends StatelessWidget {
   }
 }
 
-class _ResultCard extends StatelessWidget {
+class _ResultCard extends StatefulWidget {
   const _ResultCard({
     required this.result,
     required this.isBest,
@@ -255,12 +367,33 @@ class _ResultCard extends StatelessWidget {
   final VoidCallback onAdd;
 
   @override
+  State<_ResultCard> createState() => _ResultCardState();
+}
+
+class _ResultCardState extends State<_ResultCard> {
+  bool _isAdded = false;
+
+  void _handleAdd() {
+    if (_isAdded) return;
+    setState(() => _isAdded = true);
+    widget.onAdd();
+    unawaited(_restoreAddButton());
+  }
+
+  Future<void> _restoreAddButton() async {
+    await Future<void>.delayed(const Duration(seconds: 3));
+    if (mounted) setState(() => _isAdded = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final discount = state.discountForResult(result);
+    final discount = state.discountForResult(widget.result);
     return AppCard(
       padding: EdgeInsets.zero,
-      borderColor: isBest ? const Color(0xFFC7EFD8) : AppColors.line,
+      borderColor: widget.isBest
+          ? const Color(0xFFC7EFD8)
+          : AppColors.line,
       child: Stack(
         children: [
           Padding(
@@ -268,7 +401,7 @@ class _ResultCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                ProductArt(product: result.product),
+                ProductArt(product: widget.result.product),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -276,10 +409,13 @@ class _ResultCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          StoreLogo(supermarket: result.supermarket, size: 28),
+                          StoreLogo(
+                            supermarket: widget.result.supermarket,
+                            size: 28,
+                          ),
                           const SizedBox(width: 6),
                           Text(
-                            result.supermarket.name,
+                            widget.result.supermarket.name,
                             style: const TextStyle(
                               color: AppColors.deepBlue,
                               fontSize: 12,
@@ -290,7 +426,7 @@ class _ResultCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        result.product.name,
+                        widget.result.product.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -301,7 +437,7 @@ class _ResultCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        result.product.presentation,
+                        widget.result.product.presentation,
                         style: const TextStyle(
                           color: AppColors.deepBlue,
                           fontSize: 13,
@@ -311,7 +447,7 @@ class _ResultCard extends StatelessWidget {
                       PriceBlock(discount: discount),
                       const SizedBox(height: 4),
                       Text(
-                        'Precio por ${result.product.unit}: ${formatMoney(result.price.priceUnitario)}',
+                        'Precio por ${widget.result.product.unit}: ${formatMoney(widget.result.price.priceUnitario)}',
                         style: const TextStyle(
                           color: AppColors.textGray,
                           fontSize: 12,
@@ -325,8 +461,30 @@ class _ResultCard extends StatelessWidget {
                   children: [
                     IconButton.filled(
                       tooltip: 'Agregar al changuito',
-                      onPressed: onAdd,
-                      icon: const Icon(Icons.add_shopping_cart),
+                      onPressed: _handleAdd,
+                      style: IconButton.styleFrom(
+                        backgroundColor: _isAdded
+                            ? AppColors.green
+                            : AppColors.blue,
+                        foregroundColor: AppColors.white,
+                      ),
+                      icon: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 450),
+                        switchInCurve: Curves.elasticOut,
+                        switchOutCurve: Curves.easeIn,
+                        transitionBuilder: (child, animation) {
+                          return ScaleTransition(
+                            scale: animation,
+                            child: child,
+                          );
+                        },
+                        child: Icon(
+                          _isAdded
+                              ? Icons.check_rounded
+                              : Icons.add_shopping_cart,
+                          key: ValueKey(_isAdded),
+                        ),
+                      ),
                     ),
                     const Icon(Icons.chevron_right, color: AppColors.deepBlue),
                   ],
@@ -334,7 +492,7 @@ class _ResultCard extends StatelessWidget {
               ],
             ),
           ),
-          if (isBest)
+          if (widget.isBest)
             Positioned(
               top: 0,
               left: 0,

@@ -147,26 +147,44 @@ class _PaymentTile extends StatelessWidget {
     final state = AppScope.of(context);
     return InkWell(
       onTap: () => unawaited(state.togglePaymentMethod(method.id)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            PaymentMethodLogo(method: method, size: 34),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                method.displayName,
-                style: const TextStyle(
-                  color: AppColors.deepBlue,
-                  fontWeight: FontWeight.w800,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: method.active ? AppColors.softBlue : Colors.transparent,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              PaymentMethodLogo(method: method, size: 34),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  method.displayName,
+                  style: const TextStyle(
+                    color: AppColors.deepBlue,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-            ),
-            Icon(
-              method.active ? Icons.check_box : Icons.check_box_outline_blank,
-              color: method.active ? AppColors.blue : AppColors.textGray,
-            ),
-          ],
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                switchInCurve: Curves.elasticOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, animation) {
+                  return ScaleTransition(scale: animation, child: child);
+                },
+                child: Icon(
+                  method.active
+                      ? Icons.check_box
+                      : Icons.check_box_outline_blank,
+                  key: ValueKey(method.active),
+                  color: method.active ? AppColors.blue : AppColors.textGray,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
