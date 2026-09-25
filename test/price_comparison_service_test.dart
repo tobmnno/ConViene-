@@ -100,33 +100,70 @@ void main() {
     );
   });
 
-  test('no compara productos de distinta cantidad', () async {
-    final repository = _DifferentSizeRepository();
-    final service = PriceComparisonService(repository, const DiscountEngine());
+  test(
+    'no compara productos de distinta cantidad, marca o formato pack',
+    () async {
+      final repository = _DifferentSizeRepository();
+      final service = PriceComparisonService(
+        repository,
+        const DiscountEngine(),
+      );
 
-    final result = await service.compareCartOptions(
-      cartItems: const [
-        CartItem(
-          productId: 'crema_200_coto',
-          quantity: 1,
-          selectedStoreId: 'coto',
-        ),
-      ],
-      fecha: DateTime(2026, 8, 20),
-      mediosPagoUsuario: const [],
-      promociones: const [],
-      storeIds: const {'coto', 'carrefour'},
-    );
+      final result = await service.compareCartOptions(
+        cartItems: const [
+          CartItem(
+            productId: 'crema_200_coto',
+            quantity: 1,
+            selectedStoreId: 'coto',
+          ),
+        ],
+        fecha: DateTime(2026, 8, 20),
+        mediosPagoUsuario: const [],
+        promociones: const [],
+        storeIds: const {'coto', 'carrefour'},
+      );
 
-    expect(result.singleStoreComparisons.map((item) => item.supermarket.id), [
-      'coto',
-    ]);
-    expect(result.bestPerProductPlan!.items.single.supermarket.id, 'coto');
-    expect(
-      result.bestPerProductPlan!.items.single.product.presentation,
-      '200cc',
-    );
-  });
+      expect(result.singleStoreComparisons.map((item) => item.supermarket.id), [
+        'coto',
+      ]);
+      expect(result.bestPerProductPlan!.items.single.supermarket.id, 'coto');
+      expect(
+        result.bestPerProductPlan!.items.single.product.presentation,
+        '200cc',
+      );
+    },
+  );
+
+  test(
+    'limpia el nombre antes de buscar equivalentes en otros supers',
+    () async {
+      final repository = _LiteralSearchRepository();
+      final service = PriceComparisonService(
+        repository,
+        const DiscountEngine(),
+      );
+
+      final result = await service.compareCartOptions(
+        cartItems: const [
+          CartItem(
+            productId: 'leche_liviana_coto',
+            quantity: 1,
+            selectedStoreId: 'coto',
+          ),
+        ],
+        fecha: DateTime(2026, 8, 20),
+        mediosPagoUsuario: const [],
+        promociones: const [],
+        storeIds: const {'coto', 'carrefour'},
+      );
+
+      expect(repository.lastQuery, 'Leche La Serenisima Liviana 1L');
+      expect(result.singleStoreComparisons.map((item) => item.supermarket.id), [
+        'carrefour',
+        'coto',
+      ]);
+    },
+  );
 }
 
 class _ComparableGalletitasRepository implements ConvieneRepository {
@@ -355,6 +392,16 @@ class _DifferentSizeRepository implements ConvieneRepository {
       category: 'lacteos',
       imageTag: 'milk',
     );
+    const sameBrandPack = Product(
+      id: 'crema_pack_carrefour',
+      ean: '',
+      name: 'Crema de leche La Paulina pack 2 x 100 cc',
+      brand: 'La Paulina',
+      presentation: '2 x 100 cc',
+      unit: 'L',
+      category: 'lacteos',
+      imageTag: 'milk',
+    );
     return [
       SearchResult(
         product: carrefourProduct,
@@ -376,6 +423,115 @@ class _DifferentSizeRepository implements ConvieneRepository {
           productId: otherBrandSameSize.id,
           priceOriginal: 1900,
           priceUnitario: 9500,
+          stock: true,
+          url: 'https://www.carrefour.com.ar/',
+          fechaActualizacion: DateTime(2026, 8, 20),
+        ),
+        supermarket: _supermarkets[1],
+      ),
+      SearchResult(
+        product: sameBrandPack,
+        price: ProductPrice(
+          storeId: 'carrefour',
+          productId: sameBrandPack.id,
+          priceOriginal: 1800,
+          priceUnitario: 9000,
+          stock: true,
+          url: 'https://www.carrefour.com.ar/',
+          fechaActualizacion: DateTime(2026, 8, 20),
+        ),
+        supermarket: _supermarkets[1],
+      ),
+    ];
+  }
+
+  @override
+  Future<List<Promotion>> getPromotions(DateTime date) async => const [];
+}
+
+class _LiteralSearchRepository implements ConvieneRepository {
+  String? lastQuery;
+
+  final _supermarkets = const [
+    Supermarket(
+      id: 'coto',
+      name: 'Coto',
+      shortName: 'COTO',
+      enabled: true,
+      brandColor: 0xFFE42127,
+      websiteUrl: 'https://www.coto.com.ar/',
+      logoAsset: '',
+    ),
+    Supermarket(
+      id: 'carrefour',
+      name: 'Carrefour',
+      shortName: 'Carrefour',
+      enabled: true,
+      brandColor: 0xFF175CD3,
+      websiteUrl: 'https://www.carrefour.com.ar/',
+      logoAsset: '',
+    ),
+  ];
+
+  final _selectedProduct = const Product(
+    id: 'leche_liviana_coto',
+    ean: '',
+    name: 'Leche La Serenisima Liviana 1% 1L',
+    brand: 'La Serenisima',
+    presentation: '1L',
+    unit: 'L',
+    category: 'lacteos',
+    imageTag: 'milk',
+  );
+
+  @override
+  Future<List<Supermarket>> getSupermarkets() async => _supermarkets;
+
+  @override
+  Future<List<Product>> getProducts() async => [_selectedProduct];
+
+  @override
+  Future<List<ProductPrice>> getPricesForProduct(String productId) async {
+    return [
+      ProductPrice(
+        storeId: 'coto',
+        productId: productId,
+        priceOriginal: 1500,
+        priceUnitario: 1500,
+        stock: true,
+        url: 'https://www.coto.com.ar/',
+        fechaActualizacion: DateTime(2026, 8, 20),
+      ),
+    ];
+  }
+
+  @override
+  Future<List<SearchResult>> searchProducts({
+    required String query,
+    required Set<String> storeIds,
+  }) async {
+    lastQuery = query;
+    if (query != 'Leche La Serenisima Liviana 1L') {
+      return [];
+    }
+    const carrefourProduct = Product(
+      id: 'leche_liviana_carrefour',
+      ean: '',
+      name: 'Leche La Serenisima Liviana 1L',
+      brand: 'La Serenisima',
+      presentation: '1L',
+      unit: 'L',
+      category: 'lacteos',
+      imageTag: 'milk',
+    );
+    return [
+      SearchResult(
+        product: carrefourProduct,
+        price: ProductPrice(
+          storeId: 'carrefour',
+          productId: carrefourProduct.id,
+          priceOriginal: 1400,
+          priceUnitario: 1400,
           stock: true,
           url: 'https://www.carrefour.com.ar/',
           fechaActualizacion: DateTime(2026, 8, 20),

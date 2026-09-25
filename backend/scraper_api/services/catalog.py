@@ -14,6 +14,18 @@ _MEASURE_RE = re.compile(
     re.IGNORECASE,
 )
 
+_PACK_BEFORE_RE = re.compile(
+    r"\b(?P<count>\d{1,2})\s*(?:x|por)\s*(?P<value>\d+(?:[.,]\d+)?)\s*"
+    r"(?P<unit>kg|kilos?|gr|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\b",
+    re.IGNORECASE,
+)
+_PACK_AFTER_RE = re.compile(
+    r"\b(?P<value>\d+(?:[.,]\d+)?)\s*"
+    r"(?P<unit>kg|kilos?|gr|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\s*"
+    r"(?:x|por)\s*(?P<count>\d{1,2})(?:\s*(?:u|un|unid(?:ades)?))?\b",
+    re.IGNORECASE,
+)
+
 _STOPWORDS = {
     "marca",
     "oferta",
@@ -71,6 +83,23 @@ _MASS_UNITS = {"g": 1.0, "gr": 1.0, "gramo": 1.0, "gramos": 1.0, "kg": 1000.0, "
 _VOLUME_UNITS = {"ml": 1.0, "cc": 1.0, "cm3": 1.0, "l": 1000.0, "lt": 1000.0, "lts": 1000.0, "litro": 1000.0, "litros": 1000.0}
 _COUNT_UNITS = {"u", "un", "unid", "unidad", "unidades"}
 
+_VARIANT_GROUPS = (
+    {"entera", "descremada", "semidescremada", "liviana"},
+    {"clasica", "original"},
+    {"regular", "light", "diet", "zero"},
+    {"conazucar", "sinazucar"},
+    {"conlactosa", "sinlactosa"},
+    {"vainilla", "chocolate", "frutilla", "banana", "coco", "limon", "naranja"},
+    {"suave", "intensa", "fuerte"},
+)
+
+_GENERIC_IDENTITY_TOKENS = {
+    "aceite", "agua", "arroz", "azucar", "bebida", "cafe", "clasica", "clasico",
+    "combo", "crema", "cracker", "dulce", "entera", "galleta", "galletitas",
+    "leche", "light", "liviana", "original", "pack", "pan", "queso", "rellena",
+    "relleno", "sabor", "sin", "tradicional", "unidad", "unidades", "yerba", "yogur",
+}
+
 
 @dataclass(frozen=True)
 class NormalizedText:
@@ -78,6 +107,8 @@ class NormalizedText:
     text: str
     size_value: float | None
     size_unit: str | None
+    pack_count: int | None = None
+    item_size_value: float | None = None
 
 
 def _strip_accents(value: str) -> str:
@@ -96,7 +127,27 @@ def _canonical_unit(raw_unit: str) -> tuple[float | None, str | None]:
     return None, None
 
 
+def _pack_measurement(text: str) -> tuple[float | None, str | None, int | None, float | None]:
+    stripped = _strip_accents(text).lower()
+    match = _PACK_BEFORE_RE.search(stripped) or _PACK_AFTER_RE.search(stripped)
+    if not match:
+        return None, None, None, None
+    try:
+        count = int(match.group("count"))
+        item_value = float(match.group("value").replace(",", "."))
+    except (TypeError, ValueError):
+        return None, None, None, None
+    multiplier, canonical_unit = _canonical_unit(match.group("unit"))
+    if not multiplier or not canonical_unit or count <= 1:
+        return None, None, None, None
+    canonical_item_value = item_value * multiplier
+    return canonical_item_value * count, canonical_unit, count, canonical_item_value
+
+
 def extract_measurement(text: str) -> tuple[float | None, str | None]:
+    pack_total, pack_unit, _, _ = _pack_measurement(text)
+    if pack_total is not None:
+        return pack_total, pack_unit
     match = _MEASURE_RE.search(_strip_accents(text).lower())
     if not match:
         return None, None
@@ -115,10 +166,31 @@ def normalize_text(text: str) -> NormalizedText:
     raw = (text or "").strip()
     stripped = _strip_accents(raw).lower()
     size_value, size_unit = extract_measurement(raw)
+    _, _, pack_count, item_size_value = _pack_measurement(raw)
     stripped = _MEASURE_RE.sub(" ", stripped)
     stripped = re.sub(r"[^a-z0-9\s]", " ", stripped)
     tokens = [token for token in stripped.split() if token and token not in _STOPWORDS]
-    return NormalizedText(raw=raw, text=" ".join(tokens), size_value=size_value, size_unit=size_unit)
+    return NormalizedText(
+        raw=raw,
+        text=" ".join(tokens),
+        size_value=size_value,
+        size_unit=size_unit,
+        pack_count=pack_count,
+        item_size_value=item_size_value,
+    )
+
+
+def search_query_for_product_name(name: str) -> str:
+    cleaned = _strip_accents(name or "")
+    cleaned = re.sub(r"\b\d+(?:[.,]\d+)?\s*%", " ", cleaned)
+    cleaned = re.sub(r"\b\d{8,14}\b", " ", cleaned)
+    cleaned = re.sub(
+        r"\b(?:oferta|ofertas|promo|promocion|pack|combo|nuevo|nueva)\b",
+        " ",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    return re.sub(r"\s+", " ", cleaned).strip() or (name or "").strip()
 
 
 def _coerce_product(row: Product | dict) -> Product:
@@ -138,7 +210,59 @@ def _size_score(query: NormalizedText, candidate: NormalizedText) -> float | Non
     if largest <= 0:
         return 0.0
     difference = abs(query.size_value - candidate.size_value) / largest
-    return max(0.0, 100.0 - (difference * 100.0))
+    score = max(0.0, 100.0 - (difference * 100.0))
+    if query.pack_count is not None and candidate.pack_count is not None:
+        if query.pack_count != candidate.pack_count:
+            return 0.0
+        if query.item_size_value and candidate.item_size_value:
+            item_largest = max(query.item_size_value, candidate.item_size_value)
+            item_difference = abs(query.item_size_value - candidate.item_size_value) / item_largest
+            score = min(score, max(0.0, 100.0 - (item_difference * 100.0)))
+    elif query.pack_count is not None or candidate.pack_count is not None:
+        score = min(score, 72.0)
+    return score
+
+
+def _collapsed_tokens(value: NormalizedText) -> set[str]:
+    tokens = set(value.text.split())
+    pairs = {f"{left}{right}" for left, right in zip(value.text.split(), value.text.split()[1:])}
+    return tokens | pairs
+
+
+def _variant_conflict(query: NormalizedText, candidate: NormalizedText) -> bool:
+    query_tokens = _collapsed_tokens(query)
+    candidate_tokens = _collapsed_tokens(candidate)
+    for group in _VARIANT_GROUPS:
+        requested = query_tokens & group
+        offered = candidate_tokens & group
+        if requested and offered and requested.isdisjoint(offered):
+            return True
+    return False
+
+
+def products_are_comparable(reference: str, candidate: str) -> bool:
+    reference_norm = normalize_text(reference)
+    candidate_norm = normalize_text(candidate)
+    size_score = _size_score(reference_norm, candidate_norm)
+    if size_score is not None and size_score < 96.0:
+        return False
+    if _variant_conflict(reference_norm, candidate_norm):
+        return False
+    reference_identity = {
+        token
+        for token in reference_norm.text.split()
+        if token not in _GENERIC_IDENTITY_TOKENS and not any(char.isdigit() for char in token)
+    }
+    candidate_identity = {
+        token
+        for token in candidate_norm.text.split()
+        if token not in _GENERIC_IDENTITY_TOKENS and not any(char.isdigit() for char in token)
+    }
+    if reference_identity:
+        common = len(reference_identity & candidate_identity)
+        if common == 0 or common / len(reference_identity) < 0.6:
+            return False
+    return True
 
 
 def score_product_match(query: str, product: Product | dict) -> SearchMatch:
@@ -169,6 +293,10 @@ def score_product_match(query: str, product: Product | dict) -> SearchMatch:
     score = float(text_score)
     if size_score is not None:
         score = (text_score * 0.82) + (size_score * 0.18)
+        if size_score < 90.0:
+            score *= 0.45
+    if _variant_conflict(query_norm, name_norm):
+        score *= 0.25
     if query_norm.text and query_norm.text == name_norm.text:
         score += 5.0
     elif query_norm.text and query_norm.text in name_norm.text:

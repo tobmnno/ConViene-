@@ -54,8 +54,25 @@ class PriceComparisonService {
     'sabor',
     'sin',
     'the',
+    'tradicional',
+    'original',
+    'rellena',
+    'relleno',
+    'pack',
+    'combo',
+    'unidad',
     'yerba',
   };
+
+  static const _variantGroups = [
+    {'entera', 'descremada', 'semidescremada', 'liviana'},
+    {'clasica', 'original'},
+    {'regular', 'light', 'diet', 'zero'},
+    {'conazucar', 'sinazucar'},
+    {'conlactosa', 'sinlactosa'},
+    {'vainilla', 'chocolate', 'frutilla', 'banana', 'coco', 'limon', 'naranja'},
+    {'suave', 'intensa', 'fuerte'},
+  ];
 
   Future<List<StoreComparison>> compareCart({
     required List<CartItem> cartItems,
@@ -96,64 +113,63 @@ class PriceComparisonService {
     final storesById = {for (final store in selectedStores) store.id: store};
     final allStoresById = {for (final store in stores) store.id: store};
     final products = await _repository.getProducts();
-    final comparableItems = <_ComparableCartItem>[];
-    for (final cartItem in cartItems) {
-      final selectedProduct = _productForCartItem(products, cartItem);
-      if (selectedProduct == null) {
-        continue;
-      }
-      final offersByStore = <String, SearchResult>{};
-      final cachedPrices = await _repository.getPricesForProduct(
-        cartItem.productId,
-      );
-      SearchResult? selectedOffer = _selectedOfferFor(
-        cartItem: cartItem,
-        selectedProduct: selectedProduct,
-        cachedPrices: cachedPrices,
-        storesById: allStoresById,
-      );
-
-      for (final price in cachedPrices) {
-        final store = storesById[price.storeId];
-        if (store == null || !price.stock) {
-          continue;
+    final comparableItems = await Future.wait(
+      cartItems.map((cartItem) async {
+        final selectedProduct = _productForCartItem(products, cartItem);
+        if (selectedProduct == null) {
+          return null;
         }
-        offersByStore[store.id] = SearchResult(
-          product: selectedProduct,
-          price: price,
-          supermarket: store,
+        final offersByStore = <String, SearchResult>{};
+        final cachedPrices = await _repository.getPricesForProduct(
+          cartItem.productId,
         );
-      }
+        SearchResult? selectedOffer = _selectedOfferFor(
+          cartItem: cartItem,
+          selectedProduct: selectedProduct,
+          cachedPrices: cachedPrices,
+          storesById: allStoresById,
+        );
 
-      if (offersByStore.length < selectedStores.length) {
-        final relatedResults = await _repository.searchProducts(
-          query: selectedProduct.name,
-          storeIds: storeIds,
-        );
-        for (final result in relatedResults) {
-          final storeId = result.supermarket.id;
-          if (!storesById.containsKey(storeId) || !result.price.stock) {
+        for (final price in cachedPrices) {
+          final store = storesById[price.storeId];
+          if (store == null || !price.stock) {
             continue;
           }
-          if (!_isComparableProduct(selectedProduct, result.product)) {
-            continue;
-          }
-          offersByStore.putIfAbsent(storeId, () => result);
+          offersByStore[store.id] = SearchResult(
+            product: selectedProduct,
+            price: price,
+            supermarket: store,
+          );
         }
-      }
-      selectedOffer ??= cartItem.selectedStoreId == null
-          ? null
-          : offersByStore[cartItem.selectedStoreId!];
 
-      comparableItems.add(
-        _ComparableCartItem(
+        if (offersByStore.length < selectedStores.length) {
+          final relatedResults = await _repository.searchProducts(
+            query: _searchQueryForProduct(selectedProduct),
+            storeIds: storeIds,
+          );
+          for (final result in relatedResults) {
+            final storeId = result.supermarket.id;
+            if (!storesById.containsKey(storeId) || !result.price.stock) {
+              continue;
+            }
+            if (!_isComparableProduct(selectedProduct, result.product)) {
+              continue;
+            }
+            offersByStore.putIfAbsent(storeId, () => result);
+          }
+        }
+        selectedOffer ??= cartItem.selectedStoreId == null
+            ? null
+            : offersByStore[cartItem.selectedStoreId!];
+
+        return _ComparableCartItem(
           cartItem: cartItem,
           selectedProduct: selectedProduct,
           offersByStore: offersByStore,
           selectedOffer: selectedOffer,
-        ),
-      );
-    }
+        );
+      }),
+    ).then((items) => items.whereType<_ComparableCartItem>().toList());
 
     final singleStoreComparisons = _buildSingleStoreComparisons(
       comparableItems: comparableItems,
@@ -414,6 +430,14 @@ class PriceComparisonService {
     if (selectedSize.unit != candidateSize.unit) {
       return false;
     }
+    if ((selectedSize.packCount == null) != (candidateSize.packCount == null)) {
+      return false;
+    }
+    if (selectedSize.packCount != null &&
+        candidateSize.packCount != null &&
+        selectedSize.packCount != candidateSize.packCount) {
+      return false;
+    }
     final difference = (selectedSize.value - candidateSize.value).abs();
     final tolerance = (selectedSize.value * 0.02).clamp(1, 50).toDouble();
     return difference <= tolerance;
@@ -428,13 +452,18 @@ class PriceComparisonService {
     if (!_isComparableSize(selectedProduct, candidateProduct)) {
       return false;
     }
+    if (_hasVariantConflict(selectedProduct.name, candidateProduct.name)) {
+      return false;
+    }
 
     final selectedIdentity = _identityTokens(selectedProduct);
     if (selectedIdentity.isEmpty) {
       return true;
     }
-    final candidateTokens = _normalizedTokens(candidateProduct.name).toSet();
-    return selectedIdentity.every(candidateTokens.contains);
+    final candidateIdentity = _identityTokens(candidateProduct);
+    final common = selectedIdentity.intersection(candidateIdentity).length;
+    final coverage = common / selectedIdentity.length;
+    return common > 0 && coverage >= 0.6;
   }
 
   Set<String> _identityTokens(Product product) {
@@ -446,6 +475,107 @@ class PriceComparisonService {
             !RegExp(r'\d').hasMatch(token))
           token,
     };
+  }
+
+  bool _hasVariantConflict(String selectedName, String candidateName) {
+    final selected = _variantTokens(selectedName);
+    final candidate = _variantTokens(candidateName);
+    for (final group in _variantGroups) {
+      final selectedGroup = selected.intersection(group);
+      final candidateGroup = candidate.intersection(group);
+      if (selectedGroup.isNotEmpty &&
+          candidateGroup.isNotEmpty &&
+          selectedGroup.intersection(candidateGroup).isEmpty) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Set<String> _variantTokens(String value) {
+    final words = _normalizedTokens(value);
+    return {
+      ...words,
+      for (var index = 0; index + 1 < words.length; index++)
+        '${words[index]}${words[index + 1]}',
+    };
+  }
+
+  String _searchQueryForProduct(Product product) {
+    final cleanedName = _cleanSearchText(product.name);
+    if (_hasMeasurement(cleanedName)) {
+      return cleanedName;
+    }
+    final measurement = _measurementTextForSearch(product);
+    if (measurement.isEmpty) {
+      return cleanedName;
+    }
+    return '$cleanedName $measurement'.trim();
+  }
+
+  String _cleanSearchText(String value) {
+    return value
+        .replaceAll(RegExp(r'\b\d+(?:[,.]\d+)?\s*%'), ' ')
+        .replaceAll(RegExp(r'\b\d{8,14}\b'), ' ')
+        .replaceAll(
+          RegExp(
+            r'\b(?:oferta|ofertas|promo|promocion|promoción|nuevo|nueva|pack|combo)\b',
+            caseSensitive: false,
+          ),
+          ' ',
+        )
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  bool _hasMeasurement(String value) {
+    return RegExp(
+      r'\d+(?:[,.]\d+)?\s*(kg|kilos?|gr|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\b',
+      caseSensitive: false,
+    ).hasMatch(value);
+  }
+
+  String _measurementTextForSearch(Product product) {
+    final source = '${product.presentation} ${product.name}';
+    final match = RegExp(
+      r'(\d+(?:[,.]\d+)?)\s*(kg|kilos?|gr|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\b',
+      caseSensitive: false,
+    ).firstMatch(source);
+    if (match == null) {
+      return '';
+    }
+    final rawValue = double.tryParse(match.group(1)!.replaceAll(',', '.'));
+    if (rawValue == null || rawValue <= 0) {
+      return '';
+    }
+    final rawUnit = match.group(2)!.toLowerCase();
+    if (rawUnit == 'kg' || rawUnit == 'kilo' || rawUnit == 'kilos') {
+      return _formatMeasurement(rawValue, 'kg');
+    }
+    if (rawUnit == 'g' ||
+        rawUnit == 'gr' ||
+        rawUnit == 'gramo' ||
+        rawUnit == 'gramos') {
+      return _formatMeasurement(rawValue, 'g');
+    }
+    if (rawUnit == 'l' ||
+        rawUnit == 'lt' ||
+        rawUnit == 'lts' ||
+        rawUnit == 'litro' ||
+        rawUnit == 'litros') {
+      return _formatMeasurement(rawValue, 'L');
+    }
+    return _formatMeasurement(rawValue, 'cc');
+  }
+
+  String _formatMeasurement(double value, String unit) {
+    final numeric = value == value.roundToDouble()
+        ? value.round().toString()
+        : value
+              .toStringAsFixed(2)
+              .replaceAll(RegExp(r'0+$'), '')
+              .replaceAll(RegExp(r'\.$'), '');
+    return '$numeric$unit';
   }
 
   List<String> _normalizedTokens(String value) {
@@ -481,6 +611,40 @@ class PriceComparisonService {
 
   _Measurement? _measurementFor(Product product) {
     final source = '${product.presentation} ${product.name}';
+    final packMatch = RegExp(
+      r'(\d{1,2})\s*(?:x|por)\s*(\d+(?:[,.]\d+)?)\s*(kg|kilos?|gr|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\b',
+      caseSensitive: false,
+    ).firstMatch(source);
+    if (packMatch != null) {
+      final count = int.tryParse(packMatch.group(1)!);
+      final itemValue = double.tryParse(
+        packMatch.group(2)!.replaceAll(',', '.'),
+      );
+      if (count != null && count > 1 && itemValue != null) {
+        return _canonicalMeasurement(
+          itemValue,
+          packMatch.group(3)!,
+          packCount: count,
+        );
+      }
+    }
+    final reversePackMatch = RegExp(
+      r'(\d+(?:[,.]\d+)?)\s*(kg|kilos?|gr|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\s*(?:x|por)\s*(\d{1,2})(?:\s*(?:u|un|unidades?))?\b',
+      caseSensitive: false,
+    ).firstMatch(source);
+    if (reversePackMatch != null) {
+      final itemValue = double.tryParse(
+        reversePackMatch.group(1)!.replaceAll(',', '.'),
+      );
+      final count = int.tryParse(reversePackMatch.group(3)!);
+      if (count != null && count > 1 && itemValue != null) {
+        return _canonicalMeasurement(
+          itemValue,
+          reversePackMatch.group(2)!,
+          packCount: count,
+        );
+      }
+    }
     final match = RegExp(
       r'(\d+(?:[,.]\d+)?)\s*(kg|kilos?|gr|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\b',
       caseSensitive: false,
@@ -492,22 +656,31 @@ class PriceComparisonService {
     if (value == null || value <= 0) {
       return null;
     }
-    final unit = match.group(2)!.toLowerCase();
+    return _canonicalMeasurement(value, match.group(2)!);
+  }
+
+  _Measurement? _canonicalMeasurement(
+    double itemValue,
+    String rawUnit, {
+    int? packCount,
+  }) {
+    final unit = rawUnit.toLowerCase();
+    final multiplier = packCount ?? 1;
     if (unit == 'kg' || unit == 'kilo' || unit == 'kilos') {
-      return _Measurement(value * 1000, 'g');
+      return _Measurement(itemValue * 1000 * multiplier, 'g', packCount);
     }
     if (unit == 'g' || unit == 'gr' || unit == 'gramo' || unit == 'gramos') {
-      return _Measurement(value, 'g');
+      return _Measurement(itemValue * multiplier, 'g', packCount);
     }
     if (unit == 'l' ||
         unit == 'lt' ||
         unit == 'lts' ||
         unit == 'litro' ||
         unit == 'litros') {
-      return _Measurement(value * 1000, 'ml');
+      return _Measurement(itemValue * 1000 * multiplier, 'ml', packCount);
     }
     if (unit == 'ml' || unit == 'cc' || unit == 'cm3') {
-      return _Measurement(value, 'ml');
+      return _Measurement(itemValue * multiplier, 'ml', packCount);
     }
     return null;
   }
@@ -576,8 +749,9 @@ class _ComparableCartItem {
 }
 
 class _Measurement {
-  const _Measurement(this.value, this.unit);
+  const _Measurement(this.value, this.unit, [this.packCount]);
 
   final double value;
   final String unit;
+  final int? packCount;
 }

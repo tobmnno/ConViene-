@@ -4,9 +4,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from models import Product, SearchResponse
+from models import DiscountPromotion, DiscountsResponse, Product, SearchResponse
 from scrapers.base import parse_price
-from services.catalog import rank_search_results, sort_results_for_output
+from services.catalog import (
+    extract_measurement,
+    products_are_comparable,
+    rank_search_results,
+    search_query_for_product_name,
+    sort_results_for_output,
+)
+from services.discounts import _coto_from_api
 from services.scraper import resolve_stores
 
 
@@ -47,6 +54,40 @@ class ContractTest(unittest.TestCase):
         self.assertEqual(payload["results"][0]["product"]["price"], 1099)
         self.assertGreater(payload["results"][0]["score"], 80)
 
+    def test_discounts_response_contract_matches_flutter(self):
+        promotion = DiscountPromotion(
+            id="la_gallega_banco_santa_fe",
+            store="la_gallega",
+            title="Banco Santa Fe",
+            benefit="30% OFF",
+            payment_type="bank",
+            entity="Banco Santa Fe",
+            percentage=30,
+            refund_cap=25000,
+            weekdays=[1, 2, 3, 4, 5, 6, 7],
+            start_date="2026-09-01",
+            end_date="2026-12-31",
+            conditions="30% de reintegro con tarjeta fisica Banco Santa Fe.",
+            categories=["todos"],
+            source_url="https://www.lagallega.com.ar/Beneficios.asp",
+            compatible_entities=["Banco Santa Fe", "Visa", "Mastercard"],
+            compatible_payment_types=["bank", "card"],
+            scraped_at="2026-09-04T00:00:00+00:00",
+        )
+        response = DiscountsResponse(
+            date="2026-09-04",
+            stores=["la_gallega"],
+            count=1,
+            results=[promotion],
+            warnings=[],
+        )
+        payload = response.model_dump()
+
+        self.assertEqual(payload["results"][0]["store"], "la_gallega")
+        self.assertEqual(payload["results"][0]["percentage"], 30)
+        self.assertEqual(payload["results"][0]["refund_cap"], 25000)
+        self.assertIn("Banco Santa Fe", payload["results"][0]["compatible_entities"])
+
     def test_ranking_prefers_product_type_over_brand_only_match(self):
         rows = [
             Product(store="coto", name="Crema De Leche LA PAULINA 200cc", price=2640, scraped_at="x"),
@@ -57,6 +98,61 @@ class ContractTest(unittest.TestCase):
 
         self.assertEqual(ranked[0].product.name, "Dulce De Leche VACALIN 400g")
         self.assertTrue(all("Dulce" in match.product.name for match in ranked))
+
+    def test_product_search_query_removes_percent_noise_but_keeps_size(self):
+        query = search_query_for_product_name("Leche La Serenisima Liviana 1% 1L")
+
+        self.assertEqual(query, "Leche La Serenisima Liviana 1L")
+
+    def test_pack_measurement_uses_total_quantity(self):
+        self.assertEqual(extract_measurement("Galletitas Oreo pack 3 x 118 g"), (354.0, "g"))
+        self.assertEqual(extract_measurement("Jugo 200 ml x 6 un"), (1200.0, "ml"))
+
+    def test_comparison_rejects_different_sizes_packs_and_flavors(self):
+        self.assertTrue(
+            products_are_comparable(
+                "Galletitas Oreo chocolate 3 x 118 g",
+                "Galletitas Oreo chocolate pack 3 x 117 g",
+            )
+        )
+        self.assertFalse(
+            products_are_comparable(
+                "Galletitas Oreo chocolate 3 x 118 g",
+                "Galletitas Oreo chocolate 354 g",
+            )
+        )
+        self.assertFalse(
+            products_are_comparable("Crema La Paulina 200 cc", "Crema La Paulina 350 cc")
+        )
+        self.assertFalse(
+            products_are_comparable("Yogur vainilla 1 L", "Yogur frutilla 1 L")
+        )
+        self.assertFalse(
+            products_are_comparable(
+                "Galletitas Oreo chocolate 3 x 118 g",
+                "Galletitas Criollitas lacteadas 3 x 118 g",
+            )
+        )
+
+    def test_coto_official_payload_maps_day_cap_and_entity(self):
+        row = _coto_from_api(
+            {
+                "id": "330",
+                "textoDescuento": "30% DE DESCUENTO",
+                "descripcion": "En un pago con tarjetas credito y debito Visa de Banco Comafi",
+                "observacion": "Tope de reintegro $ 15.000 por transaccion.",
+                "dias": [{"id": 3, "descripcion": "Martes"}],
+                "icono": "logo_comafi.png",
+            },
+            "Digital",
+            __import__("datetime").date(2026, 9, 8),
+            "2026-09-08T00:00:00+00:00",
+        )
+
+        self.assertEqual(row.percentage, 30)
+        self.assertEqual(row.refund_cap, 15000)
+        self.assertEqual(row.weekdays, [2])
+        self.assertIn("Banco Comafi", row.compatible_entities)
 
     def test_sort_keeps_unpriced_last(self):
         rows = [

@@ -101,7 +101,9 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: filteredPromotions.isEmpty
+            child: state.isLoadingPromotions
+                ? const _DiscountsLoading()
+                : filteredPromotions.isEmpty
                 ? _NoDiscounts(hasPaymentMethods: activeMethods.isNotEmpty)
                 : ListView.separated(
                     itemCount: filteredPromotions.length,
@@ -120,6 +122,7 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
                           supermarket: supermarket,
                           size: 48,
                         ),
+                        selectedDate: state.selectedDate,
                       );
                     },
                   ),
@@ -428,12 +431,14 @@ class _PromotionCard extends StatelessWidget {
     required this.supermarketName,
     required this.compatible,
     required this.storeLogo,
+    required this.selectedDate,
   });
 
   final Promotion promotion;
   final String supermarketName;
   final bool compatible;
   final Widget storeLogo;
+  final DateTime selectedDate;
 
   @override
   Widget build(BuildContext context) {
@@ -525,50 +530,58 @@ class _PromotionCard extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.white,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 26),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.82,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 26),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      promotion.nombreVisible,
-                      style: const TextStyle(
-                        color: AppColors.deepBlue,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          promotion.nombreVisible,
+                          style: const TextStyle(
+                            color: AppColors.deepBlue,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
-                    ),
+                      IconButton(
+                        tooltip: 'Cerrar',
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    tooltip: 'Cerrar',
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
+                  const SizedBox(height: 12),
+                  _DetailLine('Super', supermarketName),
+                  _DetailLine('Medio', promotion.tipoMedioPago.label),
+                  _DetailLine('Entidad', promotion.entidad),
+                  _DetailLine('Beneficio', _benefitText(promotion)),
+                  _DetailLine('Tope', _capValue(promotion)),
+                  _DetailLine('Dias', _daysText(promotion)),
+                  _DetailLine('Vigencia', _dateRange(promotion)),
+                  if (promotion.canal.isNotEmpty)
+                    _DetailLine('Canal', promotion.canal),
+                  _DetailLine('Categorias', promotion.categorias.join(', ')),
+                  _DetailLine('Condicion', promotion.condiciones),
+                  if (promotion.fuenteUrl.isNotEmpty)
+                    _DetailLine('Fuente', promotion.fuenteUrl),
                 ],
               ),
-              const SizedBox(height: 12),
-              _DetailLine('Super', supermarketName),
-              _DetailLine('Medio', promotion.tipoMedioPago.label),
-              _DetailLine('Entidad', promotion.entidad),
-              _DetailLine('Beneficio', _benefitText(promotion)),
-              _DetailLine('Tope', _capValue(promotion)),
-              _DetailLine('Dias', _daysText(promotion)),
-              _DetailLine('Vigencia', _dateRange(promotion)),
-              if (promotion.canal.isNotEmpty)
-                _DetailLine('Canal', promotion.canal),
-              _DetailLine('Categorias', promotion.categorias.join(', ')),
-              _DetailLine('Condicion', promotion.condiciones),
-              if (promotion.fuenteUrl.isNotEmpty)
-                _DetailLine('Fuente', promotion.fuenteUrl),
-            ],
+            ),
           ),
         );
       },
@@ -607,20 +620,17 @@ class _PromotionCard extends StatelessWidget {
   }
 
   String _daysText(Promotion promotion) {
-    if (promotion.textoVigencia.isNotEmpty) {
-      return promotion.textoVigencia;
-    }
     const dayNames = {
       DateTime.monday: 'lunes',
       DateTime.tuesday: 'martes',
       DateTime.wednesday: 'miercoles',
       DateTime.thursday: 'jueves',
       DateTime.friday: 'viernes',
-      DateTime.saturday: 'sabados',
-      DateTime.sunday: 'domingos',
+      DateTime.saturday: 'sabado',
+      DateTime.sunday: 'domingo',
     };
-    if (promotion.diasSemana.length == 7) {
-      return 'Todos los dias';
+    if (promotion.diasSemana.contains(selectedDate.weekday)) {
+      return '${dayNames[selectedDate.weekday]} ${_shortDayMonth(selectedDate)}';
     }
     return [
       for (final weekday in promotion.diasSemana) dayNames[weekday] ?? '',
@@ -635,6 +645,27 @@ class _PromotionCard extends StatelessWidget {
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
     return '$day/$month/${date.year}';
+  }
+
+  String _shortDayMonth(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month';
+  }
+}
+
+class _DiscountsLoading extends StatelessWidget {
+  const _DiscountsLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: SizedBox(
+        width: 28,
+        height: 28,
+        child: CircularProgressIndicator(strokeWidth: 3),
+      ),
+    );
   }
 }
 

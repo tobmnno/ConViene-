@@ -1,4 +1,5 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from html import unescape
 import re
@@ -260,9 +261,10 @@ def _lagallega_suggestions(session: requests.Session, query: str, limit: int):
     return rows
 
 
-def _lagallega_detail(session: requests.Session, product_id: str):
+def _lagallega_detail(session: requests.Session | None, product_id: str):
     url = f"https://www.lagallega.com.ar/productosdet.asp?Pr={product_id}"
-    response = session.get(url, headers=REQUEST_HEADERS, timeout=25)
+    getter = session.get if session is not None else requests.get
+    response = getter(url, headers=REQUEST_HEADERS, timeout=15)
     if response.status_code != 200:
         return None
     detail_html = response.text
@@ -282,9 +284,19 @@ def _lagallega_api_search(query: str, limit: int):
         suggestions = _lagallega_suggestions(session, query, limit)
         if suggestions is None:
             return None
+        if not suggestions:
+            return []
+        worker_count = min(6, len(suggestions))
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            details = list(
+                executor.map(
+                    lambda suggestion: _lagallega_detail(None, suggestion["id"]),
+                    suggestions,
+                )
+            )
         rows = []
-        for suggestion in suggestions:
-            detail = _lagallega_detail(session, suggestion["id"]) or {}
+        for suggestion, raw_detail in zip(suggestions, details):
+            detail = raw_detail or {}
             price = detail.get("price")
             if price is None:
                 continue

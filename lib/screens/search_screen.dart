@@ -194,9 +194,9 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           duration: const Duration(seconds: 3),
           content: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.78, end: 1),
-            duration: const Duration(milliseconds: 700),
-            curve: Curves.elasticOut,
+            tween: Tween(begin: 0.94, end: 1),
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutBack,
             builder: (context, scale, child) {
               return Transform.scale(
                 scale: scale,
@@ -244,12 +244,12 @@ class _AnimatedSuccessIconState extends State<_AnimatedSuccessIcon>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 420),
     )..forward();
-    _scale = CurvedAnimation(parent: _controller, curve: Curves.elasticOut);
+    _scale = CurvedAnimation(parent: _controller, curve: Curves.easeOutBack);
     _checkOpacity = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.28, 0.62, curve: Curves.easeOut),
+      curve: const Interval(0.18, 0.75, curve: Curves.easeOut),
     );
   }
 
@@ -391,9 +391,7 @@ class _ResultCardState extends State<_ResultCard> {
     final discount = state.discountForResult(widget.result);
     return AppCard(
       padding: EdgeInsets.zero,
-      borderColor: widget.isBest
-          ? const Color(0xFFC7EFD8)
-          : AppColors.line,
+      borderColor: widget.isBest ? const Color(0xFFC7EFD8) : AppColors.line,
       child: Stack(
         children: [
           Padding(
@@ -469,8 +467,8 @@ class _ResultCardState extends State<_ResultCard> {
                         foregroundColor: AppColors.white,
                       ),
                       icon: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 450),
-                        switchInCurve: Curves.elasticOut,
+                        duration: const Duration(milliseconds: 260),
+                        switchInCurve: Curves.easeOutBack,
                         switchOutCurve: Curves.easeIn,
                         transitionBuilder: (child, animation) {
                           return ScaleTransition(

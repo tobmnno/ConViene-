@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import time
 from contextlib import asynccontextmanager
 
 from scrapers import SCRAPERS, STORE_NAMES
@@ -14,6 +15,10 @@ STORE_ALIASES = {
     "la-gallega": "la_gallega",
     "la gallega": "la_gallega",
 }
+
+_SEARCH_CACHE_TTL_SECONDS = 120
+_search_cache: dict[tuple, tuple[float, list]] = {}
+_search_locks: dict[tuple, asyncio.Lock] = {}
 
 
 def _store_tokens(stores: list[str] | str | None) -> list[str]:
@@ -109,6 +114,29 @@ async def scrape_query(
     engine: str = "camoufox",
 ):
     selected_stores = resolve_stores(stores)
+    cache_key = (query.strip().casefold(), tuple(selected_stores), limit)
+    cached = _search_cache.get(cache_key)
+    now = time.monotonic()
+    if cached and now - cached[0] < _SEARCH_CACHE_TTL_SECONDS:
+        return list(cached[1])
+
+    lock = _search_locks.setdefault(cache_key, asyncio.Lock())
+    async with lock:
+        cached = _search_cache.get(cache_key)
+        now = time.monotonic()
+        if cached and now - cached[0] < _SEARCH_CACHE_TTL_SECONDS:
+            return list(cached[1])
+        rows = await _scrape_query_uncached(query, selected_stores, limit, headless, engine)
+        _search_cache[cache_key] = (time.monotonic(), list(rows))
+        if len(_search_cache) > 200:
+            expired = [key for key, (created, _) in _search_cache.items() if now - created >= _SEARCH_CACHE_TTL_SECONDS]
+            for key in expired:
+                _search_cache.pop(key, None)
+                _search_locks.pop(key, None)
+        return rows
+
+
+async def _scrape_query_uncached(query, selected_stores, limit, headless, engine):
     direct_tasks = [
         asyncio.create_task(_search_one_direct_store(store, query, limit))
         for store in selected_stores

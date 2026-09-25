@@ -60,8 +60,10 @@ class AppState extends ChangeNotifier {
   bool isBootstrapping = true;
   bool isSearching = false;
   bool isComparing = false;
+  bool isLoadingPromotions = false;
 
   int _comparisonGeneration = 0;
+  int _promotionsGeneration = 0;
 
   List<PaymentMethod> get activePaymentMethods {
     if (!paymentSetupComplete) {
@@ -149,8 +151,20 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> setSelectedDate(DateTime date) async {
+    final generation = ++_promotionsGeneration;
     selectedDate = DateTime(date.year, date.month, date.day);
-    promotions = await _discountService.loadPromotions(selectedDate);
+    promotions = [];
+    isLoadingPromotions = true;
+    notifyListeners();
+
+    final loadedPromotions = await _discountService.loadPromotions(
+      selectedDate,
+    );
+    if (generation != _promotionsGeneration) {
+      return;
+    }
+    promotions = loadedPromotions;
+    isLoadingPromotions = false;
     notifyListeners();
     await refreshComparisons();
   }

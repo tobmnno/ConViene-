@@ -1,9 +1,15 @@
+import asyncio
+from urllib.parse import urlparse
+
+import requests
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 
-from models import CompareRequest, CompareResponse, SearchRequest, SearchResponse
+from models import CompareRequest, CompareResponse, DiscountsResponse, SearchRequest, SearchResponse
 from services.catalog import rank_search_results
 from services.comparison import compare_cart
+from services.discounts import scrape_discounts
 from services.scraper import resolve_stores, scrape_query
 from scrapers import SCRAPERS
 
@@ -42,12 +48,55 @@ async def health():
     }
 
 
+@app.get("/image")
+async def image_proxy(url: str = Query(min_length=8, max_length=1200)):
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise HTTPException(status_code=400, detail="URL de imagen invalida")
+    try:
+        response = requests.get(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            },
+            timeout=20,
+        )
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        raise HTTPException(status_code=502, detail="No se pudo cargar la imagen") from exc
+
+    content_type = response.headers.get("content-type", "image/jpeg").split(";")[0]
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=415, detail="La URL no devolvio una imagen")
+    return Response(
+        content=response.content,
+        media_type=content_type,
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
 @app.get("/stores")
 async def stores():
     return {
         "stores": list(SCRAPERS),
         "app_store_ids": ["carrefour", "coto", "lagallega"],
     }
+
+
+@app.get("/discounts", response_model=DiscountsResponse)
+async def discounts(
+    date: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    stores: list[str] | None = Query(default=None),
+):
+    from datetime import date as date_type
+
+    try:
+        selected_stores = resolve_stores(stores)
+        selected_date = date_type.fromisoformat(date) if date else None
+        return await asyncio.to_thread(scrape_discounts, selected_stores, selected_date)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/search", response_model=SearchResponse)

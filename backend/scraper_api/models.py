@@ -66,3 +66,34 @@ class CompareResponse(BaseModel):
     ranking: list[StoreTotal]
     stores: list[str]
     items_count: int
+
+
+class DiscountPromotion(BaseModel):
+    id: str
+    store: str
+    title: str
+    benefit: str = ""
+    payment_type: str = "card"
+    entity: str = ""
+    percentage: float = 0
+    refund_cap: float = 0
+    weekdays: list[int] = Field(default_factory=list)
+    start_date: str
+    end_date: str
+    conditions: str = ""
+    categories: list[str] = Field(default_factory=lambda: ["todos"])
+    channel: str = ""
+    valid_text: str = ""
+    source_url: str = ""
+    compatible_entities: list[str] = Field(default_factory=list)
+    compatible_payment_types: list[str] = Field(default_factory=list)
+    any_entity: bool = False
+    scraped_at: str
+
+
+class DiscountsResponse(BaseModel):
+    date: str
+    stores: list[str]
+    count: int
+    results: list[DiscountPromotion]
+    warnings: list[str] = Field(default_factory=list)

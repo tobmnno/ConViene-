@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/discount.dart';
+import '../models/payment_method.dart';
 import '../models/price_quote.dart';
 import '../models/product.dart';
 import '../models/supermarket.dart';
@@ -50,8 +51,31 @@ class ApiRepository implements ConvieneRepository {
   }
 
   @override
-  Future<List<Promotion>> getPromotions(DateTime date) {
-    return fallback.getPromotions(date);
+  Future<List<Promotion>> getPromotions(DateTime date) async {
+    try {
+      final uri = _discountsUri(date);
+      final response = await _client.get(uri).timeout(timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StateError('Scraper API returned ${response.statusCode}');
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException('Discounts API response must be an object');
+      }
+      final rawResults = decoded['results'];
+      if (rawResults is! List<dynamic>) {
+        throw const FormatException(
+          'Discounts API response must include results',
+        );
+      }
+      final promotions = _parsePromotions(rawResults, date);
+      if (promotions.isNotEmpty) {
+        return promotions;
+      }
+      return fallback.getPromotions(date);
+    } on Object {
+      return fallback.getPromotions(date);
+    }
   }
 
   @override
@@ -82,9 +106,7 @@ class ApiRepository implements ConvieneRepository {
   }
 
   Uri _searchUri(String query, Set<String> storeIds) {
-    final basePath = baseUrl.path.endsWith('/')
-        ? baseUrl.path.substring(0, baseUrl.path.length - 1)
-        : baseUrl.path;
+    final basePath = _basePath();
     return baseUrl.replace(
       path: '$basePath/search',
       queryParameters: <String, dynamic>{
@@ -93,6 +115,41 @@ class ApiRepository implements ConvieneRepository {
         'stores': storeIds.map(_storeIdForApi).toList(),
       },
     );
+  }
+
+  Uri _discountsUri(DateTime date) {
+    final basePath = _basePath();
+    return baseUrl.replace(
+      path: '$basePath/discounts',
+      queryParameters: <String, dynamic>{
+        'date': _dateParam(date),
+        'stores': const ['carrefour', 'coto', 'la_gallega'],
+      },
+    );
+  }
+
+  String _proxiedImageUrl(String rawUrl) {
+    final parsed = Uri.tryParse(rawUrl.trim());
+    if (parsed == null || parsed.scheme.isEmpty) {
+      return '';
+    }
+    if (parsed.host == baseUrl.host && parsed.port == baseUrl.port) {
+      return parsed.toString();
+    }
+    final basePath = _basePath();
+    return baseUrl
+        .replace(
+          path: '$basePath/image',
+          queryParameters: {'url': parsed.toString()},
+        )
+        .toString();
+  }
+
+  String _basePath() {
+    final basePath = baseUrl.path.endsWith('/')
+        ? baseUrl.path.substring(0, baseUrl.path.length - 1)
+        : baseUrl.path;
+    return basePath;
   }
 
   Future<List<SearchResult>> _parseResults(List<dynamic> rawResults) async {
@@ -118,6 +175,9 @@ class ApiRepository implements ConvieneRepository {
 
       final presentation = _presentationFrom(productData, name);
       final productId = _productIdFrom(productData, name);
+      final imageUrl = _proxiedImageUrl(
+        _asString(productData['image'] ?? result['image']),
+      );
       final product = Product(
         id: productId,
         ean: '',
@@ -127,7 +187,7 @@ class ApiRepository implements ConvieneRepository {
         unit: _unitFromPresentation(presentation),
         category: _categoryFromName(name),
         imageTag: _imageTagFromName(name),
-        imageUrl: _asString(productData['image'] ?? result['image']),
+        imageUrl: imageUrl,
       );
       final priceQuote = ProductPrice(
         storeId: storeId,
@@ -165,6 +225,75 @@ class ApiRepository implements ConvieneRepository {
       return Map<String, dynamic>.from(product);
     }
     return result;
+  }
+
+  List<Promotion> _parsePromotions(
+    List<dynamic> rawResults,
+    DateTime selectedDate,
+  ) {
+    final promotions = <Promotion>[];
+    for (final rawResult in rawResults) {
+      if (rawResult is! Map<dynamic, dynamic>) {
+        continue;
+      }
+      final result = Map<String, dynamic>.from(rawResult);
+      final storeId = _storeIdForApp(_asString(result['store']));
+      final title = _asString(result['title']);
+      final start = DateTime.tryParse(_asString(result['start_date']));
+      final end = DateTime.tryParse(_asString(result['end_date']));
+      if (storeId.isEmpty || title.isEmpty || start == null || end == null) {
+        continue;
+      }
+
+      final paymentTypes = _paymentTypesFromApi(
+        _asStringList(result['compatible_payment_types']),
+      );
+      final type = _paymentTypeFromApi(_asString(result['payment_type']));
+      final weekdays = _asIntSet(result['weekdays']);
+      final promotion = Promotion(
+        id: _asString(result['id']).isEmpty
+            ? 'api_promo_${_slug('$storeId $title')}'
+            : _asString(result['id']),
+        storeId: storeId,
+        tipoMedioPago: type,
+        entidad: _asString(result['entity']).isEmpty
+            ? 'Medios de pago'
+            : _asString(result['entity']),
+        porcentajeDescuento: _asDouble(result['percentage']) ?? 0,
+        topeReintegro: _asDouble(result['refund_cap']) ?? 0,
+        diasSemana: weekdays.isEmpty
+            ? {
+                DateTime.monday,
+                DateTime.tuesday,
+                DateTime.wednesday,
+                DateTime.thursday,
+                DateTime.friday,
+                DateTime.saturday,
+                DateTime.sunday,
+              }
+            : weekdays,
+        fechaInicio: start,
+        fechaFin: end,
+        condiciones: _asString(result['conditions']),
+        categorias: _asStringList(result['categories']).isEmpty
+            ? const ['todos']
+            : _asStringList(result['categories']),
+        titulo: title,
+        beneficio: _asString(result['benefit']),
+        canal: _asString(result['channel']),
+        textoVigencia: _asString(result['valid_text']),
+        fuenteUrl: _asString(result['source_url']),
+        entidadesCompatibles: _asStringList(
+          result['compatible_entities'],
+        ).toSet(),
+        tiposMedioPagoCompatibles: paymentTypes,
+        cualquierEntidad: result['any_entity'] == true,
+      );
+      if (promotion.appliesOn(selectedDate)) {
+        promotions.add(promotion);
+      }
+    }
+    return promotions;
   }
 
   String _productIdFrom(Map<String, dynamic> result, String name) {
@@ -319,6 +448,51 @@ class ApiRepository implements ConvieneRepository {
 
   String _asString(Object? value) {
     return value?.toString().trim() ?? '';
+  }
+
+  List<String> _asStringList(Object? value) {
+    if (value is List<dynamic>) {
+      return [
+        for (final item in value)
+          if (_asString(item).isNotEmpty) _asString(item),
+      ];
+    }
+    final single = _asString(value);
+    return single.isEmpty ? const [] : [single];
+  }
+
+  Set<int> _asIntSet(Object? value) {
+    if (value is! List<dynamic>) {
+      return {};
+    }
+    return {
+      for (final item in value)
+        if (item is int && item >= DateTime.monday && item <= DateTime.sunday)
+          item
+        else if (int.tryParse(_asString(item)) case final parsed?
+            when parsed >= DateTime.monday && parsed <= DateTime.sunday)
+          parsed,
+    };
+  }
+
+  PaymentMethodType _paymentTypeFromApi(String value) {
+    return switch (_normalize(value)) {
+      'bank' || 'banco' => PaymentMethodType.bank,
+      'wallet' || 'billetera' => PaymentMethodType.wallet,
+      _ => PaymentMethodType.card,
+    };
+  }
+
+  Set<PaymentMethodType> _paymentTypesFromApi(List<String> values) {
+    return {for (final value in values) _paymentTypeFromApi(value)};
+  }
+
+  String _dateParam(DateTime date) {
+    return '${date.year}-${_twoDigits(date.month)}-${_twoDigits(date.day)}';
+  }
+
+  String _twoDigits(int value) {
+    return value.toString().padLeft(2, '0');
   }
 
   String _storeIdForApi(String storeId) {

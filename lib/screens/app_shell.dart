@@ -37,15 +37,21 @@ class _AppShellState extends State<AppShell> {
         child: state.isBootstrapping
             ? const _BootstrappingView()
             : AnimatedSwitcher(
-                duration: const Duration(milliseconds: 360),
-                reverseDuration: const Duration(milliseconds: 220),
+                duration: const Duration(milliseconds: 300),
+                reverseDuration: const Duration(milliseconds: 210),
                 switchInCurve: Curves.easeOutCubic,
                 switchOutCurve: Curves.easeInCubic,
                 transitionBuilder: (child, animation) {
-                  final offset = Tween<Offset>(
-                    begin: const Offset(0.035, 0),
-                    end: Offset.zero,
-                  ).animate(animation);
+                  final offset =
+                      Tween<Offset>(
+                        begin: const Offset(0.018, 0),
+                        end: Offset.zero,
+                      ).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutCubic,
+                        ),
+                      );
                   return FadeTransition(
                     opacity: animation,
                     child: SlideTransition(position: offset, child: child),
