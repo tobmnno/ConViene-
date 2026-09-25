@@ -28,6 +28,18 @@ class ProductSearchService {
     final sorted = [...results];
     final queryTokens = _queryTokens(query);
     sorted.sort((a, b) {
+      final matchType = (a.isExactMatch ? 0 : 1).compareTo(
+        b.isExactMatch ? 0 : 1,
+      );
+      if (matchType != 0) {
+        return matchType;
+      }
+      if (!a.isExactMatch && !b.isExactMatch) {
+        final backendRelevance = b.relevanceScore.compareTo(a.relevanceScore);
+        if (backendRelevance != 0) {
+          return backendRelevance;
+        }
+      }
       final relevance = _compareRelevance(queryTokens, a, b);
       if (relevance != 0) {
         return relevance;

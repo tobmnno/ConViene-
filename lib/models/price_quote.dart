@@ -26,9 +26,13 @@ class SearchResult {
     required this.product,
     required this.price,
     required this.supermarket,
+    this.relevanceScore = 0,
+    this.isExactMatch = true,
   });
 
   final Product product;
   final ProductPrice price;
   final Supermarket supermarket;
+  final double relevanceScore;
+  final bool isExactMatch;
 }

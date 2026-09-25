@@ -10,18 +10,18 @@ from rapidfuzz import fuzz
 from models import Product, SearchMatch
 
 _MEASURE_RE = re.compile(
-    r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>kg|kilos?|gr|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3|u|un|unid(?:ades)?)\b",
+    r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>kg|kilos?|grs?|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3|u|un|unid(?:ades)?)\b",
     re.IGNORECASE,
 )
 
 _PACK_BEFORE_RE = re.compile(
     r"\b(?P<count>\d{1,2})\s*(?:x|por)\s*(?P<value>\d+(?:[.,]\d+)?)\s*"
-    r"(?P<unit>kg|kilos?|gr|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\b",
+    r"(?P<unit>kg|kilos?|grs?|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\b",
     re.IGNORECASE,
 )
 _PACK_AFTER_RE = re.compile(
     r"\b(?P<value>\d+(?:[.,]\d+)?)\s*"
-    r"(?P<unit>kg|kilos?|gr|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\s*"
+    r"(?P<unit>kg|kilos?|grs?|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\s*"
     r"(?:x|por)\s*(?P<count>\d{1,2})(?:\s*(?:u|un|unid(?:ades)?))?\b",
     re.IGNORECASE,
 )
@@ -79,26 +79,64 @@ _INTENT_TOKENS = {
     "yogur",
 }
 
-_MASS_UNITS = {"g": 1.0, "gr": 1.0, "gramo": 1.0, "gramos": 1.0, "kg": 1000.0, "kilo": 1000.0, "kilos": 1000.0}
+_MASS_UNITS = {"g": 1.0, "gr": 1.0, "grs": 1.0, "gramo": 1.0, "gramos": 1.0, "kg": 1000.0, "kilo": 1000.0, "kilos": 1000.0}
 _VOLUME_UNITS = {"ml": 1.0, "cc": 1.0, "cm3": 1.0, "l": 1000.0, "lt": 1000.0, "lts": 1000.0, "litro": 1000.0, "litros": 1000.0}
 _COUNT_UNITS = {"u", "un", "unid", "unidad", "unidades"}
 
-_VARIANT_GROUPS = (
-    {"entera", "descremada", "semidescremada", "liviana"},
-    {"clasica", "original"},
-    {"regular", "light", "diet", "zero"},
-    {"conazucar", "sinazucar"},
-    {"conlactosa", "sinlactosa"},
-    {"vainilla", "chocolate", "frutilla", "banana", "coco", "limon", "naranja"},
-    {"suave", "intensa", "fuerte"},
-)
+_VARIANT_ALIASES = {
+    "milk": {
+        "entera": "entera",
+        "descremada": "descremada",
+        "semidescremada": "semidescremada",
+        "liviana": "liviana",
+        "liviano": "liviana",
+        "light": "liviana",
+    },
+    "diet": {
+        "clasica": "regular",
+        "clasico": "regular",
+        "original": "regular",
+        "regular": "regular",
+        "light": "light",
+        "liviana": "light",
+        "liviano": "light",
+        "diet": "light",
+        "zero": "zero",
+    },
+    "sugar": {
+        "conazucar": "sugar",
+        "sinazucar": "sugar_free",
+        "zero": "sugar_free",
+    },
+    "lactose": {"conlactosa": "lactose", "sinlactosa": "lactose_free", "deslactosada": "lactose_free"},
+    "flavor": {
+        "original": "original",
+        "vainilla": "vainilla",
+        "chocolate": "chocolate",
+        "frutilla": "frutilla",
+        "banana": "banana",
+        "coco": "coco",
+        "limon": "limon",
+        "naranja": "naranja",
+    },
+    "intensity": {"suave": "suave", "intensa": "intensa", "fuerte": "fuerte"},
+    "stems": {"conpalo": "with_stems", "sinpalo": "without_stems"},
+    "special": {"protein": "protein", "proteina": "protein", "barista": "barista"},
+    "form": {"banada": "coated", "banadas": "coated", "banado": "coated", "rellena": "filled", "rellenas": "filled"},
+}
 
 _GENERIC_IDENTITY_TOKENS = {
     "aceite", "agua", "arroz", "azucar", "bebida", "cafe", "clasica", "clasico",
     "combo", "crema", "cracker", "dulce", "entera", "galleta", "galletitas",
-    "leche", "light", "liviana", "original", "pack", "pan", "queso", "rellena",
+    "leche", "light", "liviana", "liviano", "original", "pack", "pan", "queso", "rellena",
     "relleno", "sabor", "sin", "tradicional", "unidad", "unidades", "yerba", "yogur",
+    "descremada", "semidescremada", "regular", "diet", "zero", "protein", "proteina",
+    "barista", "vainilla", "chocolate", "frutilla", "banana", "coco", "limon", "naranja",
+    "con", "palo", "conpalo", "sinpalo", "banada", "banadas", "banado",
+    "mas", "sachet", "botella", "carton", "pote", "lata", "caja", "bolsa",
 }
+
+_PERCENT_RE = re.compile(r"\b(\d+(?:[.,]\d+)?)\s*%")
 
 
 @dataclass(frozen=True)
@@ -109,6 +147,7 @@ class NormalizedText:
     size_unit: str | None
     pack_count: int | None = None
     item_size_value: float | None = None
+    percentages: tuple[float, ...] = ()
 
 
 def _strip_accents(value: str) -> str:
@@ -165,8 +204,10 @@ def extract_measurement(text: str) -> tuple[float | None, str | None]:
 def normalize_text(text: str) -> NormalizedText:
     raw = (text or "").strip()
     stripped = _strip_accents(raw).lower()
+    percentages = tuple(float(value.replace(",", ".")) for value in _PERCENT_RE.findall(stripped))
     size_value, size_unit = extract_measurement(raw)
     _, _, pack_count, item_size_value = _pack_measurement(raw)
+    stripped = _PERCENT_RE.sub(" ", stripped)
     stripped = _MEASURE_RE.sub(" ", stripped)
     stripped = re.sub(r"[^a-z0-9\s]", " ", stripped)
     tokens = [token for token in stripped.split() if token and token not in _STOPWORDS]
@@ -177,6 +218,7 @@ def normalize_text(text: str) -> NormalizedText:
         size_unit=size_unit,
         pack_count=pack_count,
         item_size_value=item_size_value,
+        percentages=percentages,
     )
 
 
@@ -229,40 +271,101 @@ def _collapsed_tokens(value: NormalizedText) -> set[str]:
     return tokens | pairs
 
 
+def _variants(value: NormalizedText) -> dict[str, set[str]]:
+    tokens = _collapsed_tokens(value)
+    return {
+        dimension: {canonical for token, canonical in aliases.items() if token in tokens}
+        for dimension, aliases in _VARIANT_ALIASES.items()
+    }
+
+
 def _variant_conflict(query: NormalizedText, candidate: NormalizedText) -> bool:
-    query_tokens = _collapsed_tokens(query)
-    candidate_tokens = _collapsed_tokens(candidate)
-    for group in _VARIANT_GROUPS:
-        requested = query_tokens & group
-        offered = candidate_tokens & group
+    requested_variants = _variants(query)
+    offered_variants = _variants(candidate)
+    for dimension, requested in requested_variants.items():
+        offered = offered_variants[dimension]
         if requested and offered and requested.isdisjoint(offered):
             return True
     return False
 
 
+def _missing_requested_variant(query: NormalizedText, candidate: NormalizedText) -> bool:
+    requested_variants = _variants(query)
+    offered_variants = _variants(candidate)
+    missing_variant = any(
+        requested and not offered_variants[dimension]
+        for dimension, requested in requested_variants.items()
+    )
+    missing_percentage = bool(query.percentages and not candidate.percentages)
+    return missing_variant or missing_percentage
+
+
+def _has_unrequested_variant(query: NormalizedText, candidate: NormalizedText) -> bool:
+    requested_variants = _variants(query)
+    offered_variants = _variants(candidate)
+    return any(
+        offered and not requested_variants[dimension]
+        for dimension, offered in offered_variants.items()
+    )
+
+
+def _percentage_conflict(query: NormalizedText, candidate: NormalizedText) -> bool:
+    if not query.percentages or not candidate.percentages:
+        return False
+    return all(abs(requested - offered) > 0.05 for requested in query.percentages for offered in candidate.percentages)
+
+
+def _identity_tokens(value: NormalizedText) -> set[str]:
+    return {
+        token
+        for token in value.text.split()
+        if token not in _GENERIC_IDENTITY_TOKENS and not any(char.isdigit() for char in token)
+    }
+
+
+def _token_is_present(token: str, candidate_tokens: set[str]) -> bool:
+    if token in candidate_tokens:
+        return True
+    if len(token) < 5:
+        return False
+    return any(len(candidate) >= 5 and fuzz.ratio(token, candidate) >= 88 for candidate in candidate_tokens)
+
+
+def _identity_matches(query: NormalizedText, candidate: NormalizedText) -> bool:
+    requested = _identity_tokens(query)
+    if not requested:
+        return True
+    candidate_tokens = set(candidate.text.split())
+    matched = sum(_token_is_present(token, candidate_tokens) for token in requested)
+    return matched > 0 and matched / len(requested) >= 0.75
+
+
+def _size_is_compatible(query: NormalizedText, candidate: NormalizedText) -> bool:
+    if query.size_value is None:
+        return True
+    if candidate.size_value is None or query.size_unit != candidate.size_unit:
+        return False
+    if query.pack_count != candidate.pack_count and (query.pack_count is not None or candidate.pack_count is not None):
+        return False
+    return (_size_score(query, candidate) or 0.0) >= 96.0
+
+
+def _is_eligible_match(query: NormalizedText, candidate: NormalizedText) -> bool:
+    if not _size_is_compatible(query, candidate):
+        return False
+    if _variant_conflict(query, candidate) or _percentage_conflict(query, candidate):
+        return False
+    if not _identity_matches(query, candidate):
+        return False
+    query_tokens = set(query.text.split())
+    candidate_tokens = set(candidate.text.split())
+    return not any(token in _INTENT_TOKENS and token not in candidate_tokens for token in query_tokens)
+
+
 def products_are_comparable(reference: str, candidate: str) -> bool:
     reference_norm = normalize_text(reference)
     candidate_norm = normalize_text(candidate)
-    size_score = _size_score(reference_norm, candidate_norm)
-    if size_score is not None and size_score < 96.0:
-        return False
-    if _variant_conflict(reference_norm, candidate_norm):
-        return False
-    reference_identity = {
-        token
-        for token in reference_norm.text.split()
-        if token not in _GENERIC_IDENTITY_TOKENS and not any(char.isdigit() for char in token)
-    }
-    candidate_identity = {
-        token
-        for token in candidate_norm.text.split()
-        if token not in _GENERIC_IDENTITY_TOKENS and not any(char.isdigit() for char in token)
-    }
-    if reference_identity:
-        common = len(reference_identity & candidate_identity)
-        if common == 0 or common / len(reference_identity) < 0.6:
-            return False
-    return True
+    return _is_eligible_match(reference_norm, candidate_norm) and not _missing_requested_variant(reference_norm, candidate_norm)
 
 
 def score_product_match(query: str, product: Product | dict) -> SearchMatch:
@@ -295,7 +398,7 @@ def score_product_match(query: str, product: Product | dict) -> SearchMatch:
         score = (text_score * 0.82) + (size_score * 0.18)
         if size_score < 90.0:
             score *= 0.45
-    if _variant_conflict(query_norm, name_norm):
+    if _variant_conflict(query_norm, name_norm) or _percentage_conflict(query_norm, name_norm):
         score *= 0.25
     if query_norm.text and query_norm.text == name_norm.text:
         score += 5.0
@@ -308,6 +411,12 @@ def score_product_match(query: str, product: Product | dict) -> SearchMatch:
         normalized_query=query_norm.text,
         normalized_name=name_norm.text,
         size_match=round(size_score, 2) if size_score is not None else None,
+        match_type=(
+            "similar"
+            if _missing_requested_variant(query_norm, name_norm)
+            or _has_unrequested_variant(query_norm, name_norm)
+            else "exact"
+        ),
     )
 
 
@@ -318,11 +427,15 @@ def rank_search_results(
     minimum_score: float = 35.0,
 ) -> list[SearchMatch]:
     matches: list[SearchMatch] = []
+    query_norm = normalize_text(query)
     for row in rows:
         product = _coerce_product(row)
         if not product.name or product.available is False:
             continue
         if product.price is None:
+            continue
+        name_norm = normalize_text(product.name)
+        if not _is_eligible_match(query_norm, name_norm):
             continue
         match = score_product_match(query, product)
         if match.score >= minimum_score:
@@ -330,6 +443,7 @@ def rank_search_results(
 
     matches.sort(
         key=lambda match: (
+            match.match_type != "exact",
             -match.score,
             match.product.price if match.product.price is not None else float("inf"),
             match.product.store,

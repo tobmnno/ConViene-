@@ -27,6 +27,7 @@ class SearchMatch(BaseModel):
     normalized_query: str
     normalized_name: str
     size_match: Optional[float] = None
+    match_type: str = "similar"
 
 
 class SearchResponse(BaseModel):

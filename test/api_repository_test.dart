@@ -26,6 +26,7 @@ void main() {
                 'score': 98.4,
                 'normalized_query': 'leche',
                 'normalized_name': 'leche entera ilolay',
+                'match_type': 'exact',
                 'product': {
                   'store': 'la_gallega',
                   'name': 'Leche Entera Ilolay 1 L',
@@ -58,6 +59,8 @@ void main() {
       startsWith('http://127.0.0.1:8000/image?url='),
     );
     expect(results.single.price.priceOriginal, 1099);
+    expect(results.single.relevanceScore, 98.4);
+    expect(results.single.isExactMatch, isTrue);
 
     final prices = await repository.getPricesForProduct(
       results.single.product.id,

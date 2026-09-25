@@ -433,6 +433,27 @@ class _ResultCardState extends State<_ResultCard> {
                           fontSize: 15,
                         ),
                       ),
+                      if (!widget.result.isExactMatch) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF4D6),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Producto similar',
+                            style: TextStyle(
+                              color: Color(0xFF8A5A00),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 3),
                       Text(
                         widget.result.product.presentation,

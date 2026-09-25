@@ -88,16 +88,16 @@ class ContractTest(unittest.TestCase):
         self.assertEqual(payload["results"][0]["refund_cap"], 25000)
         self.assertIn("Banco Santa Fe", payload["results"][0]["compatible_entities"])
 
-    def test_ranking_prefers_product_type_over_brand_only_match(self):
+    def test_brand_specific_search_rejects_other_brands_and_product_types(self):
         rows = [
             Product(store="coto", name="Crema De Leche LA PAULINA 200cc", price=2640, scraped_at="x"),
             Product(store="coto", name="Dulce De Leche VACALIN 400g", price=4095, scraped_at="x"),
+            Product(store="coto", name="Dulce De Leche LA PAULINA 400g", price=4200, scraped_at="x"),
         ]
 
-        ranked = rank_search_results("dulce de leche la paulina", rows, limit=2)
+        ranked = rank_search_results("dulce de leche la paulina 400g", rows, limit=3)
 
-        self.assertEqual(ranked[0].product.name, "Dulce De Leche VACALIN 400g")
-        self.assertTrue(all("Dulce" in match.product.name for match in ranked))
+        self.assertEqual([match.product.name for match in ranked], ["Dulce De Leche LA PAULINA 400g"])
 
     def test_product_search_query_removes_percent_noise_but_keeps_size(self):
         query = search_query_for_product_name("Leche La Serenisima Liviana 1% 1L")
@@ -107,6 +107,59 @@ class ContractTest(unittest.TestCase):
     def test_pack_measurement_uses_total_quantity(self):
         self.assertEqual(extract_measurement("Galletitas Oreo pack 3 x 118 g"), (354.0, "g"))
         self.assertEqual(extract_measurement("Jugo 200 ml x 6 un"), (1200.0, "ml"))
+        self.assertEqual(extract_measurement("Galletitas Oreo 118 grs"), (118.0, "g"))
+
+    def test_ranking_rejects_wrong_size_pack_percentage_and_variant(self):
+        rows = [
+            Product(store="coto", name="Leche La Serenisima Liviana 1% 1 L", price=2000, scraped_at="x"),
+            Product(store="coto", name="Leche La Serenisima Mas Liviana 2% 1 L", price=1900, scraped_at="x"),
+            Product(store="coto", name="Leche La Serenisima Liviana 1% 1.5 L", price=1800, scraped_at="x"),
+            Product(store="coto", name="Leche Ilolay Liviana 1% 1 L", price=1700, scraped_at="x"),
+        ]
+
+        ranked = rank_search_results("leche la serenisima liviana 1% 1l", rows)
+
+        self.assertEqual([match.product.name for match in ranked], ["Leche La Serenisima Liviana 1% 1 L"])
+        self.assertEqual(ranked[0].match_type, "exact")
+
+    def test_ranking_understands_synonyms_and_rejects_opposites(self):
+        rows = [
+            Product(store="coto", name="Mayonesa Hellmanns Liviana 475 g", price=2000, scraped_at="x"),
+            Product(store="coto", name="Mayonesa Hellmanns Clasica 475 g", price=1900, scraped_at="x"),
+            Product(store="coto", name="Mayonesa Natura Light 475 g", price=1800, scraped_at="x"),
+            Product(store="coto", name="Yerba Taragui Sin Palo 1 kg", price=5000, scraped_at="x"),
+            Product(store="coto", name="Yerba Taragui Con Palo 1 kg", price=4500, scraped_at="x"),
+        ]
+
+        mayonnaise = rank_search_results("mayonesa hellmanns light 475g", rows)
+        yerba = rank_search_results("yerba taragui sin palo 1kg", rows)
+
+        self.assertEqual([match.product.name for match in mayonnaise], ["Mayonesa Hellmanns Liviana 475 g"])
+        self.assertEqual([match.product.name for match in yerba], ["Yerba Taragui Sin Palo 1 kg"])
+
+    def test_unknown_requested_variant_is_labeled_similar(self):
+        rows = [
+            Product(store="coto", name="Galletitas Oreo 118 g", price=2000, scraped_at="x"),
+            Product(store="coto", name="Galletitas Oreo Frutilla 118 g", price=2200, scraped_at="x"),
+        ]
+
+        ranked = rank_search_results("galletitas oreo frutilla 118g", rows)
+
+        self.assertEqual(ranked[0].match_type, "exact")
+        self.assertEqual(ranked[1].match_type, "similar")
+
+    def test_unrequested_distinguishing_variant_is_labeled_similar(self):
+        rows = [
+            Product(store="coto", name="Galletitas Oreo Chocolate Rellenas 118 g", price=2000, scraped_at="x"),
+            Product(store="coto", name="Galletitas Oreo Chocolate Bañadas 118 g", price=2200, scraped_at="x"),
+        ]
+
+        ranked = rank_search_results("galletitas oreo chocolate 118g", rows)
+
+        self.assertTrue(all(match.match_type == "similar" for match in ranked))
+        exact = rank_search_results("galletitas oreo chocolate rellenas 118g", rows)
+        self.assertEqual([match.product.name for match in exact], ["Galletitas Oreo Chocolate Rellenas 118 g"])
+        self.assertEqual(exact[0].match_type, "exact")
 
     def test_comparison_rejects_different_sizes_packs_and_flavors(self):
         self.assertTrue(

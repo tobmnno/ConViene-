@@ -34,6 +34,41 @@ void main() {
 
     expect(sorted.first.product.id, 'paulina_200');
   });
+
+  test('deja coincidencias similares debajo de las exactas', () {
+    final service = ProductSearchService(MockRepository());
+    final coto = _store('coto', 'Coto');
+    final exact = _result(
+      supermarket: coto,
+      productId: 'exact',
+      name: 'Galletitas Oreo Frutilla 118 g',
+      presentation: '118 g',
+      price: 2200,
+    );
+    final similar = SearchResult(
+      product: exact.product,
+      price: ProductPrice(
+        storeId: coto.id,
+        productId: 'similar',
+        priceOriginal: 1000,
+        priceUnitario: 1000,
+        stock: true,
+        url: coto.websiteUrl,
+        fechaActualizacion: DateTime(2026, 8, 20),
+      ),
+      supermarket: coto,
+      relevanceScore: 99,
+      isExactMatch: false,
+    );
+
+    final sorted = service.sortResults(
+      [similar, exact],
+      SearchSort.bestPrice,
+      query: 'galletitas oreo frutilla 118g',
+    );
+
+    expect(sorted.first.isExactMatch, isTrue);
+  });
 }
 
 Supermarket _store(String id, String name) {

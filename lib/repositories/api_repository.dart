@@ -212,6 +212,8 @@ class ApiRepository implements ConvieneRepository {
           product: product,
           price: priceQuote,
           supermarket: supermarket,
+          relevanceScore: _asDouble(result['score']) ?? 0,
+          isExactMatch: _asString(result['match_type']) != 'similar',
         ),
       );
     }
