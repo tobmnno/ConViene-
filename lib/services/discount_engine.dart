@@ -19,10 +19,11 @@ class DiscountEngine {
     }
 
     final compatiblePromos = promociones.where((promotion) {
-      final hasPaymentMethod = activeMethods.any(promotion.isCompatibleWith);
+      final hasPaymentMethod = promotion.isCompatibleWithAny(activeMethods);
       return promotion.storeId == supermercado &&
           promotion.appliesOn(fecha) &&
           promotion.appliesToCategory(product.category) &&
+          precioOriginal >= promotion.compraMinima &&
           hasPaymentMethod;
     });
 

@@ -349,7 +349,6 @@ class MockRepository implements ConvieneRepository {
     };
     final septemberStart = DateTime(2026, 9, 1);
     final septemberEnd = DateTime(2026, 9, 30);
-    final fallbackEnd = DateTime(2026, 12, 31);
     const cotoSource = 'https://www.coto.com.ar/descuentos';
     const laGallegaSource = 'https://www.lagallega.com.ar/Beneficios.asp';
 
@@ -381,16 +380,16 @@ class MockRepository implements ConvieneRepository {
         entidad: 'Banco Santa Fe',
         porcentajeDescuento: 30,
         topeReintegro: 25000,
-        diasSemana: allDays,
+        diasSemana: const {DateTime.friday},
         fechaInicio: septemberStart,
-        fechaFin: fallbackEnd,
+        fechaFin: septemberEnd,
         condiciones:
             '30% de reintegro con tarjeta fisica Banco Santa Fe. Tope mensual \$25.000. Tarjetas de credito Visa y Mastercard del banco.',
         categorias: const ['todos'],
         titulo: 'Banco Santa Fe',
         beneficio: '30% OFF',
         canal: '',
-        textoVigencia: 'Todos los dias',
+        textoVigencia: 'Viernes de septiembre de 2026',
         fuenteUrl: laGallegaSource,
         entidadesCompatibles: const {'Banco Santa Fe', 'Visa', 'Mastercard'},
         tiposMedioPagoCompatibles: const {
@@ -405,16 +404,16 @@ class MockRepository implements ConvieneRepository {
         entidad: 'Banco Coinag',
         porcentajeDescuento: 20,
         topeReintegro: 14000,
-        diasSemana: allDays,
+        diasSemana: const {DateTime.friday},
         fechaInicio: septemberStart,
-        fechaFin: fallbackEnd,
+        fechaFin: septemberEnd,
         condiciones:
             '20% de reintegro con tarjeta fisica Banco Coinag. Tope \$14.000 en una compra unica por cuenta por mes con Visa credito.',
         categorias: const ['todos'],
         titulo: 'Banco Coinag',
         beneficio: '20% OFF',
         canal: '',
-        textoVigencia: 'Todos los dias',
+        textoVigencia: 'Viernes de septiembre de 2026',
         fuenteUrl: laGallegaSource,
         entidadesCompatibles: const {'Banco Coinag', 'Visa'},
         tiposMedioPagoCompatibles: const {

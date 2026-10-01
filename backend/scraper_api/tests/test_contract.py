@@ -13,7 +13,7 @@ from services.catalog import (
     search_query_for_product_name,
     sort_results_for_output,
 )
-from services.discounts import _coto_from_api
+from services.discounts import _coto_from_api, _static_promotions
 from services.scraper import resolve_stores
 
 
@@ -206,6 +206,59 @@ class ContractTest(unittest.TestCase):
         self.assertEqual(row.refund_cap, 15000)
         self.assertEqual(row.weekdays, [2])
         self.assertIn("Banco Comafi", row.compatible_entities)
+
+    def test_static_promotions_keep_weekday_and_minimum_purchase(self):
+        covered, rows = _static_promotions(
+            "carrefour",
+            __import__("datetime").date(2026, 9, 9),
+        )
+
+        self.assertTrue(covered)
+        self.assertTrue(rows)
+        self.assertTrue(any(row.start_date == "2026-01-01" for row in rows))
+        self.assertTrue(any(row.end_date == "2026-12-31" for row in rows))
+        monthly_campaigns = [row for row in rows if row.start_date == "2026-09-01"]
+        self.assertTrue(monthly_campaigns)
+        self.assertTrue(all(row.end_date == "2026-09-30" for row in monthly_campaigns))
+        self.assertTrue(all(3 in row.weekdays for row in rows))
+        mercado_pago = next(row for row in rows if row.minimum_purchase == 150000)
+        self.assertEqual(mercado_pago.entity, "Mercado Pago")
+        self.assertIn("wallet", mercado_pago.compatible_payment_types)
+        self.assertIn("card", mercado_pago.compatible_payment_types)
+
+    def test_static_lagallega_catalog_uses_current_explicit_validity(self):
+        expired_covered, expired_rows = _static_promotions(
+            "la_gallega", __import__("datetime").date(2026, 9, 26)
+        )
+        covered, rows = _static_promotions(
+            "la_gallega",
+            __import__("datetime").date(2026, 10, 2),
+        )
+
+        self.assertTrue(covered)
+        self.assertTrue(expired_covered)
+        self.assertEqual(expired_rows, [])
+        self.assertEqual(len(rows), 3)
+        cuenta_dni = next(row for row in rows if row.entity == "Cuenta DNI" and row.percentage == 30)
+        self.assertEqual(cuenta_dni.weekdays, [4, 5])
+        self.assertEqual(cuenta_dni.end_date, "2027-01-01")
+        santa_fe = next(row for row in rows if row.entity == "Banco Santa Fe")
+        self.assertEqual(santa_fe.end_date, "2026-12-31")
+
+        monday_covered, monday_rows = _static_promotions(
+            "la_gallega", __import__("datetime").date(2026, 10, 19)
+        )
+        self.assertTrue(monday_covered)
+        modo_rows = [row for row in monday_rows if row.entity == "MODO" and row.percentage == 25]
+        self.assertEqual(len(modo_rows), 2)
+        self.assertEqual({row.title for row in modo_rows}, {
+            "MODO (Visa Signature) - 25% OFF",
+            "MODO (Mastercard) - 25% OFF",
+        })
+        self.assertEqual(
+            {tuple(tuple(group) for group in row.required_entity_groups) for row in modo_rows},
+            {(('MODO',), ('Visa',)), (('MODO',), ('Mastercard',))},
+        )
 
     def test_sort_keeps_unpriced_last(self):
         rows = [

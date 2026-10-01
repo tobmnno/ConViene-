@@ -1,0 +1,935 @@
+{
+  "periodo": "septiembre_2026",
+  "promociones_la_gallega_actuales": [
+    {
+      "supermercado": "La Gallega",
+      "vigencia_desde": "2026-10-01",
+      "vigencia_hasta": "2027-01-01",
+      "dias": ["jueves", "viernes"],
+      "beneficio": {"tipo": "reintegro", "porcentaje": 30},
+      "medio_pago": {"tipo": "Cuenta DNI", "tarjeta": "credito"},
+      "tope_reintegro": 8000,
+      "condiciones": "Date un gustito y ahorra. Beneficio publicado como activo para La Gallega.",
+      "fuente_url": "https://www.blinkapp.com.ar/comercios/la-gallega--merchant_69e2584eab6e5feb86137a1a"
+    },
+    {
+      "supermercado": "La Gallega",
+      "vigencia_desde": "2026-10-01",
+      "vigencia_hasta": "2026-10-31",
+      "dias": ["lunes", "martes", "miércoles", "jueves", "viernes"],
+      "beneficio": {"tipo": "reintegro", "porcentaje": 20},
+      "medio_pago": {"tipo": "Cuenta DNI", "tarjeta": "credito"},
+      "tope_reintegro": 6000,
+      "condiciones": "Compra en comercio de cercania. Beneficio publicado como activo para La Gallega.",
+      "fuente_url": "https://www.blinkapp.com.ar/comercios/la-gallega--merchant_69e2584eab6e5feb86137a1a"
+    },
+    {
+      "supermercado": "La Gallega",
+      "vigencia_desde": "2026-10-01",
+      "vigencia_hasta": "2026-10-31",
+      "dias": ["lunes", "martes", "miércoles", "jueves"],
+      "beneficio": {"tipo": "reintegro", "porcentaje": 15},
+      "medio_pago": {"tipo": "Cuenta DNI", "tarjeta": "credito"},
+      "tope_reintegro": 7000,
+      "condiciones": "Promocion exclusiva en localidad adherida.",
+      "fuente_url": "https://www.blinkapp.com.ar/comercios/la-gallega--merchant_69e2584eab6e5feb86137a1a"
+    },
+    {
+      "supermercado": "La Gallega",
+      "vigencia_desde": "2026-10-01",
+      "vigencia_hasta": "2026-10-31",
+      "dias": ["martes"],
+      "beneficio": {"tipo": "reintegro", "porcentaje": 25},
+      "medio_pago": {"tipo": "MODO", "banco": "Banco Hipotecario", "tarjeta": "Visa Platinum"},
+      "tope_reintegro": 20000,
+      "condiciones": "Supermercadea MODO - Regionales.",
+      "fuente_url": "https://www.blinkapp.com.ar/comercios/la-gallega--merchant_69e2584eab6e5feb86137a1a"
+    },
+    {
+      "supermercado": "La Gallega",
+      "vigencia_desde": "2026-10-01",
+      "vigencia_hasta": "2026-10-31",
+      "dias": ["lunes"],
+      "beneficio": {"tipo": "reintegro", "porcentaje": 25},
+      "medio_pago": {"tipo": "MODO", "tarjeta": "Visa Signature"},
+      "tope_reintegro": 20000,
+      "condiciones": "18 bancos adheridos. Pago presencial con MODO.",
+      "fuente_url": "https://www.blinkapp.com.ar/comercios/la-gallega--merchant_69e2584eab6e5feb86137a1a"
+    },
+    {
+      "supermercado": "La Gallega",
+      "vigencia_desde": "2026-10-01",
+      "vigencia_hasta": "2026-10-30",
+      "dias": ["lunes"],
+      "beneficio": {"tipo": "reintegro", "porcentaje": 25},
+      "medio_pago": {"tipo": "MODO", "tarjeta": "Mastercard"},
+      "tope_reintegro": 20000,
+      "condiciones": "17 bancos adheridos. Pago presencial con MODO.",
+      "fuente_url": "https://www.blinkapp.com.ar/comercios/la-gallega--merchant_69e2584eab6e5feb86137a1a"
+    },
+    {
+      "supermercado": "La Gallega",
+      "vigencia_desde": "2026-04-01",
+      "vigencia_hasta": "2026-12-31",
+      "dias": ["viernes"],
+      "beneficio": {"tipo": "reintegro", "porcentaje": 30},
+      "medio_pago": {"tipo": "tarjeta_fisica", "banco": "Banco Santa Fe", "tarjeta": "credito", "marca": ["Visa", "Mastercard"]},
+      "tope_reintegro": 25000,
+      "condiciones": "Exclusivo para cuentas adheridas al beneficio del Banco Santa Fe.",
+      "fuente_url": "https://www.bancosantafe.com.ar/beneficios-supermercados"
+    }
+  ],
+  "promociones_otros_supermercados": [
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "todos"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 20
+      },
+      "medio_pago": {
+        "tipo": "billetera",
+        "nombre": "Billetera Santa Fe / PlusPagos",
+        "tarjeta": "debito",
+        "banco": "cualquier entidad"
+      },
+      "tope_reintegro": 10000,
+      "compra_minima": 90000,
+      "condiciones": "Por usuario. Abonando con saldo en cuenta y tarjetas de débito asociadas."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "todos"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 20
+      },
+      "medio_pago": {
+        "tipo": "tarjeta_credito",
+        "banco": "Banco Santa Fe"
+      },
+      "tope_reintegro": 10000,
+      "compra_minima": null,
+      "condiciones": "Beneficio adicional exclusivo para tarjetas de crédito del Banco Santa Fe asociadas."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "lunes"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 25
+      },
+      "medio_pago": {
+        "tipo": "MODO",
+        "banco": "Supervielle"
+      },
+      "tope_reintegro": null,
+      "compra_minima": null,
+      "condiciones": "Exclusivo MODO. Beneficio para clientes de renta alta."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "lunes"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 10
+      },
+      "medio_pago": {
+        "tipo": "Mercado Pago"
+      },
+      "tope_reintegro": 10000,
+      "compra_minima": 20000,
+      "condiciones": "Requiere cupón. Válido los días 07/09 y 14/09."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "lunes"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 25
+      },
+      "medio_pago": {
+        "tipo": "MODO"
+      },
+      "tope_reintegro": 20000,
+      "compra_minima": null,
+      "condiciones": "Exclusivo MODO. Tope por usuario por mes."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "martes"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 20
+      },
+      "medio_pago": {
+        "tipo": "QR",
+        "banco": "Banco Galicia",
+        "tarjeta": "credito",
+        "marca": [
+          "Visa",
+          "Mastercard"
+        ]
+      },
+      "tope_reintegro": 5000,
+      "compra_minima": null,
+      "condiciones": "Pagos con QR desde la aplicación Galicia. Tope por cuenta por mes."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "martes"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 25
+      },
+      "medio_pago": {
+        "tipo": "MODO",
+        "banco": "Banco Hipotecario",
+        "tarjeta": "debito"
+      },
+      "tope_reintegro": 20000,
+      "compra_minima": null,
+      "condiciones": "Exclusivo MODO. Tope por cuenta por mes."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "martes"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 20
+      },
+      "medio_pago": {
+        "tipo": "tarjeta",
+        "nombre": "Naranja X",
+        "tarjeta": [
+          "debito",
+          "credito"
+        ]
+      },
+      "tope_reintegro": 3000,
+      "compra_minima": null,
+      "condiciones": "Plan Inicial. Tarjeta física. Crédito en 1 pago o Plan Z. Tope semanal por cliente. No aplica a pagos con QR."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "martes"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 25
+      },
+      "medio_pago": {
+        "tipo": "tarjeta",
+        "nombre": "Naranja X",
+        "tarjeta": [
+          "debito",
+          "credito"
+        ]
+      },
+      "tope_reintegro": 9500,
+      "compra_minima": null,
+      "condiciones": "Plan Turbo. Tarjeta física. Crédito en 1 pago o Plan Z. Tope semanal por cliente. No aplica a pagos con QR."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "martes"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 30
+      },
+      "medio_pago": {
+        "tipo": "tarjeta",
+        "nombre": "Naranja X",
+        "tarjeta": [
+          "debito",
+          "credito"
+        ]
+      },
+      "tope_reintegro": 12000,
+      "compra_minima": null,
+      "condiciones": "Plan Epic. Tarjeta física. Crédito en 1 pago o Plan Z. Tope semanal por cliente. No aplica a pagos con QR."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "miércoles"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 30
+      },
+      "medio_pago": {
+        "tipo": "MODO",
+        "banco": "Banco Credicoop",
+        "tarjeta": [
+          "debito",
+          "credito"
+        ]
+      },
+      "tope_reintegro": 9000,
+      "compra_minima": null,
+      "condiciones": "Exclusivo MODO. Aplicable a tarjetas emitidas por Banco Credicoop."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "jueves"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 20
+      },
+      "medio_pago": {
+        "tipo": "tarjeta_fisica",
+        "banco": "Banco Municipal",
+        "tarjeta": "credito",
+        "marca": [
+          "Visa",
+          "Mastercard"
+        ]
+      },
+      "tope_reintegro": 18000,
+      "compra_minima": null,
+      "condiciones": "Una única compra por cuenta por mes. No incluye tarjetas corporativas."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "jueves",
+        "sábado"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 10
+      },
+      "medio_pago": {
+        "tipo": "todos"
+      },
+      "tope_reintegro": null,
+      "compra_minima": null,
+      "condiciones": "Exclusivo para jubilados y pensionados. No aplicable a determinados descuentos."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "viernes"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 20
+      },
+      "medio_pago": {
+        "tipo": "tarjeta_fisica",
+        "banco": "Banco Coinag"
+      },
+      "tope_reintegro": 14000,
+      "compra_minima": null,
+      "condiciones": "Una compra única por cuenta por mes."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "viernes"
+      ],
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 30
+      },
+      "medio_pago": {
+        "tipo": "tarjeta_fisica",
+        "banco": "Banco Santa Fe",
+        "tarjeta": "credito",
+        "marca": [
+          "Visa",
+          "Mastercard"
+        ]
+      },
+      "tope_reintegro": 25000,
+      "compra_minima": null,
+      "condiciones": "Exclusivo para clientes con paquetes de productos, como Preferencial, Excelencia, Emprendedores y Emprendedores Plus."
+    },
+    {
+      "supermercado": "La Gallega",
+      "dias": [
+        "sábado"
+      ],
+      "fecha_especifica": "2026-09-26",
+      "beneficio": {
+        "tipo": "reintegro",
+        "porcentaje": 30
+      },
+      "medio_pago": {
+        "tipo": "MODO",
+        "banco": "Banco Credicoop",
+        "tarjeta": [
+          "debito",
+          "credito"
+        ]
+      },
+      "tope_reintegro": 13500,
+      "compra_minima": null,
+      "condiciones": "Exclusivamente a través de Credicoop Móvil. Válido solamente el 26/09."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "lunes",
+        "miércoles"
+      ],
+      "beneficio": {
+        "tipo": "cuotas_sin_interes",
+        "cantidad": 6
+      },
+      "medio_pago": {
+        "tipo": "Mercado Pago",
+        "tarjeta": "credito"
+      },
+      "tope_reintegro": null,
+      "compra_minima": null,
+      "condiciones": "Promoción de cuotas sin interés durante septiembre."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "lunes",
+        "martes"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 15
+      },
+      "medio_pago": {
+        "tipo": "tarjeta_credito",
+        "banco": "Carrefour Banco"
+      },
+      "tope_reintegro": null,
+      "compra_minima": null,
+      "condiciones": "En el acto y sin tope. No incluye electro ni carnicería. No acumulable con otras promociones o folletos vigentes."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "lunes",
+        "martes",
+        "miércoles"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 10
+      },
+      "medio_pago": {
+        "tipo": "Mi Carrefour / ANSES"
+      },
+      "tope_reintegro": 35000,
+      "compra_minima": null,
+      "condiciones": "Para socios de Mi Carrefour que sean beneficiarios de ANSES o tengan 60 años o más. Excluye carnicería, huevos de gallina y electro."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "lunes"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 15
+      },
+      "medio_pago": {
+        "tipo": "Club La Nación"
+      },
+      "tope_reintegro": null,
+      "compra_minima": null,
+      "condiciones": "No incluye electro ni carnicería."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "lunes"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 15
+      },
+      "medio_pago": {
+        "tipo": "Mercado Pago",
+        "tarjeta": "credito"
+      },
+      "tope_reintegro": 15000,
+      "compra_minima": null,
+      "condiciones": "Acumulable con todas las promociones. Pago con tarjeta de crédito física o QR de Mercado Pago."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "todos"
+      ],
+      "beneficio": {
+        "tipo": "cuotas_sin_interes",
+        "cantidad": 3
+      },
+      "medio_pago": {
+        "tipo": "QR",
+        "nombre": "Mercado Pago",
+        "tarjeta": "credito"
+      },
+      "tope_reintegro": null,
+      "compra_minima": 150000,
+      "condiciones": "Exclusivo con tarjeta de crédito de Mercado Pago."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "lunes",
+        "martes",
+        "miércoles",
+        "jueves",
+        "viernes"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 5
+      },
+      "medio_pago": {
+        "tipo": "MODO",
+        "banco": "BNA+",
+        "tarjeta": [
+          "credito",
+          "debito"
+        ],
+        "marca": [
+          "Visa",
+          "Mastercard"
+        ]
+      },
+      "tope_reintegro": 5000,
+      "compra_minima": null,
+      "condiciones": "Exclusivo para jubilados y pensionados. Pago con MODO. Tope semanal. Excluye electrodomésticos, electrónica, celulares, carnicería y huevos de gallina."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "todos"
+      ],
+      "beneficio": {
+        "tipo": "cuotas_sin_interes",
+        "cantidad": 4
+      },
+      "medio_pago": {
+        "tipo": "tarjeta",
+        "nombre": "Naranja X"
+      },
+      "tope_reintegro": null,
+      "compra_minima": null,
+      "condiciones": "Válido en tiendas de AMBA, Mendoza, Córdoba, Catamarca, San Luis y Resistencia."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "martes"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 20
+      },
+      "medio_pago": {
+        "tipo": "tarjeta_credito",
+        "banco": "Carrefour Banco"
+      },
+      "tope_reintegro": null,
+      "compra_minima": null,
+      "condiciones": "No incluye carnicería, huevos de gallina ni electro."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "martes",
+        "miércoles",
+        "jueves",
+        "viernes",
+        "sábado",
+        "domingo"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 10
+      },
+      "medio_pago": {
+        "tipo": "Club La Nación"
+      },
+      "tope_reintegro": null,
+      "compra_minima": null,
+      "condiciones": "Solo Entrega Inmediata."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "miércoles"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 15
+      },
+      "medio_pago": {
+        "tipo": "tarjeta",
+        "banco": "Banco Patagonia",
+        "tarjeta": [
+          "debito",
+          "credito"
+        ],
+        "marca": [
+          "Visa",
+          "Mastercard",
+          "Amex"
+        ]
+      },
+      "tope_reintegro": 10000,
+      "compra_minima": null,
+      "condiciones": "Un pago. Exclusivo para clientes con plan sueldo."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "miércoles"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 20
+      },
+      "medio_pago": {
+        "tipo": "tarjeta",
+        "banco": "Banco Patagonia",
+        "tarjeta": [
+          "debito",
+          "credito"
+        ],
+        "marca": [
+          "Visa",
+          "Mastercard",
+          "Amex"
+        ]
+      },
+      "tope_reintegro": 15000,
+      "compra_minima": null,
+      "condiciones": "Un pago. Exclusivo para clientes con Plan Sueldo Plus."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "miércoles"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 30
+      },
+      "medio_pago": {
+        "tipo": "tarjeta",
+        "banco": "Banco Patagonia",
+        "tarjeta": [
+          "debito",
+          "credito"
+        ],
+        "marca": [
+          "Visa",
+          "Mastercard",
+          "Amex"
+        ]
+      },
+      "tope_reintegro": 20000,
+      "compra_minima": null,
+      "condiciones": "Un pago. Exclusivo para clientes con Plan Sueldo Singular."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "miércoles"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 20
+      },
+      "medio_pago": {
+        "tipo": "tarjeta",
+        "banco": "Banco Patagonia",
+        "tarjeta": [
+          "debito",
+          "credito"
+        ],
+        "marca": [
+          "Visa"
+        ]
+      },
+      "tope_reintegro": 15000,
+      "compra_minima": null,
+      "condiciones": "Un pago."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "miércoles"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 35
+      },
+      "medio_pago": {
+        "tipo": "tarjeta",
+        "banco": "Banco Patagonia",
+        "tarjeta": [
+          "debito",
+          "credito"
+        ],
+        "marca": [
+          "Visa"
+        ]
+      },
+      "tope_reintegro": 25000,
+      "compra_minima": null,
+      "condiciones": "Un pago. Variante asociada a programación de entrega para miércoles."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "miércoles"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 25
+      },
+      "medio_pago": {
+        "tipo": "tarjeta",
+        "banco": "Banco Patagonia",
+        "tarjeta": [
+          "debito",
+          "credito"
+        ],
+        "marca": [
+          "Visa"
+        ]
+      },
+      "tope_reintegro": 20000,
+      "compra_minima": null,
+      "condiciones": "Un pago."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "miércoles"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 15
+      },
+      "medio_pago": {
+        "tipo": "tarjeta",
+        "banco": "Banco Patagonia",
+        "tarjeta": [
+          "debito",
+          "credito"
+        ],
+        "marca": [
+          "Visa",
+          "Mastercard",
+          "Amex"
+        ]
+      },
+      "tope_reintegro": 10000,
+      "compra_minima": null,
+      "condiciones": "Un pago."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "miércoles"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 10
+      },
+      "medio_pago": {
+        "tipo": "Cuenta DNI"
+      },
+      "tope_reintegro": null,
+      "compra_minima": 15000,
+      "condiciones": "Sin tope. Para jubilados puede existir un 5% adicional según la promoción."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "miércoles"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 15
+      },
+      "medio_pago": {
+        "tipo": "Mi Carrefour",
+        "cliente": "empleado/publico"
+      },
+      "tope_reintegro": 20000,
+      "compra_minima": null,
+      "condiciones": "Aplica a alimentos secos, congelados, lácteos, fiambres, bebidas, limpieza y perfumería. Tope mensual."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "jueves"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 20
+      },
+      "medio_pago": {
+        "tipo": "tarjeta_credito",
+        "banco": "Carrefour Banco"
+      },
+      "tope_reintegro": 10000,
+      "compra_minima": null,
+      "condiciones": "Tope de devolución."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "jueves"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 15
+      },
+      "medio_pago": {
+        "tipo": "Mercado Pago"
+      },
+      "tope_reintegro": null,
+      "compra_minima": 15000,
+      "condiciones": "Acumulable con todas las promociones. Exclusivo pagando con dinero en cuenta."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "jueves"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 15
+      },
+      "medio_pago": {
+        "tipo": "Mi Carrefour",
+        "cliente": "empleado/publico"
+      },
+      "tope_reintegro": 20000,
+      "compra_minima": null,
+      "condiciones": "Aplica a alimentos secos, congelados, lácteos, fiambres, bebidas, limpieza y perfumería. Tope mensual."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "jueves"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 10
+      },
+      "medio_pago": {
+        "tipo": "todos",
+        "bancos": [
+          "Carrefour Banco"
+        ],
+        "marcas": [
+          "Visa",
+          "Mastercard"
+        ],
+        "billetera": "Mercado Pago"
+      },
+      "tope_reintegro": 8000,
+      "compra_minima": null,
+      "condiciones": "Exclusivo online. Tope semanal."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "viernes"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 15
+      },
+      "medio_pago": {
+        "tipo": "cuenta_digital",
+        "banco": "Carrefour Banco"
+      },
+      "tope_reintegro": null,
+      "compra_minima": null,
+      "condiciones": "Acumulable con todas las promociones. Aplican exclusiones según condiciones."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "viernes"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 10
+      },
+      "medio_pago": {
+        "tipo": "Mercado Pago",
+        "metodo": "dinero_en_cuenta"
+      },
+      "tope_reintegro": null,
+      "compra_minima": null,
+      "condiciones": "Solo sucursales físicas. No acumulable. Excluye carnicería, huevos de gallina, electro, bazar, textil, ofertas por bulto, pack familiar y productos con precio súper bajo todos los días."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "sábado",
+        "domingo"
+      ],
+      "beneficio": {
+        "tipo": "descuento",
+        "porcentaje": 10
+      },
+      "medio_pago": {
+        "tipo": "cuenta_digital",
+        "banco": "Carrefour Banco"
+      },
+      "tope_reintegro": null,
+      "compra_minima": null,
+      "condiciones": "Acumulable con todas las promociones. Aplican exclusiones según condiciones."
+    },
+    {
+      "supermercado": "Carrefour",
+      "dias": [
+        "sábado",
+        "domingo"
+      ],
+      "beneficio": {
+        "tipo": "cuotas_sin_interes",
+        "cantidad": 3
+      },
+      "medio_pago": {
+        "tipo": "tarjeta_credito",
+        "banco": "Carrefour Banco"
+      },
+      "tope_reintegro": null,
+      "compra_minima": null,
+      "condiciones": "Tres cuotas sin interés."
+    }
+  ]
+}

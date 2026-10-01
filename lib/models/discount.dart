@@ -19,8 +19,10 @@ class Promotion {
     this.textoVigencia = '',
     this.fuenteUrl = '',
     this.entidadesCompatibles = const {},
+    this.entidadesRequeridas = const [],
     this.tiposMedioPagoCompatibles = const {},
     this.cualquierEntidad = false,
+    this.compraMinima = 0,
   });
 
   final String id;
@@ -40,8 +42,10 @@ class Promotion {
   final String textoVigencia;
   final String fuenteUrl;
   final Set<String> entidadesCompatibles;
+  final List<Set<String>> entidadesRequeridas;
   final Set<PaymentMethodType> tiposMedioPagoCompatibles;
   final bool cualquierEntidad;
+  final double compraMinima;
 
   String get nombreVisible => titulo.isEmpty ? entidad : titulo;
 
@@ -89,6 +93,21 @@ class Promotion {
           (entity) => _normalizeEntity(entity) == methodEntity,
         );
     return typeMatches && entityMatches;
+  }
+
+  bool isCompatibleWithAny(Iterable<PaymentMethod> methods) {
+    final activeMethods = methods.where((method) => method.active).toList();
+    if (entidadesRequeridas.isEmpty) {
+      return activeMethods.any(isCompatibleWith);
+    }
+    return entidadesRequeridas.every(
+      (group) => activeMethods.any(
+        (method) => group.any(
+          (entity) =>
+              _normalizeEntity(entity) == _normalizeEntity(method.entity),
+        ),
+      ),
+    );
   }
 
   String _normalizeEntity(String value) {

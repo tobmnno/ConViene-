@@ -84,6 +84,30 @@ void main() {
     expect(results.map((result) => result.supermarket.id), contains('coto'));
   });
 
+  test('keeps an empty valid discounts response without mock data', () async {
+    final repository = ApiRepository(
+      baseUrl: Uri.parse('http://127.0.0.1:8000'),
+      fallback: MockRepository(),
+      client: MockClient(
+        (request) async => http.Response(
+          jsonEncode({
+            'date': '2026-10-01',
+            'stores': ['carrefour', 'coto', 'la_gallega'],
+            'count': 0,
+            'results': <Object>[],
+            'warnings': <String>[],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        ),
+      ),
+    );
+
+    final promotions = await repository.getPromotions(DateTime(2026, 10, 1));
+
+    expect(promotions, isEmpty);
+  });
+
   test(
     'consume discounts API contract and maps compatible payment methods',
     () async {
@@ -113,6 +137,7 @@ void main() {
                   'entity': 'Banco Santa Fe',
                   'percentage': 30,
                   'refund_cap': 25000,
+                  'minimum_purchase': 90000,
                   'weekdays': [1, 2, 3, 4, 5, 6, 7],
                   'start_date': '2026-09-01',
                   'end_date': '2026-12-31',
@@ -126,6 +151,10 @@ void main() {
                     'Banco Santa Fe',
                     'Visa',
                     'Mastercard',
+                  ],
+                  'required_entity_groups': [
+                    ['Banco Santa Fe'],
+                    ['Visa', 'Mastercard'],
                   ],
                   'compatible_payment_types': ['bank', 'card'],
                   'any_entity': false,
@@ -147,7 +176,9 @@ void main() {
       expect(promotions.single.tipoMedioPago, PaymentMethodType.bank);
       expect(promotions.single.porcentajeDescuento, 30);
       expect(promotions.single.topeReintegro, 25000);
+      expect(promotions.single.compraMinima, 90000);
       expect(promotions.single.entidadesCompatibles, contains('Visa'));
+      expect(promotions.single.entidadesRequeridas, hasLength(2));
       expect(
         promotions.single.tiposMedioPagoCompatibles,
         contains(PaymentMethodType.card),

@@ -144,7 +144,7 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
   }
 
   bool _isCompatible(Promotion promotion, List<PaymentMethod> methods) {
-    return methods.any(promotion.isCompatibleWith);
+    return promotion.isCompatibleWithAny(methods);
   }
 
   void _toggleStoreFilter(String storeId) {
@@ -571,6 +571,11 @@ class _PromotionCard extends StatelessWidget {
                   _DetailLine('Entidad', promotion.entidad),
                   _DetailLine('Beneficio', _benefitText(promotion)),
                   _DetailLine('Tope', _capValue(promotion)),
+                  if (promotion.compraMinima > 0)
+                    _DetailLine(
+                      'Compra minima',
+                      formatMoney(promotion.compraMinima),
+                    ),
                   _DetailLine('Dias', _daysText(promotion)),
                   _DetailLine('Vigencia', _dateRange(promotion)),
                   if (promotion.canal.isNotEmpty)

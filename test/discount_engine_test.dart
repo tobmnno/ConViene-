@@ -126,6 +126,35 @@ void main() {
     expect(quote.precioFinal, closeTo(1439.1, 0.001));
   });
 
+  test('no aplica una promocion si no alcanza la compra minima', () {
+    final minimumPromotion = Promotion(
+      id: 'carrefour_mercado_pago_minimo',
+      storeId: 'carrefour',
+      tipoMedioPago: PaymentMethodType.card,
+      entidad: 'Visa',
+      porcentajeDescuento: 15,
+      topeReintegro: 15000,
+      compraMinima: 20000,
+      diasSemana: const {DateTime.thursday},
+      fechaInicio: DateTime(2026, 1, 1),
+      fechaFin: DateTime(2026, 12, 31),
+      condiciones: 'Compra minima de 20000',
+      categorias: const ['lacteos'],
+    );
+
+    final quote = engine.calcularPrecioFinal(
+      product: product,
+      supermercado: 'carrefour',
+      precioOriginal: 1599,
+      fecha: date,
+      mediosPagoUsuario: const [visa],
+      promociones: [minimumPromotion],
+    );
+
+    expect(quote.descuentoAplicado, isFalse);
+    expect(quote.precioFinal, 1599);
+  });
+
   test('reconoce promociones compatibles con mas de un tipo de medio', () {
     final mixedPromotion = Promotion(
       id: 'lagallega_debito_saldo',
@@ -164,6 +193,65 @@ void main() {
 
     expect(quote.descuentoAplicado, isTrue);
     expect(quote.medioPago?.entity, 'Saldo en cuenta');
+  });
+
+  test('exige todos los grupos de medios de una promocion combinada', () {
+    final combinedPromotion = Promotion(
+      id: 'lagallega_modo_credicoop',
+      storeId: 'lagallega',
+      tipoMedioPago: PaymentMethodType.wallet,
+      entidad: 'MODO',
+      porcentajeDescuento: 30,
+      topeReintegro: 9000,
+      diasSemana: const {DateTime.thursday},
+      fechaInicio: DateTime(2026, 1, 1),
+      fechaFin: DateTime(2026, 12, 31),
+      condiciones: 'MODO con Banco Credicoop',
+      categorias: const ['lacteos'],
+      entidadesCompatibles: const {'MODO', 'Banco Credicoop'},
+      entidadesRequeridas: const [
+        {'MODO'},
+        {'Banco Credicoop'},
+      ],
+      tiposMedioPagoCompatibles: const {
+        PaymentMethodType.wallet,
+        PaymentMethodType.bank,
+      },
+    );
+    const modo = PaymentMethod(
+      id: 'modo',
+      type: PaymentMethodType.wallet,
+      entity: 'MODO',
+      displayName: 'MODO',
+      active: true,
+    );
+    const credicoop = PaymentMethod(
+      id: 'credicoop',
+      type: PaymentMethodType.bank,
+      entity: 'Banco Credicoop',
+      displayName: 'Credicoop',
+      active: true,
+    );
+
+    final incomplete = engine.calcularPrecioFinal(
+      product: product,
+      supermercado: 'lagallega',
+      precioOriginal: 1599,
+      fecha: date,
+      mediosPagoUsuario: const [modo],
+      promociones: [combinedPromotion],
+    );
+    final complete = engine.calcularPrecioFinal(
+      product: product,
+      supermercado: 'lagallega',
+      precioOriginal: 1599,
+      fecha: date,
+      mediosPagoUsuario: const [modo, credicoop],
+      promociones: [combinedPromotion],
+    );
+
+    expect(incomplete.descuentoAplicado, isFalse);
+    expect(complete.descuentoAplicado, isTrue);
   });
 
   test('no toma entidades vacias como comodin', () {

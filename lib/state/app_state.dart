@@ -105,10 +105,17 @@ class AppState extends ChangeNotifier {
       for (final store in supermarkets.where((store) => store.enabled))
         store.id,
     };
-    promotions = await _discountService.loadPromotions(selectedDate);
-    await searchProducts(searchQuery);
-    await refreshComparisons();
     isBootstrapping = false;
+    isLoadingPromotions = true;
+    notifyListeners();
+
+    final promotionsFuture = _discountService.loadPromotions(selectedDate);
+    final searchFuture = searchProducts(searchQuery);
+    promotions = await promotionsFuture;
+    isLoadingPromotions = false;
+    notifyListeners();
+    await searchFuture;
+    await refreshComparisons();
     notifyListeners();
   }
 

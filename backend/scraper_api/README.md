@@ -190,8 +190,17 @@ La cache vive en memoria y se elimina al reiniciar el proceso.
 ## Fuentes de descuentos
 
 - Coto: endpoint oficial de promociones multicanal.
-- Carrefour: entidades oficiales de promociones, bancos y tarjetas.
-- La Gallega: pagina de beneficios y endpoints por dia o banco.
+- Carrefour: archivo versionado para septiembre de 2026 y entidades oficiales
+  para fechas no cubiertas por el archivo.
+- La Gallega: archivo versionado para septiembre de 2026 y pagina de beneficios
+  para fechas no cubiertas por el archivo.
+
+Los datos versionados viven en `data/`. El backend interpreta dias, fechas
+especificas, porcentajes, cuotas, topes, compras minimas y medios compatibles.
+Cuando una promocion exige una combinacion, por ejemplo MODO y un banco
+determinado, la app requiere que ambos medios esten seleccionados.
+El archivo `descuentos-coto.json` conserva la referencia de captura; como no
+contiene promociones, Coto continua usando su endpoint oficial.
 
 No se trasladan promociones vencidas a una fecha nueva. Si una fuente conserva
 un registro activo con legales vencidos, el registro se omite y se devuelve una

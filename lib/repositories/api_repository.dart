@@ -69,10 +69,7 @@ class ApiRepository implements ConvieneRepository {
         );
       }
       final promotions = _parsePromotions(rawResults, date);
-      if (promotions.isNotEmpty) {
-        return promotions;
-      }
-      return fallback.getPromotions(date);
+      return promotions;
     } on Object {
       return fallback.getPromotions(date);
     }
@@ -288,8 +285,10 @@ class ApiRepository implements ConvieneRepository {
         entidadesCompatibles: _asStringList(
           result['compatible_entities'],
         ).toSet(),
+        entidadesRequeridas: _asStringSets(result['required_entity_groups']),
         tiposMedioPagoCompatibles: paymentTypes,
         cualquierEntidad: result['any_entity'] == true,
+        compraMinima: _asDouble(result['minimum_purchase']) ?? 0,
       );
       if (promotion.appliesOn(selectedDate)) {
         promotions.add(promotion);
@@ -461,6 +460,16 @@ class ApiRepository implements ConvieneRepository {
     }
     final single = _asString(value);
     return single.isEmpty ? const [] : [single];
+  }
+
+  List<Set<String>> _asStringSets(Object? value) {
+    if (value is! List<dynamic>) {
+      return const [];
+    }
+    return [
+      for (final group in value)
+        if (_asStringList(group).isNotEmpty) _asStringList(group).toSet(),
+    ];
   }
 
   Set<int> _asIntSet(Object? value) {

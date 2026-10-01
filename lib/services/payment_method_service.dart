@@ -185,6 +185,21 @@ class PaymentMethodService {
         logoAsset: 'assets/logos/payment_banco_santa_fe.png',
       ),
       PaymentMethod(
+        id: 'banco_coinag',
+        type: PaymentMethodType.bank,
+        entity: 'Banco Coinag',
+        displayName: 'Banco Coinag',
+        active: false,
+        logoAsset: 'assets/logos/payment_banco_coinag.svg',
+      ),
+      PaymentMethod(
+        id: 'banco_municipal',
+        type: PaymentMethodType.bank,
+        entity: 'Banco Municipal',
+        displayName: 'Banco Municipal',
+        active: false,
+      ),
+      PaymentMethod(
         id: 'banco_san_juan',
         type: PaymentMethodType.bank,
         entity: 'Banco San Juan',
@@ -331,6 +346,14 @@ class PaymentMethodService {
         logoAsset: 'assets/logos/payment_modo.png',
       ),
       PaymentMethod(
+        id: 'billetera_santa_fe',
+        type: PaymentMethodType.wallet,
+        entity: 'Billetera Santa Fe / PlusPagos',
+        displayName: 'Billetera Santa Fe',
+        active: false,
+        logoAsset: 'assets/logos/payment_saldo.svg',
+      ),
+      PaymentMethod(
         id: 'cuenta_digital_carrefour',
         type: PaymentMethodType.wallet,
         entity: 'Cuenta Digital Carrefour Banco',
@@ -369,6 +392,22 @@ class PaymentMethodService {
         displayName: 'Empleado publico',
         active: false,
         logoAsset: 'assets/logos/payment_empleado_publico.png',
+      ),
+      PaymentMethod(
+        id: 'mi_carrefour_anses',
+        type: PaymentMethodType.wallet,
+        entity: 'Mi Carrefour / ANSES',
+        displayName: 'Mi Carrefour / ANSES',
+        active: false,
+        logoAsset: 'assets/logos/payment_mi_carrefour.png',
+      ),
+      PaymentMethod(
+        id: 'mi_carrefour',
+        type: PaymentMethodType.wallet,
+        entity: 'Mi Carrefour',
+        displayName: 'Mi Carrefour',
+        active: false,
+        logoAsset: 'assets/logos/payment_mi_carrefour.png',
       ),
     ];
   }

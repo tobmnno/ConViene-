@@ -78,6 +78,7 @@ class DiscountPromotion(BaseModel):
     entity: str = ""
     percentage: float = 0
     refund_cap: float = 0
+    minimum_purchase: float = 0
     weekdays: list[int] = Field(default_factory=list)
     start_date: str
     end_date: str
@@ -87,6 +88,7 @@ class DiscountPromotion(BaseModel):
     valid_text: str = ""
     source_url: str = ""
     compatible_entities: list[str] = Field(default_factory=list)
+    required_entity_groups: list[list[str]] = Field(default_factory=list)
     compatible_payment_types: list[str] = Field(default_factory=list)
     any_entity: bool = False
     scraped_at: str

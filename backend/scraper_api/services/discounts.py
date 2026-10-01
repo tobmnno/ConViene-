@@ -3,7 +3,10 @@ from __future__ import annotations
 from calendar import monthrange
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timezone
+from functools import lru_cache
 from html import unescape
+import json
+from pathlib import Path
 import re
 import time
 from typing import Any
@@ -21,9 +24,13 @@ COTO_PROMOTIONS_URL = (
     "getPromocionesMulticanal?enviroment=ag"
 )
 LAGALLEGA_URL = "https://www.lagallega.com.ar/Beneficios.asp"
+COINAG_LAGALLEGA_URL = "https://www.bancocoinag.com/Beneficios/beneficio%3D2184"
 CARREFOUR_URL = "https://www.carrefour.com.ar/descuentos-bancarios"
 
 CARREFOUR_ENTITY_URL = "https://www.carrefour.com.ar/api/dataentities/{entity}/search"
+CARREFOUR_GRAPHQL_URL = "https://www.carrefour.com.ar/_v/private/graphql/v1"
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+STATIC_PROMOTIONS_FILE = DATA_DIR / "promociones-otros-supermercados.json"
 
 MONTHS = {
     "enero": 1,
@@ -86,7 +93,7 @@ CARD_ALIASES = {
     "Cuenta Dni": ["Cuenta DNI"],
 }
 
-_DISCOUNT_CACHE_TTL_SECONDS = 1800
+_DISCOUNT_CACHE_TTL_SECONDS = 300
 _discount_cache: dict[tuple, tuple[float, DiscountsResponse]] = {}
 
 
@@ -108,10 +115,22 @@ def scrape_discounts(
         try:
             if store == "carrefour":
                 rows = _scrape_carrefour(current_date, store_warnings)
+                if not rows:
+                    static_covered, static_rows = _static_promotions(store, current_date)
+                    if static_covered:
+                        rows = static_rows
+                        store_warnings.append("carrefour: se uso el catalogo local como respaldo")
             elif store == "coto":
                 rows = _scrape_coto(current_date, store_warnings)
             else:
                 rows = _scrape_lagallega(current_date, store_warnings)
+                static_covered, static_rows = _static_promotions(store, current_date)
+                if static_covered:
+                    live_entities = {_normalize(row.entity) for row in rows}
+                    rows.extend(
+                        row for row in static_rows if _normalize(row.entity) not in live_entities
+                    )
+                    store_warnings.append("la_gallega: promociones cargadas desde el catalogo local")
         except Exception as exc:
             rows = []
             store_warnings.append(f"{store}: no se pudieron leer descuentos ({type(exc).__name__})")
@@ -136,6 +155,255 @@ def scrape_discounts(
     return response
 
 
+@lru_cache(maxsize=1)
+def _static_promotions_payload() -> dict[str, Any]:
+    if not STATIC_PROMOTIONS_FILE.exists():
+        return {}
+    try:
+        with STATIC_PROMOTIONS_FILE.open("r", encoding="utf-8-sig") as source:
+            payload = json.load(source)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _static_period(payload: dict[str, Any]) -> tuple[date, date] | None:
+    match = re.fullmatch(r"([a-záéíóúñ]+)_(\d{4})", str(payload.get("periodo") or ""), flags=re.I)
+    if not match:
+        return None
+    month = MONTHS.get(match.group(1).lower())
+    if month is None:
+        return None
+    year = int(match.group(2))
+    return date(year, month, 1), date(year, month, monthrange(year, month)[1])
+
+
+def _static_promotions(store: str, selected_date: date) -> tuple[bool, list[DiscountPromotion]]:
+    payload = _static_promotions_payload()
+    period = _static_period(payload)
+    if store not in {"carrefour", "la_gallega"} or period is None:
+        return False, []
+    period_start, period_end = period
+
+    expected_store = "carrefour" if store == "carrefour" else "la gallega"
+    source_rows = (
+        payload.get("promociones_la_gallega_actuales")
+        if store == "la_gallega" and payload.get("promociones_la_gallega_actuales")
+        else payload.get("promociones_otros_supermercados")
+    )
+    rows: list[DiscountPromotion] = []
+    for index, raw in enumerate(source_rows or []):
+        if not isinstance(raw, dict) or _normalize(str(raw.get("supermercado") or "")) != expected_store:
+            continue
+        row = _static_promotion_from_json(
+            raw,
+            index=index,
+            store=store,
+            selected_date=selected_date,
+            period_start=period_start,
+            period_end=period_end,
+        )
+        if row is not None:
+            rows.append(row)
+    return True, rows
+
+
+def _static_promotion_from_json(
+    raw: dict[str, Any],
+    *,
+    index: int,
+    store: str,
+    selected_date: date,
+    period_start: date,
+    period_end: date,
+) -> DiscountPromotion | None:
+    explicit_date = _parse_iso_date(raw.get("fecha_especifica"))
+    explicit_start = _parse_iso_date(raw.get("vigencia_desde"))
+    explicit_end = _parse_iso_date(raw.get("vigencia_hasta"))
+    conditions = _clean_text(raw.get("condiciones"))
+    limited_to_capture_period = _static_has_explicit_campaign_period(conditions)
+    if explicit_date:
+        valid_from = explicit_date
+        valid_until = explicit_date
+    elif explicit_start or explicit_end:
+        valid_from = explicit_start or date(selected_date.year, 1, 1)
+        valid_until = explicit_end or date(selected_date.year, 12, 31)
+    elif limited_to_capture_period:
+        valid_from = period_start
+        valid_until = period_end
+    else:
+        # The JSON period identifies when the data was captured. A promotion without
+        # a campaign date remains available by weekday across the selected year.
+        valid_from = date(selected_date.year, 1, 1)
+        valid_until = date(selected_date.year, 12, 31)
+    raw_days = _listify(raw.get("dias"))
+    weekdays = list(range(1, 8)) if any(_normalize(day) == "todos" for day in raw_days) else sorted(
+        {SPANISH_WEEKDAYS[_normalize(day)] for day in raw_days if _normalize(day) in SPANISH_WEEKDAYS}
+    )
+    weekdays = weekdays or list(range(1, 8))
+    if selected_date < valid_from or selected_date > valid_until or selected_date.weekday() + 1 not in weekdays:
+        return None
+
+    benefit_data = raw.get("beneficio") if isinstance(raw.get("beneficio"), dict) else {}
+    percentage = _as_float(benefit_data.get("porcentaje")) or 0
+    installments = int(_as_float(benefit_data.get("cantidad")) or 0)
+    benefit = f"{installments} cuotas sin interes" if installments else _benefit_text("", percentage)
+
+    payment = raw.get("medio_pago") if isinstance(raw.get("medio_pago"), dict) else {}
+    entity, entities, required_groups, payment_type, payment_types, any_entity = _static_payment_details(payment)
+    minimum_purchase = _as_float(raw.get("compra_minima")) or 0
+    if minimum_purchase > 0:
+        conditions = _clean_text(f"{conditions} Compra minima: ${minimum_purchase:,.0f}.").replace(",", ".")
+    source_url = _clean_text(raw.get("fuente_url")) or (
+        CARREFOUR_URL if store == "carrefour" else LAGALLEGA_URL
+    )
+    channel = "Online" if "online" in _normalize(conditions) else "Sucursal" if "sucursal" in _normalize(conditions) else ""
+    captured_at = datetime.fromtimestamp(STATIC_PROMOTIONS_FILE.stat().st_mtime, tz=timezone.utc).isoformat()
+    # A wallet offer can require a particular card tier. Keep that tier in the
+    # title as well as the compatibility groups so Visa and Mastercard offers
+    # do not collapse into one generic promotion during deduplication.
+    generic_card_values = {
+        "tarjeta",
+        "tarjeta fisica",
+        "credito",
+        "debito",
+        "tarjeta credito",
+        "tarjeta debito",
+    }
+    card_variants = [
+        value
+        for value in _listify(payment.get("tarjeta"))
+        if _normalize(value) not in generic_card_values
+    ]
+    variant_text = " / ".join(_unique(card_variants))
+    title = f"{entity} ({variant_text}) - {benefit}" if variant_text else f"{entity} - {benefit}"
+
+    return DiscountPromotion(
+        id=f"static_{store}_{index}_{_slug(title)}",
+        store=store,
+        title=title[:120],
+        benefit=benefit,
+        payment_type=payment_type,
+        entity=entity,
+        percentage=percentage,
+        refund_cap=_as_float(raw.get("tope_reintegro")) or 0,
+        minimum_purchase=minimum_purchase,
+        weekdays=weekdays,
+        start_date=valid_from.isoformat(),
+        end_date=valid_until.isoformat(),
+        conditions=conditions,
+        categories=["todos"],
+        channel=channel,
+        valid_text=_valid_text(valid_from, valid_until, weekdays),
+        source_url=source_url,
+        compatible_entities=entities,
+        required_entity_groups=required_groups,
+        compatible_payment_types=payment_types,
+        any_entity=any_entity,
+        scraped_at=captured_at,
+    )
+
+
+def _static_has_explicit_campaign_period(conditions: str) -> bool:
+    normalized = _normalize(conditions)
+    if re.search(
+        r"\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b",
+        normalized,
+    ):
+        return True
+    return bool(re.search(r"\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b", normalized))
+
+
+def _static_payment_details(
+    payment: dict[str, Any],
+) -> tuple[str, list[str], list[list[str]], str, list[str], bool]:
+    raw_type = _clean_text(payment.get("tipo"))
+    normalized_type = _normalize(raw_type)
+    has_specific_entities = any(
+        payment.get(key)
+        for key in ("nombre", "banco", "bancos", "billetera", "cliente", "marca", "marcas", "tarjeta")
+    )
+    any_entity = normalized_type == "todos" and not has_specific_entities
+    channel_entities: list[str] = []
+    if normalized_type in {"modo", "mercado pago", "cuenta dni", "club la nacion", "mi carrefour", "mi carrefour / anses"}:
+        channel_entities.append(raw_type)
+    channel_entities.extend(_listify(payment.get("nombre")))
+    channel_entities.extend(_listify(payment.get("billetera")))
+    channel_entities.extend(_listify(payment.get("cliente")))
+    banks = _listify(payment.get("banco")) + _listify(payment.get("bancos"))
+    generic_card_values = {
+        "tarjeta",
+        "tarjeta fisica",
+        "credito",
+        "debito",
+        "tarjeta credito",
+        "tarjeta debito",
+    }
+    card_variants = [
+        value
+        for value in _listify(payment.get("tarjeta"))
+        if _normalize(value) not in generic_card_values
+    ]
+    brands = _listify(payment.get("marca")) + _listify(payment.get("marcas")) + card_variants
+    if "tarjeta" in normalized_type and not banks and not channel_entities:
+        channel_entities.append(raw_type)
+
+    raw_groups = [
+        _unique([_canonical_static_entity(value) for value in group if _normalize(value) != "cualquier entidad"])
+        for group in (channel_entities, banks, brands)
+        if any(_normalize(value) != "cualquier entidad" for value in group)
+    ]
+    required_groups = (
+        []
+        if any_entity
+        else [_unique([entity for group in raw_groups for entity in group])]
+        if normalized_type == "todos"
+        else raw_groups
+    )
+    entities = _unique([entity for group in required_groups for entity in group])
+
+    payment_types: list[str] = []
+    wallet_tokens = ("modo", "mercado pago", "qr", "billetera", "cuenta digital", "cuenta dni", "mi carrefour", "club la nacion")
+    if any(token in normalized_type for token in wallet_tokens) or payment.get("billetera"):
+        payment_types.append("wallet")
+    if payment.get("banco") or payment.get("bancos"):
+        payment_types.append("bank")
+    if "tarjeta" in normalized_type or payment.get("tarjeta") or payment.get("marca") or payment.get("marcas"):
+        payment_types.append("card")
+    if any_entity:
+        payment_types = ["card", "bank", "wallet"]
+    payment_types = _unique(payment_types) or ["card"]
+    entity = "Todos los medios" if any_entity and not entities else (entities[0] if entities else raw_type or "Medios de pago")
+    return entity, entities, required_groups, payment_types[0], payment_types, any_entity
+
+
+def _canonical_static_entity(value: str) -> str:
+    normalized = _normalize(value)
+    if "visa" in normalized:
+        return "Visa"
+    if "master" in normalized:
+        return "Mastercard"
+    aliases = {
+        "amex": "American Express",
+        "supervielle": "Banco Supervielle",
+        "bna+": "Banco Nacion",
+        "visa": "Visa",
+        "master": "Mastercard",
+        "mastercard": "Mastercard",
+        "empleado/publico": "Empleado publico",
+    }
+    return aliases.get(normalized, _clean_text(value))
+
+
+def _listify(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [_clean_text(item) for item in value if _clean_text(item)]
+    cleaned = _clean_text(value)
+    return [cleaned] if cleaned else []
+
+
 def _scrape_carrefour(selected_date: date, warnings: list[str]) -> list[DiscountPromotion]:
     fields = ",".join(
         [
@@ -143,7 +411,11 @@ def _scrape_carrefour(selected_date: date, warnings: list[str]) -> list[Discount
             "title",
             "sub_title",
             "discount_percentage",
-            "discounts_amount",
+            "discounts_amount_installments",
+            "discounts_text_installments",
+            "active",
+            "active_from",
+            "active_to",
             "valid",
             "market",
             "hyper",
@@ -163,7 +435,12 @@ def _scrape_carrefour(selected_date: date, warnings: list[str]) -> list[Discount
             "order",
         ]
     )
-    raw_promotions = _master_data("BP", fields)
+    instant = f"{selected_date.isoformat()}T23:59:59"
+    raw_promotions = _master_data(
+        "BP",
+        fields,
+        where=f"active=true AND ((active_from < {instant}) AND (active_to > {instant}))",
+    )
     bank_names = _entity_names("FB")
     card_names = _entity_names("FC")
     scraped_at = datetime.now(timezone.utc).isoformat()
@@ -197,7 +474,12 @@ def _scrape_carrefour(selected_date: date, warnings: list[str]) -> list[Discount
 
         percentage = _as_float(raw.get("discount_percentage")) or _percent_from_text(title) or _percent_from_text(legal) or 0
         refund_cap = _cap_from_text(subtitle) or _cap_from_text(legal) or 0
-        entity, compatible_entities = _carrefour_entities(raw, bank_names, card_names, title)
+        entity, compatible_entities = _carrefour_entities(
+            raw,
+            bank_names,
+            card_names,
+            f"{title} {subtitle}",
+        )
         payment_type, payment_types = _payment_type(title, legal, compatible_entities)
         channels = _carrefour_channels(raw)
         benefit = _benefit_text(title, percentage)
@@ -333,6 +615,11 @@ def _scrape_lagallega(selected_date: date, warnings: list[str]) -> list[Discount
                 continue
             rows.extend(_lagallega_promotions_from_html(text, selected_date, scraped_at))
 
+    try:
+        rows.extend(_scrape_lagallega_coinag(selected_date, scraped_at))
+    except requests.RequestException:
+        warnings.append("la_gallega: no se pudo consultar el legal de Banco Coinag")
+
     if not rows and payment_methods:
         warnings.append(
             "la_gallega: solo se pudieron leer medios de pago aceptados, no descuentos bancarios vigentes"
@@ -340,17 +627,97 @@ def _scrape_lagallega(selected_date: date, warnings: list[str]) -> list[Discount
     return rows
 
 
-def _master_data(entity: str, fields: str) -> list[dict[str, Any]]:
-    url = CARREFOUR_ENTITY_URL.format(entity=entity)
-    response = requests.get(
-        url,
-        params={"_fields": fields, "_size": "999"},
+def _scrape_lagallega_coinag(selected_date: date, scraped_at: str) -> list[DiscountPromotion]:
+    response = requests.get(COINAG_LAGALLEGA_URL, headers=REQUEST_HEADERS, timeout=25)
+    response.raise_for_status()
+    response.encoding = response.apparent_encoding or response.encoding
+    detail_match = re.search(
+        r"<h2[^>]*class=['\"]local['\"][^>]*>\s*Supermercado La Gallega\s*</h2>(.*?)(?=<h3>Tarjetas</h3>)",
+        response.text,
+        flags=re.I | re.S,
+    )
+    text = _html_to_text(detail_match.group(1) if detail_match else response.text)
+    if "supermercado la gallega" not in _normalize(_html_to_text(response.text)):
+        return []
+
+    percentage = _percent_from_text(_html_to_text(response.text))
+    end_date = _extract_end_date(text, selected_date.year)
+    weekdays = _weekdays_from_text(text)
+    if not percentage or not end_date or not weekdays:
+        return []
+    start_date = _extract_start_date(text, selected_date) or date(selected_date.year, 1, 1)
+    if selected_date < start_date or selected_date > end_date or selected_date.weekday() + 1 not in weekdays:
+        return []
+
+    entities = ["Banco Coinag", "Visa"]
+    return [
+        DiscountPromotion(
+            id="la_gallega_coinag",
+            store="la_gallega",
+            title="Banco Coinag - 20% OFF",
+            benefit=_benefit_text("", percentage),
+            payment_type="bank",
+            entity="Banco Coinag",
+            percentage=percentage,
+            refund_cap=_cap_from_text(text) or 0,
+            weekdays=weekdays,
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat(),
+            conditions=_clean_text(text),
+            categories=["todos"],
+            channel="Sucursal",
+            valid_text=_valid_text(start_date, end_date, weekdays),
+            source_url=COINAG_LAGALLEGA_URL,
+            compatible_entities=entities,
+            compatible_payment_types=["bank", "card"],
+            scraped_at=scraped_at,
+        )
+    ]
+
+
+def _master_data(entity: str, fields: str, *, where: str = "") -> list[dict[str, Any]]:
+    field_names = [field.strip() for field in fields.split(",") if field.strip()]
+    query = """
+        query GetDocuments($acronym: String!, $fields: [String!]!, $where: String) {
+          documents(
+            acronym: $acronym,
+            schema: \"mdv1\",
+            fields: $fields,
+            where: $where,
+            sort: \"order ASC\",
+            account: \"carrefourar\",
+            pageSize: 999
+          ) {
+            fields { key value }
+          }
+        }
+    """
+    response = requests.post(
+        CARREFOUR_GRAPHQL_URL,
+        json={
+            "operationName": "GetDocuments",
+            "variables": {"acronym": entity, "fields": field_names, "where": where},
+            "query": query,
+        },
         headers=REQUEST_HEADERS,
         timeout=25,
     )
     response.raise_for_status()
-    data = _response_json(response)
-    return data if isinstance(data, list) else []
+    payload = _response_json(response)
+    documents = payload.get("data", {}).get("documents", []) if isinstance(payload, dict) else []
+    rows: list[dict[str, Any]] = []
+    for document in documents:
+        raw_fields = document.get("fields") if isinstance(document, dict) else None
+        if not isinstance(raw_fields, list):
+            continue
+        rows.append(
+            {
+                str(field.get("key")): field.get("value")
+                for field in raw_fields
+                if isinstance(field, dict) and field.get("key")
+            }
+        )
+    return rows
 
 
 def _entity_names(entity: str) -> dict[str, str]:
@@ -465,6 +832,18 @@ def _carrefour_entities(
     card_names: dict[str, str],
     title: str,
 ) -> tuple[str, list[str]]:
+    normalized_title = _normalize(title)
+    if "cuenta digital de carrefour banco" in normalized_title:
+        return "Carrefour Banco", ["Carrefour Banco"]
+    if "emplead" in normalized_title and "public" in normalized_title:
+        return "Mi Carrefour", ["Mi Carrefour"]
+    if "club la nacion" in normalized_title:
+        return "Club La Nacion", ["Club La Nacion"]
+
+    title_entities = _entities_from_text(title)
+    if title_entities:
+        return " y ".join(title_entities), title_entities
+
     entities: list[str] = []
     bank = bank_names.get(str(raw.get("idBank")))
     card = card_names.get(str(raw.get("idCard")))
@@ -472,7 +851,6 @@ def _carrefour_entities(
         entities.extend(BANK_ALIASES.get(bank, [bank]))
     if card:
         entities.extend(CARD_ALIASES.get(card, [card]))
-    entities.extend(_entities_from_text(title))
     entities = _unique(entities)
     return (" y ".join(entities) if entities else "Medios de pago", entities)
 
@@ -540,13 +918,13 @@ def _carrefour_channels(raw: dict[str, Any]) -> str:
         ("express", "Express"),
         ("maxi", "Maxi"),
     ]:
-        if raw.get(field) is True:
+        if _is_true(raw.get(field)):
             labels.append(label)
     return " y ".join(labels)
 
 
 def _weekdays_from_flags(raw: dict[str, Any]) -> list[int]:
-    days = [day for field, day in DAY_FIELDS.items() if raw.get(field) is True]
+    days = [day for field, day in DAY_FIELDS.items() if _is_true(raw.get(field))]
     return sorted(days)
 
 
@@ -610,6 +988,12 @@ def _is_false(value: Any) -> bool:
     if isinstance(value, bool):
         return value is False
     return str(value).strip().lower() in {"false", "0", "no"}
+
+
+def _is_true(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"true", "1", "si", "sí"}
 
 
 def _clean_lagallega_chunk(chunk: str) -> str:
