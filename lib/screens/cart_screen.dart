@@ -59,6 +59,13 @@ class CartScreen extends StatelessWidget {
               ),
               const Spacer(),
               IconButton(
+                tooltip: 'Actualizar precios',
+                onPressed: state.cartItems.isEmpty || state.isComparing
+                    ? null
+                    : () => unawaited(state.refreshComparisons()),
+                icon: const Icon(Icons.refresh, color: AppColors.deepBlue),
+              ),
+              IconButton(
                 tooltip: 'Vaciar',
                 onPressed: state.cartItems.isEmpty
                     ? null
@@ -71,6 +78,12 @@ class CartScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
+          if (state.isComparing) ...[
+            const LinearProgressIndicator(
+              semanticsLabel: 'Comparando precios reales',
+            ),
+            const SizedBox(height: 8),
+          ],
           if (state.cartItems.isEmpty)
             const Expanded(child: _EmptyCart())
           else ...[
@@ -460,8 +473,10 @@ class _ComparisonCoverageRow extends StatelessWidget {
               Text(
                 hasProducts
                     ? comparison.hasAllProducts
-                          ? 'Tiene todos los productos'
-                          : 'Tiene ${comparison.foundProductsCount} de ${comparison.totalProductsCount}'
+                          ? 'Todos los productos comparados'
+                          : 'Comparados ${comparison.foundProductsCount} de ${comparison.totalProductsCount}'
+                    : comparison.hasSourceError
+                    ? 'No se pudo consultar'
                     : 'Sin coincidencias verificadas',
                 style: TextStyle(
                   color: hasProducts ? AppColors.textGray : AppColors.textGray,

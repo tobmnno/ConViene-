@@ -7,6 +7,7 @@ import '../models/store_comparison.dart';
 import '../models/supermarket.dart';
 import '../models/shopping_context.dart';
 import '../repositories/conviene_repository.dart';
+import '../repositories/product_equivalence_repository.dart';
 import 'discount_engine.dart';
 
 class PriceComparisonService {
@@ -150,6 +151,7 @@ class PriceComparisonService {
           return null;
         }
         final offersByStore = <String, SearchResult>{};
+        final storeStatus = <String, String>{};
         final cachedPrices = await _repository.getPricesForProduct(
           cartItem.productId,
         );
@@ -172,29 +174,64 @@ class PriceComparisonService {
           );
         }
 
-        if (offersByStore.length < selectedStores.length) {
-          for (final query in _searchQueriesForProduct(selectedProduct)) {
+        if (_repository is ProductEquivalenceRepository ||
+            offersByStore.length < selectedStores.length) {
+          final equivalenceRepository = _repository;
+          if (equivalenceRepository is ProductEquivalenceRepository) {
             final missingStoreIds = {
-              for (final store in selectedStores)
-                if (!offersByStore.containsKey(store.id)) store.id,
+              for (final store in selectedStores) store.id,
             };
             if (missingStoreIds.isEmpty) {
-              break;
+              return _ComparableCartItem(
+                cartItem: cartItem,
+                selectedProduct: selectedProduct,
+                offersByStore: offersByStore,
+                selectedOffer: selectedOffer,
+                storeStatus: storeStatus,
+              );
             }
-            final relatedResults = await _repository.searchProducts(
-              query: query,
-              storeIds: missingStoreIds,
-              context: context,
-            );
-            for (final result in relatedResults) {
-              final storeId = result.supermarket.id;
-              if (!missingStoreIds.contains(storeId) || !result.price.stock) {
-                continue;
+            final response =
+                await (equivalenceRepository as ProductEquivalenceRepository)
+                    .findEquivalentProducts(
+                      product: selectedProduct,
+                      storeIds: missingStoreIds,
+                      context: context,
+                    );
+            storeStatus.addAll(response.storeStatus);
+            offersByStore.clear();
+            for (final result in response.results) {
+              if (missingStoreIds.contains(result.supermarket.id) &&
+                  result.price.stock) {
+                offersByStore[result.supermarket.id] = result;
+                if (result.supermarket.id == cartItem.selectedStoreId) {
+                  selectedOffer = result;
+                }
               }
-              if (!_isComparableProduct(selectedProduct, result.product)) {
-                continue;
+            }
+          } else {
+            for (final query in _searchQueriesForProduct(selectedProduct)) {
+              final missingStoreIds = {
+                for (final store in selectedStores)
+                  if (!offersByStore.containsKey(store.id)) store.id,
+              };
+              if (missingStoreIds.isEmpty) {
+                break;
               }
-              offersByStore.putIfAbsent(storeId, () => result);
+              final relatedResults = await _repository.searchProducts(
+                query: query,
+                storeIds: missingStoreIds,
+                context: context,
+              );
+              for (final result in relatedResults) {
+                final storeId = result.supermarket.id;
+                if (!missingStoreIds.contains(storeId) || !result.price.stock) {
+                  continue;
+                }
+                if (!_isComparableProduct(selectedProduct, result.product)) {
+                  continue;
+                }
+                offersByStore.putIfAbsent(storeId, () => result);
+              }
             }
           }
         }
@@ -207,6 +244,7 @@ class PriceComparisonService {
           selectedProduct: selectedProduct,
           offersByStore: offersByStore,
           selectedOffer: selectedOffer,
+          storeStatus: storeStatus,
         );
       }),
     ).then((items) => items.whereType<_ComparableCartItem>().toList());
@@ -249,10 +287,13 @@ class PriceComparisonService {
     for (final store in selectedStores) {
       final lines = <PricedCartItem>[];
       final missing = <Product>[];
+      final missingStatus = <String, String>{};
       for (final item in comparableItems) {
         final result = item.offersByStore[store.id];
         if (result == null || !result.price.stock) {
           missing.add(item.selectedProduct);
+          missingStatus[item.selectedProduct.id] =
+              item.storeStatus[store.id] ?? 'not_found';
           continue;
         }
         final cartItem = item.cartItem;
@@ -284,6 +325,7 @@ class PriceComparisonService {
           totalOriginal: totalOriginal,
           totalDiscount: totalDiscount,
           totalFinal: totalOriginal - totalDiscount,
+          missingStatus: missingStatus,
         ),
       );
     }
@@ -481,10 +523,8 @@ class PriceComparisonService {
   }
 
   bool _isComparableProduct(Product selectedProduct, Product candidateProduct) {
-    if (selectedProduct.ean.isNotEmpty &&
-        candidateProduct.ean.isNotEmpty &&
-        selectedProduct.ean == candidateProduct.ean) {
-      return true;
+    if (selectedProduct.ean.isNotEmpty && candidateProduct.ean.isNotEmpty) {
+      return selectedProduct.ean == candidateProduct.ean;
     }
     if (!_isComparableSize(selectedProduct, candidateProduct)) {
       return false;
@@ -849,12 +889,14 @@ class _ComparableCartItem {
     required this.selectedProduct,
     required this.offersByStore,
     required this.selectedOffer,
+    required this.storeStatus,
   });
 
   final CartItem cartItem;
   final Product selectedProduct;
   final Map<String, SearchResult> offersByStore;
   final SearchResult? selectedOffer;
+  final Map<String, String> storeStatus;
 }
 
 class _Measurement {

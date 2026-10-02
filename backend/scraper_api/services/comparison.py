@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from models import CartItem, CartItemMatch, CompareResponse, StoreTotal
+from models import CartItem, CartItemMatch, CompareResponse, StoreTotal, EquivalentsRequest, ProductReference, ShoppingContext
 import asyncio
 
-from services.catalog import products_are_comparable, rank_search_results, search_query_for_product_name
-from services.scraper import resolve_stores, scrape_query
+from services.equivalents import find_equivalents
+from services.scraper import resolve_stores
 
 
 async def compare_cart(
@@ -13,6 +13,7 @@ async def compare_cart(
     limit: int,
     headless: bool,
     engine: str = "camoufox",
+    context: ShoppingContext | None = None,
 ):
     selected_stores = resolve_stores(stores)
     totals = {store: 0.0 for store in selected_stores}
@@ -20,17 +21,14 @@ async def compare_cart(
     item_results: list[CartItemMatch] = []
 
     async def compare_item(item):
-        search_query = search_query_for_product_name(item.name)
-        rows = await scrape_query(search_query, selected_stores, limit, headless, engine)
-        matches = [
-            match
-            for match in rank_search_results(item.name, rows, limit=limit)
-            if products_are_comparable(item.name, match.product.name)
-        ]
-        return item, matches
+        response = await find_equivalents(EquivalentsRequest(
+            product=ProductReference(name=item.name, ean=item.ean, brand=item.brand),
+            stores=selected_stores, context=context or ShoppingContext(),
+        ))
+        return item, sorted(response.results, key=lambda match: match.product.price), response.store_status
 
     compared_items = await asyncio.gather(*(compare_item(item) for item in items))
-    for item, matches in compared_items:
+    for item, matches, store_status in compared_items:
 
         best_by_store = {}
         for match in matches:
@@ -38,7 +36,7 @@ async def compare_cart(
                 best_by_store[match.product.store] = match
 
         chosen = matches[0] if matches else None
-        item_results.append(CartItemMatch(item=item, matches=matches, chosen=chosen))
+        item_results.append(CartItemMatch(item=item, matches=matches, chosen=chosen, store_status=store_status))
 
         for store in selected_stores:
             best_match = best_by_store.get(store)

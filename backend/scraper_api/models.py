@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 class Product(BaseModel):
     store: str
     name: str
+    ean: Optional[str] = None
+    brand: Optional[str] = None
     price: Optional[float] = None
     regular_price: Optional[float] = None
     promo_text: Optional[str] = None
@@ -51,8 +53,29 @@ class SearchResponse(BaseModel):
     context: Optional[ShoppingContext] = None
 
 
+class ProductReference(BaseModel):
+    name: str = Field(min_length=2, max_length=300)
+    ean: Optional[str] = Field(default=None, pattern=r"^\d{8,14}$")
+    brand: Optional[str] = Field(default=None, max_length=100)
+
+
+class EquivalentsRequest(BaseModel):
+    product: ProductReference
+    stores: Optional[list[str]] = None
+    context: ShoppingContext = Field(default_factory=ShoppingContext)
+
+
+class EquivalentsResponse(BaseModel):
+    results: list[SearchMatch]
+    # not_found means not located in this catalog/context, never proof of absence.
+    store_status: dict[str, str]
+    checked_at: str
+
+
 class CartItem(BaseModel):
     name: str = Field(min_length=2, max_length=200)
+    ean: Optional[str] = Field(default=None, pattern=r"^\d{8,14}$")
+    brand: Optional[str] = Field(default=None, max_length=100)
     quantity: int = Field(default=1, ge=1, le=1000)
 
 
@@ -60,6 +83,7 @@ class CartItemMatch(BaseModel):
     item: CartItem
     matches: list[SearchMatch]
     chosen: Optional[SearchMatch] = None
+    store_status: dict[str, str] = Field(default_factory=dict)
 
 
 class StoreTotal(BaseModel):
@@ -74,6 +98,7 @@ class CompareRequest(BaseModel):
     items: list[CartItem] = Field(min_length=1)
     limit: int = Field(default=20, ge=1, le=50)
     stores: Optional[list[str]] = None
+    context: ShoppingContext = Field(default_factory=ShoppingContext)
 
 
 class CompareResponse(BaseModel):

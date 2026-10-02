@@ -97,6 +97,7 @@ Invoke-RestMethod `
 
 Cada resultado incluye el producto original, puntaje de relevancia, consulta
 normalizada, nombre normalizado y compatibilidad de tamaño. Tambien informa
+`ean` y `brand` cuando la fuente los publica, ademas de
 `branch_id`, `pricing_scope` y, cuando el supermercado lo publica,
 `delivery_available`; asi una cotizacion sin sucursal no se presenta como stock
 local confirmado.
@@ -114,11 +115,14 @@ local confirmado.
 ### `POST /compare`
 
 Busca productos comparables y calcula el total por supermercado.
+Los items admiten `ean` y `brand`, y el cuerpo admite `context` con los mismos
+campos de ubicacion y canal que la busqueda. Usa el mismo motor de equivalencias
+que el changuito y devuelve `store_status` por item.
 
 ```json
 {
   "items": [
-    {"name": "Leche La Serenisima liviana 1 L", "quantity": 2},
+    {"name": "Leche La Serenisima liviana 1% 1 L", "ean": "7790742363107", "quantity": 2},
     {"name": "Galletitas Oreo 3 x 118 g", "quantity": 1}
   ],
   "limit": 20,
@@ -128,6 +132,38 @@ Busca productos comparables y calcula el total por supermercado.
 
 El ranking informa productos encontrados, faltantes y total. Una tienda con
 productos faltantes no se presenta como una compra completa.
+
+### `POST /products/equivalents`
+
+Consulta el mismo producto en las tiendas seleccionadas, sin competir por un
+limite global de resultados:
+
+```json
+{
+  "product": {
+    "name": "Leche La Serenisima liviana 1% 1L",
+    "ean": "7790742363107",
+    "brand": "La Serenisima"
+  },
+  "stores": ["coto", "carrefour", "la_gallega"],
+  "context": {"coto_store": "200", "carrefour_sales_channel": "1"}
+}
+```
+
+Valida el digito de control del GTIN y prioriza ese identificador sobre las
+diferencias de nombres o unidades publicadas. Sin identificador verificable,
+aplica las reglas de marca, contenido, packs y variantes. Dos GTIN validos
+distintos nunca se consideran equivalentes.
+
+`store_status` distingue `found`, `not_found`, `unavailable` y `error`.
+`not_found` solo describe el catalogo y contexto consultados; no confirma que
+el producto este ausente en todas las sucursales. La respuesta incluye
+`checked_at` y una oferta por tienda cuando pudo verificarse.
+
+La cache dura 120 segundos y depende del producto y contexto de compra. Las
+respuestas con errores no se cachean. Las consultas directas tienen concurrencia
+limitada; La Gallega utiliza las tarjetas de su catalogo paginado, incluyendo
+precio de oferta, precio de lista e imagen, sin depender de las 15 sugerencias.
 
 ### `GET /discounts`
 

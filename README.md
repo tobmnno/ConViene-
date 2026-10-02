@@ -24,11 +24,11 @@ combinacion mas barata entre distintas tiendas.
 
 - Busqueda simultanea en Coto, Carrefour y La Gallega.
 - Precios, disponibilidad e imagenes obtenidos de fuentes publicas.
-- Matching por marca, cantidad, presentacion, pack, sabor y variante.
+- Matching por codigo de barras, marca, cantidad, presentacion, pack y variante.
 - Changuito con comparacion por supermercado y productos faltantes.
 - Plan combinado con el mejor precio de cada producto.
 - Descuentos compatibles con las tarjetas, bancos y billeteras del usuario.
-- Fallback local para que la interfaz siga disponible si la API falla.
+- Errores de consulta diferenciados de productos no encontrados, sin precios simulados.
 
 ## Como funciona
 
@@ -158,8 +158,14 @@ Conviene presenta tres perspectivas:
 2. **Un solo supermercado:** prioriza comercios que tengan el changuito completo.
 3. **Mejor precio por producto:** combina tiendas para minimizar el total final.
 
-Si un supermercado no tiene un producto comparable, se muestra como faltante;
-nunca se reemplaza por un precio cero.
+La comparacion consulta primero el codigo de barras (GTIN) y luego nombres
+abreviados por marca y contenido. Las consultas por tienda no compiten por un
+limite global de resultados. Si ambos catalogos publican codigos distintos,
+no se consideran el mismo producto aunque sus nombres se parezcan.
+
+Un producto no encontrado en el catalogo consultado no implica que no exista
+en otra sucursal. La app distingue esa situacion de falta de stock publicado
+y errores de la fuente; no completa comparaciones con precios simulados.
 
 ## Descuentos
 
@@ -178,6 +184,7 @@ inventar una fecha o un porcentaje.
 | `GET` | `/health` | Estado del servicio. |
 | `GET` | `/search` | Busqueda normalizada de productos. |
 | `POST` | `/compare` | Comparacion de productos y cantidades. |
+| `POST` | `/products/equivalents` | Mismo producto por tienda, con estado de consulta. |
 | `GET` | `/discounts` | Promociones por fecha y supermercado. |
 | `GET` | `/image` | Proxy de imagenes para Flutter Web. |
 

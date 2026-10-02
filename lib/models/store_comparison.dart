@@ -10,6 +10,7 @@ class StoreComparison {
     required this.totalOriginal,
     required this.totalDiscount,
     required this.totalFinal,
+    this.missingStatus = const {},
   });
 
   final Supermarket supermarket;
@@ -18,6 +19,15 @@ class StoreComparison {
   final double totalOriginal;
   final double totalDiscount;
   final double totalFinal;
+  final Map<String, String> missingStatus;
+
+  bool get hasSourceError => missingStatus.values.contains('error');
+
+  String missingLabel(Product product) => switch (missingStatus[product.id]) {
+    'error' => 'No se pudo consultar',
+    'unavailable' => 'Sin stock publicado',
+    _ => 'No encontrado',
+  };
 
   int get foundProductsCount => items.length;
 

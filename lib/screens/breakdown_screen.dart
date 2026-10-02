@@ -402,7 +402,7 @@ class _MissingProductsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${comparison.supermarket.name} no tiene',
+            'Sin verificar en ${comparison.supermarket.name}',
             style: const TextStyle(
               color: AppColors.deepBlue,
               fontWeight: FontWeight.w900,
@@ -413,7 +413,7 @@ class _MissingProductsCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Text(
-                product.name,
+                '${product.name}: ${comparison.missingLabel(product)}',
                 style: const TextStyle(
                   color: AppColors.textGray,
                   fontSize: 12,

@@ -21,6 +21,8 @@ class _ShoppingContextScreenState extends State<ShoppingContextScreen> {
   var _initialized = false;
   var _locating = false;
   String? _locationMessage;
+  DateTime? _lastValidationFeedbackAt;
+  String? _lastValidationFeedback;
 
   @override
   void initState() {
@@ -198,15 +200,11 @@ class _ShoppingContextScreenState extends State<ShoppingContextScreen> {
     final postalCode = _postalCodeController.text.trim();
     final cotoStore = _cotoStoreController.text.trim();
     if (postalCode.isNotEmpty && !RegExp(r'^\d{4}$').hasMatch(postalCode)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El codigo postal debe tener 4 digitos.')),
-      );
+      _showValidationFeedback('El codigo postal debe tener 4 digitos.');
       return;
     }
     if (!RegExp(r'^\d{1,6}$').hasMatch(cotoStore)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa un ID de sucursal Coto valido.')),
-      );
+      _showValidationFeedback('Ingresa un ID de sucursal Coto valido.');
       return;
     }
     await AppScope.of(context).updateShoppingContext(
@@ -224,6 +222,52 @@ class _ShoppingContextScreenState extends State<ShoppingContextScreen> {
     if (mounted) {
       Navigator.of(context).pop();
     }
+  }
+
+  void _showValidationFeedback(String message) {
+    final now = DateTime.now();
+    final lastFeedbackAt = _lastValidationFeedbackAt;
+    if (lastFeedbackAt != null &&
+        message == _lastValidationFeedback &&
+        now.difference(lastFeedbackAt) < const Duration(milliseconds: 1200)) {
+      return;
+    }
+    _lastValidationFeedbackAt = now;
+    _lastValidationFeedback = message;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          elevation: 8,
+          backgroundColor: const Color(0xFF8F2D00),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 4),
+          dismissDirection: DismissDirection.horizontal,
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.white),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: AppColors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
   }
 
   Future<void> _useDeviceLocation() async {

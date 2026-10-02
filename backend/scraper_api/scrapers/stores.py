@@ -16,6 +16,7 @@ import requests
 
 from models import Product
 from .base import BaseScraper, parse_price
+from .lagallega_catalog import read_catalog_page
 
 
 REQUEST_HEADERS = {
@@ -73,12 +74,15 @@ async def extract_results(scraper: BaseScraper, page: Page, limit: int):
 
 
 def _offer_for_vtex_product(product: dict):
+    fallback = (None, None)
     for item in product.get("items") or []:
         for seller in item.get("sellers") or []:
             offer = seller.get("commertialOffer") or {}
             if offer.get("Price") is not None:
-                return item, offer
-    return None, None
+                if offer.get("IsAvailable") and offer.get("Price", 0) > 0:
+                    return item, offer
+                fallback = (item, offer)
+    return fallback
 
 
 def _image_for_vtex_item(item: dict | None):
@@ -120,6 +124,8 @@ def _carrefour_api_search(query: str, limit: int, context: dict | None = None):
             Product(
                 store="carrefour",
                 name=str(raw_product.get("productName") or raw_product.get("productTitle") or "").strip(),
+                ean=str((item or {}).get("ean") or "") or None,
+                brand=raw_product.get("brand"),
                 price=price,
                 regular_price=list_price if list_price and list_price > price else None,
                 promo_text="; ".join((raw_product.get("productClusters") or {}).values())[:500] or None,
@@ -161,7 +167,9 @@ def _coto_price(data: dict, store_id: str):
 
     prices = data.get("price") or []
     preferred = next((item for item in prices if str(item.get("store")) == store_id), None)
-    price_row = preferred or (prices[0] if prices else {})
+    if prices and preferred is None:
+        return None, None
+    price_row = preferred or {}
     price = price_row.get("listPrice", data.get("product_list_price"))
     try:
         return float(price), None
@@ -172,7 +180,8 @@ def _coto_price(data: dict, store_id: str):
 def _coto_api_search(query: str, limit: int, context: dict | None = None):
     store_id = str((context or {}).get("coto_store") or "200")
     had_response = False
-    for candidate in _coto_query_candidates(query):
+    candidates = [query] if (context or {}).get("equivalence_search") else _coto_query_candidates(query)
+    for candidate in candidates:
         response = requests.get(
             "https://api.coto.com.ar/api/v1/ms-digital-sitio-bff-web/api/v1/products/search/"
             + quote(candidate),
@@ -201,6 +210,8 @@ def _coto_api_search(query: str, limit: int, context: dict | None = None):
                 Product(
                     store="coto",
                     name=str(result.get("value") or data.get("sku_display_name") or "").strip(),
+                    ean=str(data.get("product_main_ean") or "") or None,
+                    brand=data.get("product_brand"),
                     price=price,
                     regular_price=regular_price,
                     promo_text=", ".join(
@@ -244,7 +255,9 @@ def _lagallega_suggestions(session: requests.Session, query: str, limit: int):
         headers=REQUEST_HEADERS,
         timeout=DIRECT_HTTP_TIMEOUT_SECONDS,
     )
-    if response.status_code != 200 or "AutoCompItem" not in response.text:
+    if response.status_code != 200:
+        return None
+    if "AutoCompItem" not in response.text:
         return None if "top.location.href" in response.text else []
 
     pattern = re.compile(
@@ -292,7 +305,7 @@ def _lagallega_detail(session: requests.Session | None, product_id: str):
     }
 
 
-def _lagallega_api_search(query: str, limit: int, context: dict | None = None):
+def _lagallega_autocomplete_search(query: str, limit: int, context: dict | None = None):
     with requests.Session() as session:
         suggestions = _lagallega_suggestions(session, query, limit)
         if suggestions is None:
@@ -318,6 +331,7 @@ def _lagallega_api_search(query: str, limit: int, context: dict | None = None):
                 Product(
                     store="la_gallega",
                     name=name.title(),
+                    ean=suggestion["ean"] or None,
                     price=price,
                     unit=None,
                     url=detail.get("url") or f"https://www.lagallega.com.ar/productosdet.asp?Pr={suggestion['id']}",
@@ -329,6 +343,34 @@ def _lagallega_api_search(query: str, limit: int, context: dict | None = None):
                 )
             )
         return rows[:limit]
+
+
+def _lagallega_api_search(query: str, limit: int, context: dict | None = None):
+    with requests.Session() as session:
+        session.get("https://www.lagallega.com.ar/", headers=REQUEST_HEADERS,
+                    timeout=DIRECT_HTTP_TIMEOUT_SECONDS)
+        first = read_catalog_page(session, query, 1, REQUEST_HEADERS, DIRECT_HTTP_TIMEOUT_SECONDS)
+        if first is None:
+            return None
+        rows = list(first.rows)
+        if rows and len(rows) < limit:
+            needed_pages = (limit + len(rows) - 1) // len(rows)
+            for page in sorted(first.pages):
+                if page <= 1 or page > min(needed_pages, 5) or len(rows) >= limit:
+                    continue
+                following = read_catalog_page(session, query, page, REQUEST_HEADERS, DIRECT_HTTP_TIMEOUT_SECONDS)
+                if following is None:
+                    # A truncated catalog must not become a confirmed absence.
+                    return None
+                rows.extend(following.rows)
+        unique = {}
+        for row in rows:
+            unique[row["url"]] = Product(
+                store="la_gallega", **row, available=None,
+                pricing_scope="catalog_no_branch",
+                scraped_at=datetime.now(timezone.utc).isoformat(),
+            )
+        return list(unique.values())[:limit]
 
 
 class CarrefourScraper(BaseScraper):

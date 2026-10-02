@@ -293,21 +293,18 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
-                          Flexible(
-                            child: Text(
-                              comparison.supermarket.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.deepBlue,
-                                fontWeight: FontWeight.w900,
-                              ),
+                          Text(
+                            comparison.supermarket.name,
+                            style: const TextStyle(
+                              color: AppColors.deepBlue,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
                           if (widget.best) ...[
-                            const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 7,
@@ -342,8 +339,8 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                       const SizedBox(height: 2),
                       Text(
                         comparison.hasAllProducts
-                            ? 'Tiene todos los productos'
-                            : 'Tiene ${comparison.foundProductsCount} de ${comparison.totalProductsCount}',
+                            ? 'Todos los productos comparados'
+                            : 'Comparados ${comparison.foundProductsCount} de ${comparison.totalProductsCount}',
                         style: const TextStyle(
                           color: AppColors.textGray,
                           fontSize: 11,
@@ -357,21 +354,27 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      formatMoney(comparison.totalFinal, compactCents: false),
-                      style: const TextStyle(
+                      comparison.items.isEmpty
+                          ? 'Sin precio'
+                          : formatMoney(
+                              comparison.totalFinal,
+                              compactCents: false,
+                            ),
+                      style: TextStyle(
                         color: AppColors.deepBlue,
-                        fontSize: 22,
+                        fontSize: comparison.items.isEmpty ? 13 : 22,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    Text(
-                      'Ahorras ${formatMoney(comparison.totalDiscount)}',
-                      style: const TextStyle(
-                        color: AppColors.green,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
+                    if (comparison.items.isNotEmpty)
+                      Text(
+                        'Ahorras ${formatMoney(comparison.totalDiscount)}',
+                        style: const TextStyle(
+                          color: AppColors.green,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ],
@@ -387,9 +390,11 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFFFFE7B3)),
               ),
-              child: const Text(
-                'Este supermercado no tiene todos los productos de tu changuito.',
-                style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
+              child: Text(
+                comparison.hasSourceError
+                    ? 'No se pudo completar la consulta. Proba nuevamente.'
+                    : 'No se verificaron todos los productos en este catalogo y sucursal.',
+                style: const TextStyle(color: AppColors.deepBlue, fontSize: 12),
               ),
             ),
           ],
@@ -435,9 +440,9 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                         ),
                       ),
                     ),
-                    const Text(
-                      'No lo tiene',
-                      style: TextStyle(
+                    Text(
+                      comparison.missingLabel(product),
+                      style: const TextStyle(
                         color: AppColors.textGray,
                         fontWeight: FontWeight.w900,
                         fontSize: 12,

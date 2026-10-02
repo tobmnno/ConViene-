@@ -11,8 +11,10 @@ import '../models/product.dart';
 import '../models/supermarket.dart';
 import '../models/shopping_context.dart';
 import 'conviene_repository.dart';
+import 'product_equivalence_repository.dart';
 
-class ApiRepository implements ConvieneRepository {
+class ApiRepository
+    implements ConvieneRepository, ProductEquivalenceRepository {
   ApiRepository({
     required this.baseUrl,
     required this.fallback,
@@ -158,10 +160,62 @@ class ApiRepository implements ConvieneRepository {
       }
       return _parseResults(rawResults);
     } on Object {
-      return fallback.searchProducts(
-        query: query,
-        storeIds: storeIds,
-        context: context,
+      throw StateError(
+        'No se pudo consultar los precios reales. Intenta nuevamente.',
+      );
+    }
+  }
+
+  @override
+  Future<EquivalentProductsResult> findEquivalentProducts({
+    required Product product,
+    required Set<String> storeIds,
+    required ShoppingContext context,
+  }) async {
+    try {
+      final uri = baseUrl.replace(
+        path: '${_basePath()}/products/equivalents',
+        query: '',
+      );
+      final response = await _client
+          .post(
+            uri,
+            headers: {'content-type': 'application/json'},
+            body: jsonEncode({
+              'product': {
+                'name': product.name,
+                if (RegExp(r'^\d{8,14}$').hasMatch(product.ean))
+                  'ean': product.ean,
+                'brand': product.brand,
+              },
+              'stores': storeIds.map(_storeIdForApi).toList(),
+              'context': {
+                'fulfillment': context.fulfillmentApiValue,
+                'coto_store': context.cotoStore,
+                'carrefour_sales_channel': context.carrefourSalesChannel,
+                if (context.hasPostalCode) 'postal_code': context.postalCode,
+              },
+            }),
+          )
+          .timeout(timeout);
+      if (response.statusCode != 200) throw StateError('Equivalence API error');
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final results = await _parseResults(decoded['results'] as List<dynamic>);
+      final rawStatus = decoded['store_status'] as Map<String, dynamic>;
+      return EquivalentProductsResult(
+        results: results,
+        storeStatus: {
+          for (final store in storeIds)
+            store: _asString(rawStatus[_storeIdForApi(store)]).isEmpty
+                ? 'error'
+                : _asString(rawStatus[_storeIdForApi(store)]),
+        },
+      );
+    } on Object {
+      // Never turn a network failure into mock prices or a claim of absence.
+      return EquivalentProductsResult(
+        results: const [],
+        storeStatus: {for (final store in storeIds) store: 'error'},
       );
     }
   }
@@ -246,7 +300,7 @@ class ApiRepository implements ConvieneRepository {
         _asString(productData['store'] ?? result['store']),
       );
       final supermarket = storesById[storeId];
-      if (price == null || name.isEmpty || supermarket == null) {
+      if (price == null || price <= 0 || name.isEmpty || supermarket == null) {
         continue;
       }
 
@@ -257,9 +311,11 @@ class ApiRepository implements ConvieneRepository {
       );
       final product = Product(
         id: productId,
-        ean: '',
+        ean: _asString(productData['ean']),
         name: name,
-        brand: _brandFromName(name),
+        brand: _asString(productData['brand']).isNotEmpty
+            ? _asString(productData['brand'])
+            : _brandFromName(name),
         presentation: presentation,
         unit: _unitFromPresentation(presentation),
         category: _categoryFromName(name),
@@ -388,6 +444,9 @@ class ApiRepository implements ConvieneRepository {
   }
 
   String _productIdFrom(Map<String, dynamic> result, String name) {
+    final ean = _asString(result['ean']);
+    if (ean.isNotEmpty)
+      return 'api_${_storeIdForApp(_asString(result['store']))}_$ean';
     final id = _asString(result['id']);
     if (id.isNotEmpty) {
       return 'api_$id';

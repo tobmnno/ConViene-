@@ -10,18 +10,18 @@ from rapidfuzz import fuzz
 from models import Product, SearchMatch
 
 _MEASURE_RE = re.compile(
-    r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>kg|kilos?|grs?|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3|u|un|unid(?:ades)?)\b",
+    r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>kg|kilos?|grs?|gramos?|gm|g|lt|lts?|litros?|l|ml|cc|cm3|u|un|unid(?:ades)?)\b",
     re.IGNORECASE,
 )
 
 _PACK_BEFORE_RE = re.compile(
     r"\b(?P<count>\d{1,2})\s*(?:x|por)\s*(?P<value>\d+(?:[.,]\d+)?)\s*"
-    r"(?P<unit>kg|kilos?|grs?|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\b",
+    r"(?P<unit>kg|kilos?|grs?|gramos?|gm|g|lt|lts?|litros?|l|ml|cc|cm3)\b",
     re.IGNORECASE,
 )
 _PACK_AFTER_RE = re.compile(
     r"\b(?P<value>\d+(?:[.,]\d+)?)\s*"
-    r"(?P<unit>kg|kilos?|grs?|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\s*"
+    r"(?P<unit>kg|kilos?|grs?|gramos?|gm|g|lt|lts?|litros?|l|ml|cc|cm3)\s*"
     r"(?:x|por)\s*(?P<count>\d{1,2})(?:\s*(?:u|un|unid(?:ades)?))?\b",
     re.IGNORECASE,
 )
@@ -79,7 +79,7 @@ _INTENT_TOKENS = {
     "yogur",
 }
 
-_MASS_UNITS = {"g": 1.0, "gr": 1.0, "grs": 1.0, "gramo": 1.0, "gramos": 1.0, "kg": 1000.0, "kilo": 1000.0, "kilos": 1000.0}
+_MASS_UNITS = {"g": 1.0, "gm": 1.0, "gr": 1.0, "grs": 1.0, "gramo": 1.0, "gramos": 1.0, "kg": 1000.0, "kilo": 1000.0, "kilos": 1000.0}
 _VOLUME_UNITS = {"ml": 1.0, "cc": 1.0, "cm3": 1.0, "l": 1000.0, "lt": 1000.0, "lts": 1000.0, "litro": 1000.0, "litros": 1000.0}
 _COUNT_UNITS = {"u", "un", "unid", "unidad", "unidades"}
 
@@ -121,7 +121,12 @@ _VARIANT_ALIASES = {
     },
     "intensity": {"suave": "suave", "intensa": "intensa", "fuerte": "fuerte"},
     "stems": {"conpalo": "with_stems", "sinpalo": "without_stems"},
-    "special": {"protein": "protein", "proteina": "protein", "barista": "barista"},
+    "special": {
+        "protein": "protein", "proteina": "protein", "barista": "barista",
+        "calcio": "calcio", "colageno": "colageno", "hierro": "hierro",
+        "prebioticos": "prebioticos", "multivit": "multivit",
+        "multivitaminas": "multivit", "multidefensas": "multidefensas",
+    },
     "form": {"banada": "coated", "banadas": "coated", "banado": "coated", "rellena": "filled", "rellenas": "filled"},
 }
 
@@ -134,6 +139,7 @@ _GENERIC_IDENTITY_TOKENS = {
     "barista", "vainilla", "chocolate", "frutilla", "banana", "coco", "limon", "naranja",
     "con", "palo", "conpalo", "sinpalo", "banada", "banadas", "banado",
     "mas", "sachet", "botella", "carton", "pote", "lata", "caja", "bolsa",
+    "larga", "vida", "uat", "uht", "ttb", "tetra", "brick", "fortificada", "parcialmente",
 }
 
 _PERCENT_RE = re.compile(r"\b(\d+(?:[.,]\d+)?)\s*%")
@@ -204,6 +210,7 @@ def extract_measurement(text: str) -> tuple[float | None, str | None]:
 def normalize_text(text: str) -> NormalizedText:
     raw = (text or "").strip()
     stripped = _strip_accents(raw).lower()
+    stripped = re.sub(r"\b(?:las\s+)?3\s+ninas\b", "tres ninas", stripped)
     percentages = tuple(float(value.replace(",", ".")) for value in _PERCENT_RE.findall(stripped))
     size_value, size_unit = extract_measurement(raw)
     _, _, pack_count, item_size_value = _pack_measurement(raw)
@@ -273,10 +280,18 @@ def _collapsed_tokens(value: NormalizedText) -> set[str]:
 
 def _variants(value: NormalizedText) -> dict[str, set[str]]:
     tokens = _collapsed_tokens(value)
-    return {
+    variants = {
         dimension: {canonical for token, canonical in aliases.items() if token in tokens}
         for dimension, aliases in _VARIANT_ALIASES.items()
     }
+    if "leche" in tokens and not tokens.intersection({"crema", "dulce", "lactosa"}):
+        for percentage in value.percentages:
+            milk = {0.0: "descremada", 1.0: "liviana", 2.0: "semidescremada", 3.0: "entera"}.get(percentage)
+            if milk:
+                variants["milk"].add(milk)
+                if milk == "liviana":
+                    variants["diet"].add("light")
+    return variants
 
 
 def _variant_conflict(query: NormalizedText, candidate: NormalizedText) -> bool:
@@ -359,13 +374,44 @@ def _is_eligible_match(query: NormalizedText, candidate: NormalizedText) -> bool
         return False
     query_tokens = set(query.text.split())
     candidate_tokens = set(candidate.text.split())
-    return not any(token in _INTENT_TOKENS and token not in candidate_tokens for token in query_tokens)
+    return not any(token in _INTENT_TOKENS - {"entera", "descremada"}
+                   and token not in candidate_tokens for token in query_tokens)
 
 
 def products_are_comparable(reference: str, candidate: str) -> bool:
     reference_norm = normalize_text(reference)
     candidate_norm = normalize_text(candidate)
-    return _is_eligible_match(reference_norm, candidate_norm) and not _missing_requested_variant(reference_norm, candidate_norm)
+    return (_is_eligible_match(reference_norm, candidate_norm)
+            and not _missing_requested_variant(reference_norm, candidate_norm)
+            and not _has_unrequested_variant(reference_norm, candidate_norm))
+
+
+def valid_gtin(value: str | None) -> str | None:
+    code = str(value or "").strip()
+    if not code.isdigit() or len(code) not in {8, 12, 13, 14}:
+        return None
+    checksum = sum(int(digit) * (3 if index % 2 == 0 else 1)
+                   for index, digit in enumerate(reversed(code[:-1])))
+    return code.lstrip("0") if (checksum + int(code[-1])) % 10 == 0 else None
+
+
+def same_catalog_product(reference, candidate: Product) -> bool:
+    reference_ean = valid_gtin(reference.ean)
+    candidate_ean = valid_gtin(candidate.ean)
+    if reference_ean and candidate_ean:
+        return reference_ean == candidate_ean
+    if reference.brand and candidate.brand:
+        if normalize_text(reference.brand).text != normalize_text(candidate.brand).text:
+            return False
+    # Compound types and special formulas must not be interchangeable.
+    markers = ("crema", "dulce", "polvo", "infantil", "primeros",
+               "repostero", "chocolatada", "almendras")
+    left, right = normalize_text(reference.name), normalize_text(candidate.name)
+    left_tokens, right_tokens = set(left.text.split()), set(right.text.split())
+    for marker in markers:
+        if (marker in left_tokens) != (marker in right_tokens):
+            return False
+    return products_are_comparable(reference.name, candidate.name)
 
 
 def score_product_match(query: str, product: Product | dict) -> SearchMatch:

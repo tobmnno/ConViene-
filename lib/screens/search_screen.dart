@@ -541,7 +541,7 @@ class _ResultCardState extends State<_ResultCard> {
                   children: [
                     IconButton.filled(
                       tooltip: 'Agregar al changuito',
-                      onPressed: _handleAdd,
+                      onPressed: _isAdded ? null : _handleAdd,
                       style: IconButton.styleFrom(
                         backgroundColor: _isAdded
                             ? AppColors.green
@@ -607,11 +607,11 @@ class _ResultCardState extends State<_ResultCard> {
     if (!price.stock) {
       return 'Sin stock informado para la ubicacion elegida';
     }
-    if (price.branchId != null && price.branchId!.isNotEmpty) {
-      return 'Stock y precio para sucursal ${price.branchId}';
-    }
     if (price.pricingScope == 'online_sales_channel') {
       return 'Precio del canal online seleccionado';
+    }
+    if (price.branchId != null && price.branchId!.isNotEmpty) {
+      return 'Stock y precio para sucursal ${price.branchId}';
     }
     return 'Stock sujeto a disponibilidad del supermercado';
   }

@@ -8,9 +8,10 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-from models import CompareRequest, CompareResponse, DiscountsResponse, SearchRequest, SearchResponse, ShoppingContext
-from services.catalog import rank_search_results
+from models import CompareRequest, CompareResponse, DiscountsResponse, SearchRequest, SearchResponse, ShoppingContext, EquivalentsRequest, EquivalentsResponse, ProductReference
+from services.catalog import rank_search_results, extract_measurement
 from services.comparison import compare_cart
+from services.equivalents import find_equivalents, reference_queries
 from services.discounts import clear_discount_cache, scrape_discounts
 from services.monitoring import status_snapshot
 from services.locations import nearby_coto_branches
@@ -55,7 +56,16 @@ async def root():
 
 
 def _build_search_response(query: str, stores: list[str], rows, limit: int, context: ShoppingContext | None = None) -> SearchResponse:
-    matches = rank_search_results(query, rows, limit=limit)
+    ranked = rank_search_results(query, rows, limit=len(rows))
+    # Reserve coverage for each source without discarding the relevance order.
+    coverage = {store: next((index for index, match in enumerate(ranked) if match.product.store == store), None) for store in stores}
+    reserved = {index for index in coverage.values() if index is not None} if limit >= len(stores) else set()
+    selected = set(reserved)
+    for index in range(len(ranked)):
+        if len(selected) >= limit:
+            break
+        selected.add(index)
+    matches = [match for index, match in enumerate(ranked) if index in selected]
     return SearchResponse(
         query=query,
         stores=stores,
@@ -63,6 +73,20 @@ def _build_search_response(query: str, stores: list[str], rows, limit: int, cont
         results=matches,
         context=context,
     )
+
+
+async def _search_catalogs(query, stores, limit, engine, context):
+    rows = await scrape_query(query, stores, limit, True, engine, context)
+    # Size-specific queries often include retailer-only descriptors. Retry only
+    # sources with no eligible result, while still ranking against the user's query.
+    if extract_measurement(query)[0] is not None:
+        found = {match.product.store for match in rank_search_results(query, rows, limit=len(rows))}
+        missing = [store for store in stores if store not in found]
+        if missing:
+            compact = reference_queries(ProductReference(name=query))[0]
+            if compact.casefold() != query.casefold():
+                rows.extend(await scrape_query(compact, missing, 50, True, engine, context))
+    return rows
 
 
 @app.get("/health")
@@ -157,7 +181,7 @@ async def discounts(
 
 @app.get("/search", response_model=SearchResponse)
 async def search(
-    q: str = Query(min_length=2),
+    q: str = Query(min_length=2, max_length=200),
     limit: int = Query(default=20, ge=1, le=50),
     stores: list[str] | None = Query(default=None),
     engine: str = Query(default="camoufox", pattern="^(camoufox|chromium)$"),
@@ -174,7 +198,7 @@ async def search(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     context = ShoppingContext(postal_code=postal_code, fulfillment=fulfillment, coto_store=coto_store, carrefour_sales_channel=carrefour_sales_channel, latitude=latitude, longitude=longitude)
-    rows = await scrape_query(q, selected_stores, limit, True, engine, context.model_dump(exclude_none=True))
+    rows = await _search_catalogs(q, selected_stores, limit, engine, context.model_dump(exclude_none=True))
     return _build_search_response(q, selected_stores, rows, limit, context)
 
 
@@ -186,13 +210,21 @@ async def search_body(payload: SearchRequest):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     context = payload.context or ShoppingContext()
-    rows = await scrape_query(payload.query, selected_stores, payload.limit, True, "camoufox", context.model_dump(exclude_none=True))
+    rows = await _search_catalogs(payload.query, selected_stores, payload.limit, "camoufox", context.model_dump(exclude_none=True))
     return _build_search_response(payload.query, selected_stores, rows, payload.limit, context)
 
 
 @app.post("/compare", response_model=CompareResponse)
 async def compare(payload: CompareRequest):
     try:
-        return await compare_cart(payload.items, payload.stores, payload.limit, True, "camoufox")
+        return await compare_cart(payload.items, payload.stores, payload.limit, True, "camoufox", payload.context)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/products/equivalents", response_model=EquivalentsResponse)
+async def equivalents(payload: EquivalentsRequest):
+    try:
+        return await find_equivalents(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

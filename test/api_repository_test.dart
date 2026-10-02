@@ -69,20 +69,20 @@ void main() {
     expect(prices.single.storeId, 'lagallega');
   });
 
-  test('falls back to mock results when scraper API is unavailable', () async {
+  test('does not invent prices when scraper API is unavailable', () async {
     final repository = ApiRepository(
       baseUrl: Uri.parse('http://127.0.0.1:8000'),
       fallback: MockRepository(),
       client: MockClient((request) async => http.Response('nope', 500)),
     );
 
-    final results = await repository.searchProducts(
-      query: 'leche entera',
-      storeIds: {'coto', 'carrefour', 'lagallega'},
+    await expectLater(
+      repository.searchProducts(
+        query: 'leche entera',
+        storeIds: {'coto', 'carrefour', 'lagallega'},
+      ),
+      throwsStateError,
     );
-
-    expect(results, isNotEmpty);
-    expect(results.map((result) => result.supermarket.id), contains('coto'));
   });
 
   test('sends the selected purchase context to the scraper API', () async {
