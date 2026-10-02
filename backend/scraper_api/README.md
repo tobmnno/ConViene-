@@ -15,6 +15,8 @@ aplicacion Flutter.
 - Obtener promociones y validar su vigencia.
 - Servir imagenes mediante un proxy con cache.
 - Mantener una cache corta de busquedas y descuentos.
+- Actualizar y auditar el feed de promociones de La Gallega.
+- Registrar salud, latencia y errores de las fuentes externas.
 
 ## Requisitos
 
@@ -83,6 +85,10 @@ Parametros:
 | `limit` | No | Resultados, entre 1 y 50. Valor por defecto: 20. |
 | `stores` | No | Parametro repetible con los supermercados elegidos. |
 | `engine` | No | `camoufox` o `chromium`. Valor por defecto: `camoufox`. |
+| `postal_code` | No | Codigo postal argentino de cuatro digitos. |
+| `fulfillment` | No | `pickup` o `delivery`. Valor por defecto: `pickup`. |
+| `coto_store` | No | Sucursal Coto usada para precio y stock. Valor por defecto: `200`. |
+| `carrefour_sales_channel` | No | Canal de venta de Carrefour. Valor por defecto: `1`. |
 
 ```powershell
 Invoke-RestMethod `
@@ -90,7 +96,10 @@ Invoke-RestMethod `
 ```
 
 Cada resultado incluye el producto original, puntaje de relevancia, consulta
-normalizada, nombre normalizado y compatibilidad de tamaño.
+normalizada, nombre normalizado y compatibilidad de tamaño. Tambien informa
+`branch_id`, `pricing_scope` y, cuando el supermercado lo publica,
+`delivery_available`; asi una cotizacion sin sucursal no se presenta como stock
+local confirmado.
 
 ### `POST /search`
 
@@ -149,6 +158,19 @@ GET /image?url=https://dominio-del-supermercado/imagen.jpg
 Solo acepta URLs HTTP o HTTPS, valida que la respuesta sea una imagen y agrega
 cache de navegador por 24 horas.
 
+### Operacion
+
+- `GET /operations` devuelve estado de cada fuente, latencia, errores recientes
+  y alertas luego de dos fallas consecutivas.
+- `POST /operations/promotions/refresh` fuerza la actualizacion del feed de
+  promociones de La Gallega.
+
+Al iniciar, y luego cada seis horas, el backend actualiza ese feed estructurado.
+Se puede modificar el intervalo con `CONVIENE_PROMOTIONS_REFRESH_SECONDS`
+(minimo 300 segundos). El ultimo catalogo valido se conserva en
+`data/runtime/la-gallega-catalog.json` y los eventos se registran en
+`data/runtime/scraper-events.jsonl`; ambos archivos se excluyen de Git.
+
 ## Supermercados y alias
 
 | Comercio | ID canonico | Alias aceptados |
@@ -181,8 +203,8 @@ materiales de presentacion.
 - Las tiendas se consultan en paralelo.
 - Los productos de un changuito se comparan en paralelo.
 - Los detalles de La Gallega se descargan con un grupo limitado de workers.
-- Las busquedas se almacenan durante 120 segundos.
-- Los descuentos se almacenan durante 30 minutos por fecha y conjunto de tiendas.
+- Las busquedas se almacenan durante 120 segundos y consideran el contexto de sucursal/canal.
+- Los descuentos se almacenan durante 5 minutos por fecha y conjunto de tiendas.
 - Las solicitudes simultaneas identicas comparten el mismo trabajo en curso.
 
 La cache vive en memoria y se elimina al reiniciar el proceso.
@@ -192,8 +214,8 @@ La cache vive en memoria y se elimina al reiniciar el proceso.
 - Coto: endpoint oficial de promociones multicanal.
 - Carrefour: archivo versionado para septiembre de 2026 y entidades oficiales
   para fechas no cubiertas por el archivo.
-- La Gallega: archivo versionado para septiembre de 2026 y pagina de beneficios
-  para fechas no cubiertas por el archivo.
+- La Gallega: feed estructurado vigente, legal de Banco Coinag y catalogo
+  versionado como respaldo cuando una fuente no esta disponible.
 
 Los datos versionados viven en `data/`. El backend interpreta dias, fechas
 especificas, porcentajes, cuotas, topes, compras minimas y medios compatibles.

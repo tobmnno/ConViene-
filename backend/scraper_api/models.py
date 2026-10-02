@@ -12,13 +12,26 @@ class Product(BaseModel):
     url: Optional[str] = None
     image: Optional[str] = None
     available: Optional[bool] = True
+    branch_id: Optional[str] = None
+    pricing_scope: Optional[str] = None
+    delivery_available: Optional[bool] = None
     scraped_at: str
+
+
+class ShoppingContext(BaseModel):
+    postal_code: Optional[str] = Field(default=None, pattern=r"^\d{4}$")
+    fulfillment: str = Field(default="pickup", pattern=r"^(pickup|delivery)$")
+    coto_store: Optional[str] = Field(default=None, pattern=r"^\d{1,6}$")
+    carrefour_sales_channel: Optional[str] = Field(default=None, pattern=r"^\d{1,4}$")
+    latitude: Optional[float] = Field(default=None, ge=-90, le=90)
+    longitude: Optional[float] = Field(default=None, ge=-180, le=180)
 
 
 class SearchRequest(BaseModel):
     query: str = Field(min_length=2, max_length=200)
     limit: int = Field(default=20, ge=1, le=100)
     stores: Optional[list[str]] = None
+    context: Optional[ShoppingContext] = None
 
 
 class SearchMatch(BaseModel):
@@ -35,6 +48,7 @@ class SearchResponse(BaseModel):
     stores: list[str]
     count: int
     results: list[SearchMatch]
+    context: Optional[ShoppingContext] = None
 
 
 class CartItem(BaseModel):

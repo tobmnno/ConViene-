@@ -10,6 +10,9 @@ class ProductPrice {
     required this.stock,
     required this.url,
     required this.fechaActualizacion,
+    this.branchId,
+    this.pricingScope,
+    this.deliveryAvailable,
   });
 
   final String storeId;
@@ -19,6 +22,9 @@ class ProductPrice {
   final bool stock;
   final String url;
   final DateTime fechaActualizacion;
+  final String? branchId;
+  final String? pricingScope;
+  final bool? deliveryAvailable;
 }
 
 class SearchResult {

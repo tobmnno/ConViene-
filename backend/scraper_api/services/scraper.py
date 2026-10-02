@@ -6,6 +6,7 @@ import time
 from contextlib import asynccontextmanager
 
 from scrapers import SCRAPERS, STORE_NAMES
+from services.monitoring import timed_check
 
 STORE_ALIASES = {
     "carrefour": "carrefour",
@@ -17,6 +18,8 @@ STORE_ALIASES = {
 }
 
 _SEARCH_CACHE_TTL_SECONDS = 120
+_DIRECT_STORE_TIMEOUT_SECONDS = 14
+_BROWSER_STORE_TIMEOUT_SECONDS = 38
 _search_cache: dict[tuple, tuple[float, list]] = {}
 _search_locks: dict[tuple, asyncio.Lock] = {}
 
@@ -72,7 +75,10 @@ async def open_browser(headless: bool = True, engine: str = "camoufox"):
 async def _search_one_store(context, store_name: str, query: str, limit: int):
     page = await context.new_page()
     try:
-        return await SCRAPERS[store_name].search(page, query, limit)
+        return await asyncio.wait_for(
+            SCRAPERS[store_name].search(page, query, limit),
+            timeout=_BROWSER_STORE_TIMEOUT_SECONDS,
+        )
     finally:
         await page.close()
 
@@ -95,13 +101,20 @@ async def scrape_query_with_browser(browser, query: str, stores: list[str], limi
         await context.close()
 
 
-async def _search_one_direct_store(store_name: str, query: str, limit: int):
+async def _search_one_direct_store(store_name: str, query: str, limit: int, context: dict | None):
     direct_search = getattr(SCRAPERS[store_name], "search_direct", None)
     if direct_search is None:
         return None
+    finish = timed_check(f"products.{store_name}")
     try:
-        return await direct_search(query, limit)
+        rows = await asyncio.wait_for(
+            direct_search(query, limit, context=context),
+            timeout=_DIRECT_STORE_TIMEOUT_SECONDS,
+        )
+        finish(success=rows is not None, count=len(rows or []), detail="direct")
+        return rows
     except Exception as exc:
+        finish(success=False, detail=f"{type(exc).__name__}: {exc}")
         print(f"{store_name}: DIRECT ERROR {type(exc).__name__}: {exc}", flush=True)
         return None
 
@@ -112,9 +125,18 @@ async def scrape_query(
     limit: int,
     headless: bool,
     engine: str = "camoufox",
+    context: dict | None = None,
 ):
     selected_stores = resolve_stores(stores)
-    cache_key = (query.strip().casefold(), tuple(selected_stores), limit)
+    # Coordinates only select a branch before this point. Including them here
+    # would create a distinct cache entry for every GPS reading.
+    cache_context = {
+        key: value
+        for key, value in (context or {}).items()
+        if key not in {"latitude", "longitude", "location_accuracy_meters"}
+    }
+    context_key = tuple(sorted(cache_context.items()))
+    cache_key = (query.strip().casefold(), tuple(selected_stores), limit, context_key)
     cached = _search_cache.get(cache_key)
     now = time.monotonic()
     if cached and now - cached[0] < _SEARCH_CACHE_TTL_SECONDS:
@@ -126,7 +148,7 @@ async def scrape_query(
         now = time.monotonic()
         if cached and now - cached[0] < _SEARCH_CACHE_TTL_SECONDS:
             return list(cached[1])
-        rows = await _scrape_query_uncached(query, selected_stores, limit, headless, engine)
+        rows = await _scrape_query_uncached(query, selected_stores, limit, headless, engine, context)
         _search_cache[cache_key] = (time.monotonic(), list(rows))
         if len(_search_cache) > 200:
             expired = [key for key, (created, _) in _search_cache.items() if now - created >= _SEARCH_CACHE_TTL_SECONDS]
@@ -136,9 +158,9 @@ async def scrape_query(
         return rows
 
 
-async def _scrape_query_uncached(query, selected_stores, limit, headless, engine):
+async def _scrape_query_uncached(query, selected_stores, limit, headless, engine, context=None):
     direct_tasks = [
-        asyncio.create_task(_search_one_direct_store(store, query, limit))
+        asyncio.create_task(_search_one_direct_store(store, query, limit, context))
         for store in selected_stores
     ]
     direct_results = await asyncio.gather(*direct_tasks)

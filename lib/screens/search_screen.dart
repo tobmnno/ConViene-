@@ -120,6 +120,13 @@ class _SearchScreenState extends State<SearchScreen> {
           const SizedBox(height: 14),
           _SortTabs(value: state.searchSort, onChanged: state.setSearchSort),
           const SizedBox(height: 14),
+          if (state.lastError != null) ...[
+            _SearchError(
+              message: state.lastError!,
+              onRetry: () => unawaited(state.retrySearch()),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (!state.paymentSetupComplete || state.activePaymentMethods.isEmpty)
             const _NoPaymentMethodsHint(),
           if (state.isSearching)
@@ -226,6 +233,42 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 }
 
+class _SearchError extends StatelessWidget {
+  const _SearchError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4ED),
+        border: Border.all(color: const Color(0xFFFBC7A5)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Color(0xFFB54708)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: AppColors.deepBlue, fontSize: 12),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Reintentar',
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh, color: AppColors.deepBlue),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AnimatedSuccessIcon extends StatefulWidget {
   const _AnimatedSuccessIcon();
 
@@ -326,27 +369,32 @@ class _SortChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          height: 42,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? AppColors.blue : AppColors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: selected ? AppColors.blue : AppColors.line,
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected ? AppColors.blue : AppColors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected ? AppColors.blue : AppColors.line,
+              ),
             ),
-          ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: selected ? AppColors.white : AppColors.deepBlue,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: selected ? AppColors.white : AppColors.deepBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ),
@@ -472,6 +520,19 @@ class _ResultCardState extends State<_ResultCard> {
                           fontSize: 12,
                         ),
                       ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _availabilityLabel(widget.result.price),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: widget.result.price.stock
+                              ? AppColors.textGray
+                              : const Color(0xFFB54708),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -540,6 +601,19 @@ class _ResultCardState extends State<_ResultCard> {
         ],
       ),
     );
+  }
+
+  String _availabilityLabel(ProductPrice price) {
+    if (!price.stock) {
+      return 'Sin stock informado para la ubicacion elegida';
+    }
+    if (price.branchId != null && price.branchId!.isNotEmpty) {
+      return 'Stock y precio para sucursal ${price.branchId}';
+    }
+    if (price.pricingScope == 'online_sales_channel') {
+      return 'Precio del canal online seleccionado';
+    }
+    return 'Stock sujeto a disponibilidad del supermercado';
   }
 }
 

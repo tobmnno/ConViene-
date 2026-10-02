@@ -26,6 +26,8 @@ REQUEST_HEADERS = {
     ),
 }
 
+DIRECT_HTTP_TIMEOUT_SECONDS = 12
+
 
 async def search_via_box(page: Page, base_url: str, query: str):
     await page.goto(base_url, wait_until="domcontentloaded", timeout=60000)
@@ -88,13 +90,13 @@ def _image_for_vtex_item(item: dict | None):
     return images[0].get("imageUrl")
 
 
-def _carrefour_api_search(query: str, limit: int):
+def _carrefour_api_search(query: str, limit: int, context: dict | None = None):
     encoded = quote(query)
     response = requests.get(
         f"https://www.carrefour.com.ar/api/catalog_system/pub/products/search/{encoded}",
-        params={"_from": 0, "_to": max(limit - 1, 0)},
+        params={"_from": 0, "_to": max(limit - 1, 0), "sc": (context or {}).get("carrefour_sales_channel", "1")},
         headers=REQUEST_HEADERS,
-        timeout=25,
+        timeout=DIRECT_HTTP_TIMEOUT_SECONDS,
     )
     if response.status_code not in {200, 206}:
         return None
@@ -125,6 +127,9 @@ def _carrefour_api_search(query: str, limit: int):
                 url=raw_product.get("link"),
                 image=_image_for_vtex_item(item),
                 available=offer.get("IsAvailable", True) is not False,
+                branch_id=f"sales-channel-{(context or {}).get('carrefour_sales_channel', '1')}",
+                pricing_scope="online_sales_channel",
+                delivery_available=offer.get("IsAvailable", True) is not False if (context or {}).get("fulfillment") == "delivery" else None,
                 scraped_at=datetime.now(timezone.utc).isoformat(),
             )
         )
@@ -147,7 +152,7 @@ def _coto_query_candidates(query: str):
     return deduped
 
 
-def _coto_price(data: dict):
+def _coto_price(data: dict, store_id: str):
     discounts = data.get("discounts") or []
     for discount in discounts:
         price = parse_price(discount.get("discountPrice"))
@@ -155,7 +160,7 @@ def _coto_price(data: dict):
             return price, parse_price(discount.get("regularPriceText"))
 
     prices = data.get("price") or []
-    preferred = next((item for item in prices if str(item.get("store")) == "200"), None)
+    preferred = next((item for item in prices if str(item.get("store")) == store_id), None)
     price_row = preferred or (prices[0] if prices else {})
     price = price_row.get("listPrice", data.get("product_list_price"))
     try:
@@ -164,7 +169,8 @@ def _coto_price(data: dict):
         return None, None
 
 
-def _coto_api_search(query: str, limit: int):
+def _coto_api_search(query: str, limit: int, context: dict | None = None):
+    store_id = str((context or {}).get("coto_store") or "200")
     had_response = False
     for candidate in _coto_query_candidates(query):
         response = requests.get(
@@ -173,12 +179,12 @@ def _coto_api_search(query: str, limit: int):
             params={
                 "key": "key_r6xzz4IAoTWcipni",
                 "num_results_per_page": str(limit),
-                "pre_filter_expression": '{"name":"store_availability","value":"200"}',
+                "pre_filter_expression": '{"name":"store_availability","value":"' + store_id + '"}',
                 "c": "cio-fe-web-coto-conviene",
-                "us": "200",
+                "us": store_id,
             },
             headers=REQUEST_HEADERS,
-            timeout=25,
+            timeout=DIRECT_HTTP_TIMEOUT_SECONDS,
         )
         if response.status_code != 200:
             continue
@@ -187,7 +193,7 @@ def _coto_api_search(query: str, limit: int):
         rows = []
         for result in (response.json().get("response") or {}).get("results") or []:
             data = result.get("data") or {}
-            price, regular_price = _coto_price(data)
+            price, regular_price = _coto_price(data, store_id)
             if price is None:
                 continue
             product_url = data.get("url")
@@ -206,7 +212,10 @@ def _coto_api_search(query: str, limit: int):
                     unit=data.get("product_unit_of_measure"),
                     url=f"https://www.coto.com.ar/productos{product_url}" if product_url else "https://www.coto.com.ar/",
                     image=data.get("image_url") or data.get("product_large_image_url") or data.get("product_medium_image_url"),
-                    available="200" in [str(store) for store in data.get("store_availability") or ["200"]],
+                    available=store_id in [str(store) for store in data.get("store_availability") or [store_id]],
+                    branch_id=store_id,
+                    pricing_scope="selected_store",
+                    delivery_available=None,
                     scraped_at=datetime.now(timezone.utc).isoformat(),
                 )
             )
@@ -224,12 +233,16 @@ def _clean_html_text(value: str | None):
 
 
 def _lagallega_suggestions(session: requests.Session, query: str, limit: int):
-    session.get("https://www.lagallega.com.ar/", headers=REQUEST_HEADERS, timeout=25)
+    session.get(
+        "https://www.lagallega.com.ar/",
+        headers=REQUEST_HEADERS,
+        timeout=DIRECT_HTTP_TIMEOUT_SECONDS,
+    )
     response = session.get(
         "https://www.lagallega.com.ar/ProdAutoCompleta.asp",
         params={"cB": query, "cF": "FormBus"},
         headers=REQUEST_HEADERS,
-        timeout=25,
+        timeout=DIRECT_HTTP_TIMEOUT_SECONDS,
     )
     if response.status_code != 200 or "AutoCompItem" not in response.text:
         return None if "top.location.href" in response.text else []
@@ -279,7 +292,7 @@ def _lagallega_detail(session: requests.Session | None, product_id: str):
     }
 
 
-def _lagallega_api_search(query: str, limit: int):
+def _lagallega_api_search(query: str, limit: int, context: dict | None = None):
     with requests.Session() as session:
         suggestions = _lagallega_suggestions(session, query, limit)
         if suggestions is None:
@@ -310,6 +323,8 @@ def _lagallega_api_search(query: str, limit: int):
                     url=detail.get("url") or f"https://www.lagallega.com.ar/productosdet.asp?Pr={suggestion['id']}",
                     image=detail.get("image") or suggestion["image"],
                     available=True,
+                    pricing_scope="catalog_no_branch",
+                    delivery_available=None,
                     scraped_at=datetime.now(timezone.utc).isoformat(),
                 )
             )
@@ -320,8 +335,8 @@ class CarrefourScraper(BaseScraper):
     store = "carrefour"
     base_url = "https://www.carrefour.com.ar/"
 
-    async def search_direct(self, query: str, limit: int = 30):
-        return await asyncio.to_thread(_carrefour_api_search, query, limit)
+    async def search_direct(self, query: str, limit: int = 30, context: dict | None = None):
+        return await asyncio.to_thread(_carrefour_api_search, query, limit, context)
 
     async def search(self, page: Page, query: str, limit: int = 30):
         api_results = await self.search_direct(query, limit)
@@ -346,8 +361,8 @@ class CotoScraper(BaseScraper):
     store = "coto"
     base_url = "https://www.coto.com.ar/"
 
-    async def search_direct(self, query: str, limit: int = 30):
-        return await asyncio.to_thread(_coto_api_search, query, limit)
+    async def search_direct(self, query: str, limit: int = 30, context: dict | None = None):
+        return await asyncio.to_thread(_coto_api_search, query, limit, context)
 
     async def search(self, page: Page, query: str, limit: int = 30):
         api_results = await self.search_direct(query, limit)
@@ -372,8 +387,8 @@ class LaGallegaScraper(BaseScraper):
     store = "la_gallega"
     base_url = "https://www.lagallega.com.ar/"
 
-    async def search_direct(self, query: str, limit: int = 30):
-        return await asyncio.to_thread(_lagallega_api_search, query, limit)
+    async def search_direct(self, query: str, limit: int = 30, context: dict | None = None):
+        return await asyncio.to_thread(_lagallega_api_search, query, limit, context)
 
     async def search(self, page: Page, query: str, limit: int = 30):
         api_results = await self.search_direct(query, limit)

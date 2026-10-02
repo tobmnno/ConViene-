@@ -35,7 +35,10 @@ class _AppShellState extends State<AppShell> {
     return Scaffold(
       body: SafeArea(
         child: state.isBootstrapping
-            ? const _BootstrappingView()
+            ? _BootstrappingView(
+                error: state.lastError,
+                onRetry: state.initialize,
+              )
             : AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 reverseDuration: const Duration(milliseconds: 210),
@@ -162,7 +165,10 @@ class _CartNavIcon extends StatelessWidget {
 }
 
 class _BootstrappingView extends StatefulWidget {
-  const _BootstrappingView();
+  const _BootstrappingView({this.error, required this.onRetry});
+
+  final String? error;
+  final Future<void> Function() onRetry;
 
   @override
   State<_BootstrappingView> createState() => _BootstrappingViewState();
@@ -193,8 +199,34 @@ class _BootstrappingViewState extends State<_BootstrappingView> {
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 220),
       opacity: _visible ? 1 : 0,
-      child: const Center(
-        child: CircularProgressIndicator(color: AppColors.blue),
+      child: Center(
+        child: widget.error == null
+            ? const CircularProgressIndicator(color: AppColors.blue)
+            : Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.cloud_off_outlined,
+                      color: AppColors.deepBlue,
+                      size: 38,
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      widget.error!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.deepBlue),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: () => widget.onRetry(),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
+              ),
       ),
     );
   }

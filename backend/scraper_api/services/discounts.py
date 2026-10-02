@@ -15,6 +15,7 @@ import requests
 
 from models import DiscountPromotion, DiscountsResponse
 from scrapers.stores import REQUEST_HEADERS
+from services.refresh import refresh_lagallega_catalog
 from services.scraper import resolve_stores
 
 
@@ -97,6 +98,10 @@ _DISCOUNT_CACHE_TTL_SECONDS = 300
 _discount_cache: dict[tuple, tuple[float, DiscountsResponse]] = {}
 
 
+def clear_discount_cache() -> None:
+    _discount_cache.clear()
+
+
 def scrape_discounts(
     stores: list[str] | str | None = None,
     selected_date: date | None = None,
@@ -124,13 +129,21 @@ def scrape_discounts(
                 rows = _scrape_coto(current_date, store_warnings)
             else:
                 rows = _scrape_lagallega(current_date, store_warnings)
+                catalog = refresh_lagallega_catalog()
+                catalog_rows = _lagallega_blink_promotions(catalog, current_date)
+                if catalog_rows:
+                    rows.extend(catalog_rows)
+                else:
+                    store_warnings.append("la_gallega: el feed automatico no devolvio promociones vigentes")
                 static_covered, static_rows = _static_promotions(store, current_date)
                 if static_covered:
                     live_entities = {_normalize(row.entity) for row in rows}
-                    rows.extend(
+                    fallback_rows = [
                         row for row in static_rows if _normalize(row.entity) not in live_entities
-                    )
-                    store_warnings.append("la_gallega: promociones cargadas desde el catalogo local")
+                    ]
+                    rows.extend(fallback_rows)
+                    if fallback_rows:
+                        store_warnings.append("la_gallega: promociones cargadas desde el catalogo local")
         except Exception as exc:
             rows = []
             store_warnings.append(f"{store}: no se pudieron leer descuentos ({type(exc).__name__})")
@@ -153,6 +166,79 @@ def scrape_discounts(
     )
     _discount_cache[cache_key] = (time.monotonic(), response)
     return response
+
+
+def _lagallega_blink_promotions(catalog: dict[str, Any], selected_date: date) -> list[DiscountPromotion]:
+    benefits = catalog.get("benefits") if isinstance(catalog, dict) else None
+    if not isinstance(benefits, list):
+        return []
+    source_url = _clean_text(catalog.get("source_url")) or LAGALLEGA_URL
+    scraped_at = _clean_text(catalog.get("checked_at")) or datetime.now(timezone.utc).isoformat()
+    rows: list[DiscountPromotion] = []
+    for raw in benefits:
+        if not isinstance(raw, dict):
+            continue
+        conditions = _clean_text(raw.get("condicion"))
+        declared_end_date = _parse_iso_date(raw.get("validUntil"))
+        end_date = declared_end_date or _extract_end_date(conditions, selected_date.year)
+        start_date = _extract_start_date(conditions, selected_date) or date(selected_date.year, 1, 1)
+        if end_date is None:
+            end_date = date(selected_date.year, 12, 31)
+        if (declared_end_date is None and _is_clearly_expired(conditions, selected_date)) or not start_date <= selected_date <= end_date:
+            continue
+        weekdays = _weekdays_from_text(_clean_text(raw.get("cuando")))
+        if not weekdays or selected_date.weekday() + 1 not in weekdays:
+            continue
+
+        source_collection = _normalize(_clean_text(raw.get("sourceCollection")))
+        entity = "MODO" if "modo" in source_collection else _clean_text(raw.get("bankName")) or "Medio de pago"
+        card_name = _clean_text(raw.get("cardName"))
+        canonical_card = _canonical_static_entity(card_name) if card_name else ""
+        groups = [[entity]]
+        if canonical_card and canonical_card not in {"Tarjeta", "Credito", "Debito"}:
+            groups.append([canonical_card])
+        compatible_entities = _unique([value for group in groups for value in group])
+        percentage = _percent_from_text(_clean_text(raw.get("rewardRate")) or _clean_text(raw.get("valor")) or conditions) or 0
+        cap = _as_float(raw.get("tope")) or 0
+        if not cap:
+            caps = raw.get("caps")
+            if isinstance(caps, list) and caps and isinstance(caps[0], dict):
+                cap = _as_float(caps[0].get("amount")) or 0
+        minimum_data = raw.get("minimumPurchaseAmount")
+        minimum_purchase = _as_float(minimum_data.get("amount")) if isinstance(minimum_data, dict) else 0
+        uses = [_normalize(value) for value in _listify(raw.get("usos"))]
+        channel = "Online" if "online" in uses else "Sucursal" if "presencial" in uses else ""
+        payment_type = "wallet" if _normalize(entity) in {"modo", "cuenta dni"} else "bank"
+        payment_types = [payment_type, "card"] if card_name else [payment_type]
+        benefit = _benefit_text(_clean_text(raw.get("benefit")), percentage)
+        variant = f" ({card_name})" if card_name and _normalize(entity) == "modo" else ""
+        title = f"{entity}{variant} - {benefit}"
+        rows.append(
+            DiscountPromotion(
+                id=f"blink_lagallega_{_slug(str(raw.get('id') or title))}",
+                store="la_gallega",
+                title=title[:120],
+                benefit=benefit,
+                payment_type=payment_type,
+                entity=entity,
+                percentage=percentage,
+                refund_cap=cap,
+                minimum_purchase=minimum_purchase or 0,
+                weekdays=weekdays,
+                start_date=start_date.isoformat(),
+                end_date=end_date.isoformat(),
+                conditions=conditions or _clean_text(raw.get("description")),
+                categories=["todos"],
+                channel=channel,
+                valid_text=_valid_text(start_date, end_date, weekdays),
+                source_url=source_url,
+                compatible_entities=compatible_entities,
+                required_entity_groups=groups,
+                compatible_payment_types=payment_types,
+                scraped_at=scraped_at,
+            )
+        )
+    return rows
 
 
 @lru_cache(maxsize=1)

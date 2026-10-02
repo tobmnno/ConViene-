@@ -5,6 +5,7 @@ import '../models/price_quote.dart';
 import '../models/product.dart';
 import '../models/store_comparison.dart';
 import '../models/supermarket.dart';
+import '../models/shopping_context.dart';
 import '../repositories/conviene_repository.dart';
 import 'discount_engine.dart';
 
@@ -74,12 +75,39 @@ class PriceComparisonService {
     {'suave', 'intensa', 'fuerte'},
   ];
 
+  static const _productTypeTokens = {
+    'aceite',
+    'agua',
+    'arroz',
+    'azucar',
+    'cafe',
+    'cerveza',
+    'crema',
+    'dulce',
+    'fideo',
+    'galleta',
+    'galletita',
+    'harina',
+    'jabon',
+    'leche',
+    'manteca',
+    'mayonesa',
+    'pan',
+    'papel',
+    'queso',
+    'shampoo',
+    'tomate',
+    'yerba',
+    'yogur',
+  };
+
   Future<List<StoreComparison>> compareCart({
     required List<CartItem> cartItems,
     required DateTime fecha,
     required List<PaymentMethod> mediosPagoUsuario,
     required List<Promotion> promociones,
     required Set<String> storeIds,
+    ShoppingContext context = const ShoppingContext(),
   }) async {
     final result = await compareCartOptions(
       cartItems: cartItems,
@@ -87,6 +115,7 @@ class PriceComparisonService {
       mediosPagoUsuario: mediosPagoUsuario,
       promociones: promociones,
       storeIds: storeIds,
+      context: context,
     );
     return result.singleStoreComparisons;
   }
@@ -97,6 +126,7 @@ class PriceComparisonService {
     required List<PaymentMethod> mediosPagoUsuario,
     required List<Promotion> promociones,
     required Set<String> storeIds,
+    ShoppingContext context = const ShoppingContext(),
   }) async {
     if (cartItems.isEmpty) {
       return const CartComparisonResult(
@@ -143,19 +173,29 @@ class PriceComparisonService {
         }
 
         if (offersByStore.length < selectedStores.length) {
-          final relatedResults = await _repository.searchProducts(
-            query: _searchQueryForProduct(selectedProduct),
-            storeIds: storeIds,
-          );
-          for (final result in relatedResults) {
-            final storeId = result.supermarket.id;
-            if (!storesById.containsKey(storeId) || !result.price.stock) {
-              continue;
+          for (final query in _searchQueriesForProduct(selectedProduct)) {
+            final missingStoreIds = {
+              for (final store in selectedStores)
+                if (!offersByStore.containsKey(store.id)) store.id,
+            };
+            if (missingStoreIds.isEmpty) {
+              break;
             }
-            if (!_isComparableProduct(selectedProduct, result.product)) {
-              continue;
+            final relatedResults = await _repository.searchProducts(
+              query: query,
+              storeIds: missingStoreIds,
+              context: context,
+            );
+            for (final result in relatedResults) {
+              final storeId = result.supermarket.id;
+              if (!missingStoreIds.contains(storeId) || !result.price.stock) {
+                continue;
+              }
+              if (!_isComparableProduct(selectedProduct, result.product)) {
+                continue;
+              }
+              offersByStore.putIfAbsent(storeId, () => result);
             }
-            offersByStore.putIfAbsent(storeId, () => result);
           }
         }
         selectedOffer ??= cartItem.selectedStoreId == null
@@ -228,9 +268,6 @@ class PriceComparisonService {
       }
 
       final cappedLines = _applyAggregateCaps(lines);
-      if (cappedLines.isEmpty) {
-        continue;
-      }
       final totalOriginal = cappedLines.fold<double>(
         0,
         (total, line) => total + line.discount.precioOriginal,
@@ -455,6 +492,9 @@ class PriceComparisonService {
     if (_hasVariantConflict(selectedProduct.name, candidateProduct.name)) {
       return false;
     }
+    if (_hasPercentageMismatch(selectedProduct.name, candidateProduct.name)) {
+      return false;
+    }
 
     final selectedIdentity = _identityTokens(selectedProduct);
     if (selectedIdentity.isEmpty) {
@@ -492,6 +532,28 @@ class PriceComparisonService {
     return false;
   }
 
+  bool _hasPercentageMismatch(String selectedName, String candidateName) {
+    final expression = RegExp(r'(\d+(?:[,.]\d+)?)\s*%');
+    final selected = expression
+        .allMatches(selectedName)
+        .map((match) => double.tryParse(match.group(1)!.replaceAll(',', '.')))
+        .whereType<double>()
+        .toSet();
+    if (selected.isEmpty) {
+      return false;
+    }
+    final candidate = expression
+        .allMatches(candidateName)
+        .map((match) => double.tryParse(match.group(1)!.replaceAll(',', '.')))
+        .whereType<double>()
+        .toSet();
+    return candidate.isEmpty ||
+        !selected.any(
+          (requested) =>
+              candidate.any((offered) => (requested - offered).abs() < 0.05),
+        );
+  }
+
   Set<String> _variantTokens(String value) {
     final words = _normalizedTokens(value);
     return {
@@ -501,8 +563,55 @@ class PriceComparisonService {
     };
   }
 
-  String _searchQueryForProduct(Product product) {
+  List<String> _searchQueriesForProduct(Product product) {
     final cleanedName = _cleanSearchText(product.name);
+    final primary = _searchQueryForProduct(product, cleanedName);
+    final withoutMeasurement = cleanedName
+        .replaceAll(
+          RegExp(
+            r'\b\d+(?:[,.]\d+)?\s*(?:kg|kilos?|gr|gramos?|g|lt|lts?|litros?|l|ml|cc|cm3)\b',
+            caseSensitive: false,
+          ),
+          ' ',
+        )
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final withoutPackaging = withoutMeasurement
+        .replaceAll(
+          RegExp(
+            r'\b(?:larga\s+vida|sachet|botella|bidon|pote|lata|caja|bolsa|carton|pet)\b',
+            caseSensitive: false,
+          ),
+          ' ',
+        )
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final tokens = _normalizedTokens(cleanedName);
+    final productType = tokens.firstWhere(
+      _productTypeTokens.contains,
+      orElse: () => tokens.isEmpty ? '' : tokens.first,
+    );
+    final identities = _identityTokens(product).toList()..sort();
+    final variants = <String>{
+      for (final group in _variantGroups)
+        ..._variantTokens(product.name).intersection(group),
+    }.toList()..sort();
+    final core = [
+      productType,
+      ...identities.take(2),
+      ...variants,
+    ].where((token) => token.isNotEmpty).join(' ');
+
+    final candidates = [primary, withoutMeasurement, withoutPackaging, core];
+    final seen = <String>{};
+    return [
+      for (final candidate in candidates)
+        if (candidate.isNotEmpty && seen.add(candidate.toLowerCase()))
+          candidate,
+    ];
+  }
+
+  String _searchQueryForProduct(Product product, String cleanedName) {
     if (_hasMeasurement(cleanedName)) {
       return cleanedName;
     }

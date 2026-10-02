@@ -2,11 +2,13 @@ import 'package:flutter/foundation.dart';
 
 import '../models/cart_item.dart';
 import '../models/discount.dart';
+import '../models/nearby_store_suggestion.dart';
 import '../models/payment_method.dart';
 import '../models/price_quote.dart';
 import '../models/product.dart';
 import '../models/store_comparison.dart';
 import '../models/supermarket.dart';
+import '../models/shopping_context.dart';
 import '../repositories/conviene_repository.dart';
 import '../services/cart_service.dart';
 import '../services/discount_engine.dart';
@@ -56,14 +58,17 @@ class AppState extends ChangeNotifier {
   DateTime selectedDate;
   String searchQuery = 'leche entera';
   SearchSort searchSort = SearchSort.bestPrice;
+  ShoppingContext shoppingContext = const ShoppingContext();
   bool paymentSetupComplete = true;
   bool isBootstrapping = true;
   bool isSearching = false;
   bool isComparing = false;
   bool isLoadingPromotions = false;
+  String? lastError;
 
   int _comparisonGeneration = 0;
   int _promotionsGeneration = 0;
+  int _searchGeneration = 0;
 
   List<PaymentMethod> get activePaymentMethods {
     if (!paymentSetupComplete) {
@@ -98,39 +103,65 @@ class AppState extends ChangeNotifier {
 
   Future<void> initialize() async {
     isBootstrapping = true;
+    lastError = null;
     notifyListeners();
-    supermarkets = await _supermarketService.loadSupermarkets();
-    products = await _repository.getProducts();
-    selectedStoreIds = {
-      for (final store in supermarkets.where((store) => store.enabled))
-        store.id,
-    };
-    isBootstrapping = false;
-    isLoadingPromotions = true;
-    notifyListeners();
+    try {
+      supermarkets = await _supermarketService.loadSupermarkets();
+      products = await _repository.getProducts();
+      selectedStoreIds = {
+        for (final store in supermarkets.where((store) => store.enabled))
+          store.id,
+      };
+      isBootstrapping = false;
+      isLoadingPromotions = true;
+      notifyListeners();
 
-    final promotionsFuture = _discountService.loadPromotions(selectedDate);
-    final searchFuture = searchProducts(searchQuery);
-    promotions = await promotionsFuture;
-    isLoadingPromotions = false;
-    notifyListeners();
-    await searchFuture;
-    await refreshComparisons();
-    notifyListeners();
+      final promotionsFuture = _discountService.loadPromotions(selectedDate);
+      final searchFuture = searchProducts(searchQuery);
+      promotions = await promotionsFuture;
+      isLoadingPromotions = false;
+      notifyListeners();
+      await searchFuture;
+      await refreshComparisons();
+    } catch (_) {
+      lastError = 'No pudimos cargar la informacion inicial. Reintenta.';
+    } finally {
+      isBootstrapping = false;
+      isLoadingPromotions = false;
+      notifyListeners();
+    }
   }
 
   Future<void> searchProducts(String query) async {
+    final generation = ++_searchGeneration;
     searchQuery = query.trim().isEmpty ? 'leche entera' : query.trim();
     isSearching = true;
+    lastError = null;
     notifyListeners();
-    searchResults = await _productSearchService.search(
-      query: searchQuery,
-      storeIds: selectedStoreIds,
-      sort: searchSort,
-    );
-    products = await _repository.getProducts();
-    isSearching = false;
-    notifyListeners();
+    try {
+      final results = await _productSearchService.search(
+        query: searchQuery,
+        storeIds: selectedStoreIds,
+        sort: searchSort,
+        context: shoppingContext,
+      );
+      final loadedProducts = await _repository.getProducts();
+      if (generation != _searchGeneration) {
+        return;
+      }
+      searchResults = results;
+      products = loadedProducts;
+    } catch (_) {
+      if (generation == _searchGeneration) {
+        lastError =
+            'No pudimos actualizar los resultados. Revisa tu conexion e intenta otra vez.';
+      }
+    } finally {
+      if (generation == _searchGeneration) {
+        isSearching = false;
+        notifyListeners();
+      }
+    }
   }
 
   void setSearchSort(SearchSort sort) {
@@ -141,6 +172,34 @@ class AppState extends ChangeNotifier {
       query: searchQuery,
     );
     notifyListeners();
+  }
+
+  Future<void> updateShoppingContext(ShoppingContext context) async {
+    shoppingContext = context;
+    notifyListeners();
+    await searchProducts(searchQuery);
+    await refreshComparisons();
+  }
+
+  Future<NearbyStoreSuggestion?> updateDeviceLocation({
+    required double latitude,
+    required double longitude,
+    required double accuracyMeters,
+  }) async {
+    final suggestion = await _repository.findNearbyCotoStore(
+      latitude: latitude,
+      longitude: longitude,
+    );
+    shoppingContext = shoppingContext.copyWith(
+      latitude: latitude,
+      longitude: longitude,
+      locationAccuracyMeters: accuracyMeters,
+      cotoStore: suggestion?.storeId,
+    );
+    notifyListeners();
+    await searchProducts(searchQuery);
+    await refreshComparisons();
+    return suggestion;
   }
 
   Future<void> toggleStore(String storeId) async {
@@ -164,16 +223,25 @@ class AppState extends ChangeNotifier {
     isLoadingPromotions = true;
     notifyListeners();
 
-    final loadedPromotions = await _discountService.loadPromotions(
-      selectedDate,
-    );
-    if (generation != _promotionsGeneration) {
-      return;
+    try {
+      final loadedPromotions = await _discountService.loadPromotions(
+        selectedDate,
+      );
+      if (generation != _promotionsGeneration) {
+        return;
+      }
+      promotions = loadedPromotions;
+      await refreshComparisons();
+    } catch (_) {
+      if (generation == _promotionsGeneration) {
+        lastError = 'No pudimos actualizar los descuentos para ese dia.';
+      }
+    } finally {
+      if (generation == _promotionsGeneration) {
+        isLoadingPromotions = false;
+        notifyListeners();
+      }
     }
-    promotions = loadedPromotions;
-    isLoadingPromotions = false;
-    notifyListeners();
-    await refreshComparisons();
   }
 
   Future<void> addProductToCart(
@@ -276,20 +344,32 @@ class AppState extends ChangeNotifier {
     final generation = ++_comparisonGeneration;
     isComparing = true;
     notifyListeners();
-    final comparisonResult = await _priceComparisonService.compareCartOptions(
-      cartItems: cartItems,
-      fecha: selectedDate,
-      mediosPagoUsuario: activePaymentMethods,
-      promociones: promotions,
-      storeIds: selectedStoreIds,
-    );
-    if (generation != _comparisonGeneration) {
-      return;
+    try {
+      final comparisonResult = await _priceComparisonService.compareCartOptions(
+        cartItems: cartItems,
+        fecha: selectedDate,
+        mediosPagoUsuario: activePaymentMethods,
+        promociones: promotions,
+        storeIds: selectedStoreIds,
+        context: shoppingContext,
+      );
+      if (generation != _comparisonGeneration) {
+        return;
+      }
+      cartComparisons = comparisonResult.singleStoreComparisons;
+      selectedStoresPlan = comparisonResult.selectedStoresPlan;
+      bestPerProductPlan = comparisonResult.bestPerProductPlan;
+    } catch (_) {
+      if (generation == _comparisonGeneration) {
+        lastError = 'No pudimos recalcular el changuito. Intenta nuevamente.';
+      }
+    } finally {
+      if (generation == _comparisonGeneration) {
+        isComparing = false;
+        notifyListeners();
+      }
     }
-    cartComparisons = comparisonResult.singleStoreComparisons;
-    selectedStoresPlan = comparisonResult.selectedStoresPlan;
-    bestPerProductPlan = comparisonResult.bestPerProductPlan;
-    isComparing = false;
-    notifyListeners();
   }
+
+  Future<void> retrySearch() => searchProducts(searchQuery);
 }

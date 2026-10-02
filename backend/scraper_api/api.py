@@ -1,4 +1,6 @@
 import asyncio
+from contextlib import asynccontextmanager, suppress
+import os
 from urllib.parse import urlparse
 
 import requests
@@ -6,14 +8,37 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-from models import CompareRequest, CompareResponse, DiscountsResponse, SearchRequest, SearchResponse
+from models import CompareRequest, CompareResponse, DiscountsResponse, SearchRequest, SearchResponse, ShoppingContext
 from services.catalog import rank_search_results
 from services.comparison import compare_cart
-from services.discounts import scrape_discounts
+from services.discounts import clear_discount_cache, scrape_discounts
+from services.monitoring import status_snapshot
+from services.locations import nearby_coto_branches
+from services.refresh import refresh_lagallega_catalog
 from services.scraper import resolve_stores, scrape_query
 from scrapers import SCRAPERS
 
-app = FastAPI(title="Comparador de supermercados", version="1.0.0")
+async def _refresh_promotions_periodically():
+    interval = max(int(os.getenv("CONVIENE_PROMOTIONS_REFRESH_SECONDS", "21600")), 300)
+    while True:
+        await asyncio.sleep(interval)
+        await asyncio.to_thread(refresh_lagallega_catalog, force=True)
+        clear_discount_cache()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await asyncio.to_thread(refresh_lagallega_catalog)
+    task = asyncio.create_task(_refresh_promotions_periodically())
+    try:
+        yield
+    finally:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+
+app = FastAPI(title="Comparador de supermercados", version="1.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,13 +54,14 @@ async def root():
     return {"status": "ok", "service": "Comparador de supermercados", "version": "1.0.0"}
 
 
-def _build_search_response(query: str, stores: list[str], rows, limit: int) -> SearchResponse:
+def _build_search_response(query: str, stores: list[str], rows, limit: int, context: ShoppingContext | None = None) -> SearchResponse:
     matches = rank_search_results(query, rows, limit=limit)
     return SearchResponse(
         query=query,
         stores=stores,
         count=len(matches),
         results=matches,
+        context=context,
     )
 
 
@@ -45,6 +71,25 @@ async def health():
         "status": "ok",
         "stores": list(SCRAPERS),
         "app_store_ids": ["carrefour", "coto", "lagallega"],
+        "monitoring": status_snapshot(),
+    }
+
+
+@app.get("/operations")
+async def operations():
+    """Operational status for the scraper sources and promotion refresh job."""
+    return status_snapshot()
+
+
+@app.post("/operations/promotions/refresh")
+async def refresh_promotions():
+    catalog = await asyncio.to_thread(refresh_lagallega_catalog, force=True)
+    clear_discount_cache()
+    return {
+        "status": "ok" if catalog else "degraded",
+        "source": catalog.get("source_url") if catalog else None,
+        "checked_at": catalog.get("checked_at") if catalog else None,
+        "benefits_received": len(catalog.get("benefits", [])) if catalog else 0,
     }
 
 
@@ -84,6 +129,17 @@ async def stores():
     }
 
 
+@app.get("/stores/nearby")
+async def nearby_stores(
+    latitude: float = Query(ge=-90, le=90),
+    longitude: float = Query(ge=-180, le=180),
+):
+    return {
+        "suggestions": nearby_coto_branches(latitude, longitude),
+        "source": "configured_branch_directory",
+    }
+
+
 @app.get("/discounts", response_model=DiscountsResponse)
 async def discounts(
     date: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
@@ -105,14 +161,21 @@ async def search(
     limit: int = Query(default=20, ge=1, le=50),
     stores: list[str] | None = Query(default=None),
     engine: str = Query(default="camoufox", pattern="^(camoufox|chromium)$"),
+    postal_code: str | None = Query(default=None, pattern=r"^\d{4}$"),
+    fulfillment: str = Query(default="pickup", pattern="^(pickup|delivery)$"),
+    coto_store: str | None = Query(default=None, pattern=r"^\d{1,6}$"),
+    carrefour_sales_channel: str | None = Query(default=None, pattern=r"^\d{1,4}$"),
+    latitude: float | None = Query(default=None, ge=-90, le=90),
+    longitude: float | None = Query(default=None, ge=-180, le=180),
 ):
     try:
         selected_stores = resolve_stores(stores)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    rows = await scrape_query(q, selected_stores, limit, True, engine)
-    return _build_search_response(q, selected_stores, rows, limit)
+    context = ShoppingContext(postal_code=postal_code, fulfillment=fulfillment, coto_store=coto_store, carrefour_sales_channel=carrefour_sales_channel, latitude=latitude, longitude=longitude)
+    rows = await scrape_query(q, selected_stores, limit, True, engine, context.model_dump(exclude_none=True))
+    return _build_search_response(q, selected_stores, rows, limit, context)
 
 
 @app.post("/search", response_model=SearchResponse)
@@ -122,8 +185,9 @@ async def search_body(payload: SearchRequest):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    rows = await scrape_query(payload.query, selected_stores, payload.limit, True, "camoufox")
-    return _build_search_response(payload.query, selected_stores, rows, payload.limit)
+    context = payload.context or ShoppingContext()
+    rows = await scrape_query(payload.query, selected_stores, payload.limit, True, "camoufox", context.model_dump(exclude_none=True))
+    return _build_search_response(payload.query, selected_stores, rows, payload.limit, context)
 
 
 @app.post("/compare", response_model=CompareResponse)

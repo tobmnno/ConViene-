@@ -13,6 +13,7 @@ import '../widgets/payment_method_logo.dart';
 import '../widgets/screen_frame.dart';
 import '../widgets/store_logo.dart';
 import 'payment_methods_screen.dart';
+import 'shopping_context_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -77,10 +78,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     const ConvieneLogo(compact: true),
                     IconButton(
-                      tooltip: 'Notificaciones',
-                      onPressed: () {},
+                      tooltip: 'Compra y ubicacion',
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => const ShoppingContextScreen(),
+                        ),
+                      ),
                       icon: const Icon(
-                        Icons.notifications_none,
+                        Icons.location_on_outlined,
                         color: AppColors.deepBlue,
                       ),
                     ),
@@ -101,6 +106,43 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(color: AppColors.deepBlue, fontSize: 14),
                 ),
                 const SizedBox(height: 16),
+                InkWell(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => const ShoppingContextScreen(),
+                    ),
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.storefront_outlined,
+                          color: AppColors.blue,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${state.shoppingContext.fulfillmentLabel} · Coto ${state.shoppingContext.cotoStore}',
+                            style: const TextStyle(
+                              color: AppColors.deepBlue,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          color: AppColors.textGray,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 TextField(
                   controller: _controller,
                   focusNode: _focusNode,
@@ -164,25 +206,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Supermercados',
-                      style: TextStyle(
-                        color: AppColors.deepBlue,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        'Editar',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ],
+                const Text(
+                  'Supermercados',
+                  style: TextStyle(
+                    color: AppColors.deepBlue,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 8),
               ],
@@ -194,9 +224,6 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemBuilder: (context, index) {
-                  if (index == state.enabledSupermarkets.length) {
-                    return const _AddStoreCard();
-                  }
                   final store = state.enabledSupermarkets[index];
                   final selected = state.selectedStoreIds.contains(store.id);
                   return _StoreSelectionCard(
@@ -206,7 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
                 separatorBuilder: (context, index) => const SizedBox(width: 10),
-                itemCount: state.enabledSupermarkets.length + 1,
+                itemCount: state.enabledSupermarkets.length,
               ),
             ),
           ),
@@ -328,75 +355,47 @@ class _StoreSelectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: 76,
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? AppColors.blue : AppColors.line,
-            width: selected ? 1.4 : 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            StoreLogo(supermarket: supermarket, size: 40),
-            const Spacer(),
-            Text(
-              supermarket.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Icon(
-              selected ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: selected ? AppColors.blue : AppColors.textGray,
-              size: 19,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AddStoreCard extends StatelessWidget {
-  const _AddStoreCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 76,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.white,
+    return Semantics(
+      button: true,
+      toggled: selected,
+      label: supermarket.name,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.line, style: BorderStyle.solid),
-      ),
-      child: const Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.add, color: AppColors.deepBlue),
-          SizedBox(height: 12),
-          Text(
-            'Agregar',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.deepBlue,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+        child: Container(
+          width: 76,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? AppColors.blue : AppColors.line,
+              width: selected ? 1.4 : 1,
             ),
           ),
-        ],
+          child: Column(
+            children: [
+              StoreLogo(supermarket: supermarket, size: 40),
+              const Spacer(),
+              Text(
+                supermarket.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.deepBlue,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Icon(
+                selected ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: selected ? AppColors.blue : AppColors.textGray,
+                size: 19,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,0 +1,15 @@
+services:
+  api:
+    build:
+      context: ./backend/scraper_api
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+      CONVIENE_PROMOTIONS_REFRESH_SECONDS: "21600"
+    restart: unless-stopped
+    volumes:
+      - conviene_runtime:/app/data/runtime
+
+volumes:
+  conviene_runtime:

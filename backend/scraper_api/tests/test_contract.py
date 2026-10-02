@@ -1,3 +1,5 @@
+import json
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -14,6 +16,7 @@ from services.catalog import (
     sort_results_for_output,
 )
 from services.discounts import _coto_from_api, _static_promotions
+from services.locations import nearby_coto_branches
 from services.scraper import resolve_stores
 
 
@@ -31,6 +34,23 @@ class ContractTest(unittest.TestCase):
     def test_invalid_store_raises_clear_error(self):
         with self.assertRaisesRegex(ValueError, "Supermercados"):
             resolve_stores(["no_existe"])
+
+    def test_nearby_branch_directory_orders_by_distance(self):
+        original = os.environ.get("CONVIENE_COTO_BRANCHES_JSON")
+        try:
+            os.environ["CONVIENE_COTO_BRANCHES_JSON"] = json.dumps([
+                {"id": "far", "name": "Coto Norte", "latitude": -32.90, "longitude": -60.70},
+                {"id": "near", "name": "Coto Centro", "latitude": -32.95, "longitude": -60.65},
+            ])
+            suggestions = nearby_coto_branches(-32.95, -60.65)
+        finally:
+            if original is None:
+                os.environ.pop("CONVIENE_COTO_BRANCHES_JSON", None)
+            else:
+                os.environ["CONVIENE_COTO_BRANCHES_JSON"] = original
+
+        self.assertEqual([row["id"] for row in suggestions], ["near", "far"])
+        self.assertEqual(suggestions[0]["distance_km"], 0.0)
 
     def test_search_response_contract_is_nested_for_flutter(self):
         product = Product(

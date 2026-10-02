@@ -215,39 +215,44 @@ class _DayPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    return InkWell(
-      onTap: () => state.setSelectedDate(date),
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: 48,
-        height: 58,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? AppColors.blue : AppColors.background,
-          borderRadius: BorderRadius.circular(10),
-          border: selected ? null : Border.all(color: AppColors.line),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              weekdayShort(date.weekday),
-              style: TextStyle(
-                color: selected ? AppColors.white : AppColors.textGray,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '${weekdayShort(date.weekday)} ${date.day}',
+      child: InkWell(
+        onTap: () => state.setSelectedDate(date),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 48,
+          height: 58,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? AppColors.blue : AppColors.background,
+            borderRadius: BorderRadius.circular(10),
+            border: selected ? null : Border.all(color: AppColors.line),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                weekdayShort(date.weekday),
+                style: TextStyle(
+                  color: selected ? AppColors.white : AppColors.textGray,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              '${date.day}',
-              style: TextStyle(
-                color: selected ? AppColors.white : AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
+              const SizedBox(height: 3),
+              Text(
+                '${date.day}',
+                style: TextStyle(
+                  color: selected ? AppColors.white : AppColors.deepBlue,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -346,32 +351,37 @@ class _StoreFilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 11),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.deepBlue : AppColors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: selected ? AppColors.deepBlue : AppColors.line,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (logo != null) ...[logo!, const SizedBox(width: 7)],
-              Text(
-                label,
-                style: TextStyle(
-                  color: selected ? AppColors.white : AppColors.deepBlue,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                ),
+      child: Semantics(
+        button: true,
+        toggled: selected,
+        label: label,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 11),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.deepBlue : AppColors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: selected ? AppColors.deepBlue : AppColors.line,
               ),
-            ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (logo != null) ...[logo!, const SizedBox(width: 7)],
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? AppColors.white : AppColors.deepBlue,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -395,27 +405,32 @@ class _FilterChip extends StatelessWidget {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.only(right: 6),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
-          child: Container(
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: selected ? AppColors.blue : AppColors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: selected ? AppColors.blue : AppColors.line,
+        child: Semantics(
+          button: true,
+          selected: selected,
+          label: label,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected ? AppColors.blue : AppColors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: selected ? AppColors.blue : AppColors.line,
+                ),
               ),
-            ),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: selected ? AppColors.white : AppColors.deepBlue,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? AppColors.white : AppColors.deepBlue,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),

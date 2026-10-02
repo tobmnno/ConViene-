@@ -114,6 +114,42 @@ Para usar un telefono fisico, ambos dispositivos deben estar en la misma red y
 la API debe iniciarse con `--host 0.0.0.0`. No expongas el servidor de desarrollo
 directamente a Internet.
 
+## Uso diario y despliegue
+
+En **Compra y ubicacion**, disponible desde el icono de ubicacion en Inicio,
+se configura codigo postal, retiro o envio y la sucursal de Coto. El boton
+**Usar mi ubicacion** solicita permiso del navegador y sugiere la sucursal mas
+cercana a partir de un directorio de sucursales verificado. La app envia ese
+contexto en cada busqueda y al recalcular el changuito; cada resultado aclara
+si el precio corresponde a la sucursal o al canal online seleccionado.
+
+Para habilitar sugerencias de sucursal en una instancia desplegada, configura
+coordenadas y IDs reales de Coto antes de iniciar la API:
+
+```powershell
+$env:CONVIENE_COTO_BRANCHES_JSON = '[{"id":"401","name":"Coto Centro","latitude":-32.95,"longitude":-60.65}]'
+```
+
+Carrefour usa su canal online y La Gallega se marca como catalogo general
+hasta que publique stock por sucursal.
+
+Para desplegar el backend con Docker:
+
+```powershell
+docker compose up --build -d
+```
+
+La API queda en el puerto `8000`. Para una publicacion real, sirve Flutter Web
+detras de HTTPS y define la URL publica de la API durante el build:
+
+```powershell
+flutter build web --release `
+  --dart-define=CONVIENE_API_BASE_URL=https://api.tu-dominio.com
+```
+
+El endpoint `GET /operations` permite conectar un monitor externo. Reporta
+latencia, ultimo resultado y alertas por fuentes que fallen repetidamente.
+
 ## Comparacion del changuito
 
 Conviene presenta tres perspectivas:

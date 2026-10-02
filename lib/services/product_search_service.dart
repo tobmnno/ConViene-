@@ -1,4 +1,5 @@
 import '../models/price_quote.dart';
+import '../models/shopping_context.dart';
 import '../repositories/conviene_repository.dart';
 
 enum SearchSort { bestPrice, unitPrice, alphabetical }
@@ -12,10 +13,12 @@ class ProductSearchService {
     required String query,
     required Set<String> storeIds,
     required SearchSort sort,
+    ShoppingContext context = const ShoppingContext(),
   }) async {
     final results = await _repository.searchProducts(
       query: query,
       storeIds: storeIds,
+      context: context,
     );
     return sortResults(results, sort, query: query);
   }

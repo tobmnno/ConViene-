@@ -4,10 +4,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/discount.dart';
+import '../models/nearby_store_suggestion.dart';
 import '../models/payment_method.dart';
 import '../models/price_quote.dart';
 import '../models/product.dart';
 import '../models/supermarket.dart';
+import '../models/shopping_context.dart';
 import 'conviene_repository.dart';
 
 class ApiRepository implements ConvieneRepository {
@@ -25,6 +27,7 @@ class ApiRepository implements ConvieneRepository {
   final Map<String, Product> _cachedProducts = {};
   final Map<String, List<ProductPrice>> _cachedPrices = {};
   List<Supermarket>? _cachedSupermarkets;
+  String? _pricesContextKey;
 
   @override
   Future<List<Supermarket>> getSupermarkets() async {
@@ -48,6 +51,56 @@ class ApiRepository implements ConvieneRepository {
       return cached;
     }
     return fallback.getPricesForProduct(productId);
+  }
+
+  @override
+  Future<NearbyStoreSuggestion?> findNearbyCotoStore({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final response = await _client
+          .get(
+            baseUrl.replace(
+              path: '${_basePath()}/stores/nearby',
+              queryParameters: {
+                'latitude': latitude.toString(),
+                'longitude': longitude.toString(),
+              },
+            ),
+          )
+          .timeout(timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        return null;
+      }
+      final suggestions = decoded['suggestions'];
+      if (suggestions is! List ||
+          suggestions.isEmpty ||
+          suggestions.first is! Map) {
+        return null;
+      }
+      final first = Map<String, dynamic>.from(suggestions.first as Map);
+      final id = _asString(first['id']);
+      final name = _asString(first['name']);
+      final distance = _asDouble(first['distance_km']);
+      if (id.isEmpty || name.isEmpty || distance == null) {
+        return null;
+      }
+      return NearbyStoreSuggestion(
+        storeId: id,
+        name: name,
+        distanceKm: distance,
+      );
+    } on Object {
+      return fallback.findNearbyCotoStore(
+        latitude: latitude,
+        longitude: longitude,
+      );
+    }
   }
 
   @override
@@ -79,9 +132,16 @@ class ApiRepository implements ConvieneRepository {
   Future<List<SearchResult>> searchProducts({
     required String query,
     required Set<String> storeIds,
+    ShoppingContext context = const ShoppingContext(),
   }) async {
+    final contextKey = _contextKey(context);
+    if (_pricesContextKey != contextKey) {
+      // A store branch or fulfillment mode can change product prices and stock.
+      _cachedPrices.clear();
+      _pricesContextKey = contextKey;
+    }
     try {
-      final uri = _searchUri(query, storeIds);
+      final uri = _searchUri(query, storeIds, context);
       final response = await _client.get(uri).timeout(timeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw StateError('Scraper API returned ${response.statusCode}');
@@ -98,11 +158,15 @@ class ApiRepository implements ConvieneRepository {
       }
       return _parseResults(rawResults);
     } on Object {
-      return fallback.searchProducts(query: query, storeIds: storeIds);
+      return fallback.searchProducts(
+        query: query,
+        storeIds: storeIds,
+        context: context,
+      );
     }
   }
 
-  Uri _searchUri(String query, Set<String> storeIds) {
+  Uri _searchUri(String query, Set<String> storeIds, ShoppingContext context) {
     final basePath = _basePath();
     return baseUrl.replace(
       path: '$basePath/search',
@@ -110,8 +174,24 @@ class ApiRepository implements ConvieneRepository {
         'q': query,
         'limit': '30',
         'stores': storeIds.map(_storeIdForApi).toList(),
+        'fulfillment': context.fulfillmentApiValue,
+        'coto_store': context.cotoStore,
+        'carrefour_sales_channel': context.carrefourSalesChannel,
+        if (context.latitude != null) 'latitude': context.latitude.toString(),
+        if (context.longitude != null)
+          'longitude': context.longitude.toString(),
+        if (context.hasPostalCode) 'postal_code': context.postalCode,
       },
     );
+  }
+
+  String _contextKey(ShoppingContext context) {
+    return [
+      context.postalCode.trim(),
+      context.fulfillmentApiValue,
+      context.cotoStore,
+      context.carrefourSalesChannel,
+    ].join('|');
   }
 
   Uri _discountsUri(DateTime date) {
@@ -197,6 +277,11 @@ class ApiRepository implements ConvieneRepository {
             ? supermarket.websiteUrl
             : _asString(productData['url']),
         fechaActualizacion: _dateFrom(productData['scraped_at']),
+        branchId: _nullableString(productData['branch_id']),
+        pricingScope: _nullableString(productData['pricing_scope']),
+        deliveryAvailable: productData['delivery_available'] is bool
+            ? productData['delivery_available'] as bool
+            : null,
       );
 
       _cachedProducts[productId] = product;
@@ -224,6 +309,11 @@ class ApiRepository implements ConvieneRepository {
       return Map<String, dynamic>.from(product);
     }
     return result;
+  }
+
+  String? _nullableString(dynamic value) {
+    final parsed = _asString(value);
+    return parsed.isEmpty ? null : parsed;
   }
 
   List<Promotion> _parsePromotions(
@@ -333,7 +423,9 @@ class ApiRepository implements ConvieneRepository {
     final normalized = presentation.toLowerCase();
     if (normalized.contains('kg') ||
         normalized.contains('kilo') ||
-        RegExp(r'\b(?:g|gr|gramo|gramos)\b').hasMatch(normalized)) {
+        RegExp(
+          r'\d+(?:[,.]\d+)?\s*(?:g|gr|gramo|gramos)\b',
+        ).hasMatch(normalized)) {
       return 'kg';
     }
     if (normalized.contains('ml') ||
@@ -341,7 +433,7 @@ class ApiRepository implements ConvieneRepository {
         normalized.contains('cm3') ||
         normalized.contains('lt') ||
         normalized.contains('litro') ||
-        RegExp(r'\bl\b').hasMatch(normalized)) {
+        RegExp(r'\d+(?:[,.]\d+)?\s*l\b').hasMatch(normalized)) {
       return 'L';
     }
     return 'u';

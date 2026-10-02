@@ -1,8 +1,10 @@
 import 'package:conviene/models/cart_item.dart';
 import 'package:conviene/models/discount.dart';
+import 'package:conviene/models/nearby_store_suggestion.dart';
 import 'package:conviene/models/price_quote.dart';
 import 'package:conviene/models/product.dart';
 import 'package:conviene/models/supermarket.dart';
+import 'package:conviene/models/shopping_context.dart';
 import 'package:conviene/repositories/conviene_repository.dart';
 import 'package:conviene/repositories/mock_repository.dart';
 import 'package:conviene/services/discount_engine.dart';
@@ -36,23 +38,32 @@ void main() {
     expect(comparisons.first.hasAllProducts, isTrue);
   });
 
-  test('omite supermercados sin ningun producto disponible', () async {
-    final repository = MockRepository();
-    final service = PriceComparisonService(repository, const DiscountEngine());
-    final date = DateTime(2026, 8, 20);
-    final promotions = await repository.getPromotions(date);
-    final methods = const PaymentMethodService().initialMethods();
+  test(
+    'muestra supermercados sin productos para explicar que faltan',
+    () async {
+      final repository = MockRepository();
+      final service = PriceComparisonService(
+        repository,
+        const DiscountEngine(),
+      );
+      final date = DateTime(2026, 8, 20);
+      final promotions = await repository.getPromotions(date);
+      final methods = const PaymentMethodService().initialMethods();
 
-    final comparisons = await service.compareCart(
-      cartItems: const [CartItem(productId: 'arroz_gallo', quantity: 1)],
-      fecha: date,
-      mediosPagoUsuario: methods,
-      promociones: promotions,
-      storeIds: const {'carrefour'},
-    );
+      final comparisons = await service.compareCart(
+        cartItems: const [CartItem(productId: 'arroz_gallo', quantity: 1)],
+        fecha: date,
+        mediosPagoUsuario: methods,
+        promociones: promotions,
+        storeIds: const {'carrefour'},
+      );
 
-    expect(comparisons, isEmpty);
-  });
+      expect(comparisons, hasLength(1));
+      expect(comparisons.single.supermarket.id, 'carrefour');
+      expect(comparisons.single.items, isEmpty);
+      expect(comparisons.single.missingProducts, hasLength(1));
+    },
+  );
 
   test('busca equivalentes por nombre para completar el changuito', () async {
     final repository = _ComparableGalletitasRepository();
@@ -78,15 +89,21 @@ void main() {
     );
     final comparisons = result.singleStoreComparisons;
 
-    expect(comparisons.map((item) => item.supermarket.id), [
-      'coto',
-      'carrefour',
-    ]);
-    expect(comparisons.first.hasAllProducts, isTrue);
-    expect(comparisons.first.items, hasLength(2));
-    expect(comparisons[1].hasAllProducts, isTrue);
-    expect(comparisons[1].items, hasLength(2));
-    final equivalentLine = comparisons.first.items.firstWhere(
+    expect(
+      comparisons.map((item) => item.supermarket.id),
+      containsAll(['coto', 'carrefour', 'lagallega']),
+    );
+    final cotoComparison = comparisons.firstWhere(
+      (comparison) => comparison.supermarket.id == 'coto',
+    );
+    final carrefourComparison = comparisons.firstWhere(
+      (comparison) => comparison.supermarket.id == 'carrefour',
+    );
+    expect(cotoComparison.hasAllProducts, isTrue);
+    expect(cotoComparison.items, hasLength(2));
+    expect(carrefourComparison.hasAllProducts, isTrue);
+    expect(carrefourComparison.items, hasLength(2));
+    final equivalentLine = cotoComparison.items.firstWhere(
       (item) => item.product.id == 'galletitas_chocolinas_coto',
     );
     expect(equivalentLine.cartProductId, 'galletitas_chocolinas_carrefour');
@@ -125,7 +142,10 @@ void main() {
 
       expect(result.singleStoreComparisons.map((item) => item.supermarket.id), [
         'coto',
+        'carrefour',
       ]);
+      expect(result.singleStoreComparisons.last.items, isEmpty);
+      expect(result.singleStoreComparisons.last.missingProducts, hasLength(1));
       expect(result.bestPerProductPlan!.items.single.supermarket.id, 'coto');
       expect(
         result.bestPerProductPlan!.items.single.product.presentation,
@@ -157,11 +177,12 @@ void main() {
         storeIds: const {'coto', 'carrefour'},
       );
 
-      expect(repository.lastQuery, 'Leche La Serenisima Liviana 1L');
-      expect(result.singleStoreComparisons.map((item) => item.supermarket.id), [
-        'carrefour',
-        'coto',
-      ]);
+      expect(repository.queries.first, 'Leche La Serenisima Liviana 1L');
+      expect(repository.queries, contains('Leche La Serenisima Liviana'));
+      expect(
+        result.singleStoreComparisons.map((item) => item.supermarket.id),
+        containsAll(['carrefour', 'coto']),
+      );
     },
   );
 }
@@ -261,6 +282,7 @@ class _ComparableGalletitasRepository implements ConvieneRepository {
   Future<List<SearchResult>> searchProducts({
     required String query,
     required Set<String> storeIds,
+    ShoppingContext context = const ShoppingContext(),
   }) async {
     if (query.contains('Chocolinas')) {
       const equivalentProduct = Product(
@@ -308,6 +330,12 @@ class _ComparableGalletitasRepository implements ConvieneRepository {
     }
     return [];
   }
+
+  @override
+  Future<NearbyStoreSuggestion?> findNearbyCotoStore({
+    required double latitude,
+    required double longitude,
+  }) async => null;
 
   @override
   Future<List<Promotion>> getPromotions(DateTime date) async => const [];
@@ -371,6 +399,7 @@ class _DifferentSizeRepository implements ConvieneRepository {
   Future<List<SearchResult>> searchProducts({
     required String query,
     required Set<String> storeIds,
+    ShoppingContext context = const ShoppingContext(),
   }) async {
     const carrefourProduct = Product(
       id: 'crema_350_carrefour',
@@ -446,11 +475,17 @@ class _DifferentSizeRepository implements ConvieneRepository {
   }
 
   @override
+  Future<NearbyStoreSuggestion?> findNearbyCotoStore({
+    required double latitude,
+    required double longitude,
+  }) async => null;
+
+  @override
   Future<List<Promotion>> getPromotions(DateTime date) async => const [];
 }
 
 class _LiteralSearchRepository implements ConvieneRepository {
-  String? lastQuery;
+  final queries = <String>[];
 
   final _supermarkets = const [
     Supermarket(
@@ -509,9 +544,10 @@ class _LiteralSearchRepository implements ConvieneRepository {
   Future<List<SearchResult>> searchProducts({
     required String query,
     required Set<String> storeIds,
+    ShoppingContext context = const ShoppingContext(),
   }) async {
-    lastQuery = query;
-    if (query != 'Leche La Serenisima Liviana 1L') {
+    queries.add(query);
+    if (query != 'Leche La Serenisima Liviana') {
       return [];
     }
     const carrefourProduct = Product(
@@ -540,6 +576,12 @@ class _LiteralSearchRepository implements ConvieneRepository {
       ),
     ];
   }
+
+  @override
+  Future<NearbyStoreSuggestion?> findNearbyCotoStore({
+    required double latitude,
+    required double longitude,
+  }) async => null;
 
   @override
   Future<List<Promotion>> getPromotions(DateTime date) async => const [];

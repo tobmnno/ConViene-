@@ -6,6 +6,7 @@ import '../models/cart_item.dart';
 import '../models/product.dart';
 import '../models/store_comparison.dart';
 import '../state/app_scope.dart';
+import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/money.dart';
 import '../widgets/app_card.dart';
@@ -45,7 +46,9 @@ class CartScreen extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '${state.cartQuantity} productos',
+                    state.cartQuantity == 1
+                        ? '1 producto'
+                        : '${state.cartQuantity} productos',
                     style: const TextStyle(
                       color: AppColors.blue,
                       fontSize: 13,
@@ -57,7 +60,9 @@ class CartScreen extends StatelessWidget {
               const Spacer(),
               IconButton(
                 tooltip: 'Vaciar',
-                onPressed: () => unawaited(state.clearCart()),
+                onPressed: state.cartItems.isEmpty
+                    ? null
+                    : () => _confirmClearCart(context, state),
                 icon: const Icon(
                   Icons.delete_outline,
                   color: AppColors.deepBlue,
@@ -86,6 +91,10 @@ class CartScreen extends StatelessWidget {
                   if (bestPerProduct != null &&
                       bestPerProduct.items.isNotEmpty) ...[
                     _BestPerProductCard(plan: bestPerProduct),
+                    const SizedBox(height: 18),
+                  ],
+                  if (state.cartComparisons.isNotEmpty) ...[
+                    _ComparisonCoverageCard(comparisons: state.cartComparisons),
                     const SizedBox(height: 18),
                   ],
                   const Text(
@@ -146,6 +155,31 @@ class CartScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmClearCart(BuildContext context, AppState state) async {
+    final shouldClear = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Vaciar changuito'),
+        content: const Text(
+          'Se quitaran todos los productos y sus comparaciones actuales.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Vaciar'),
+          ),
+        ],
+      ),
+    );
+    if (shouldClear == true) {
+      await state.clearCart();
+    }
   }
 }
 
@@ -347,6 +381,119 @@ class _BestPerProductCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ComparisonCoverageCard extends StatelessWidget {
+  const _ComparisonCoverageCard({required this.comparisons});
+
+  final List<StoreComparison> comparisons;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => const StoreComparisonScreen(),
+        ),
+      ),
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.storefront_outlined, color: AppColors.blue),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Comparacion por supermercado',
+                    style: TextStyle(
+                      color: AppColors.deepBlue,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: AppColors.deepBlue),
+              ],
+            ),
+            const SizedBox(height: 12),
+            for (final comparison in comparisons) ...[
+              _ComparisonCoverageRow(comparison: comparison),
+              if (comparison != comparisons.last) const Divider(height: 18),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ComparisonCoverageRow extends StatelessWidget {
+  const _ComparisonCoverageRow({required this.comparison});
+
+  final StoreComparison comparison;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasProducts = comparison.items.isNotEmpty;
+    return Row(
+      children: [
+        StoreLogo(supermarket: comparison.supermarket, size: 28),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                comparison.supermarket.name,
+                style: const TextStyle(
+                  color: AppColors.deepBlue,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                hasProducts
+                    ? comparison.hasAllProducts
+                          ? 'Tiene todos los productos'
+                          : 'Tiene ${comparison.foundProductsCount} de ${comparison.totalProductsCount}'
+                    : 'Sin coincidencias verificadas',
+                style: TextStyle(
+                  color: hasProducts ? AppColors.textGray : AppColors.textGray,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (hasProducts)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                formatMoney(comparison.totalFinal, compactCents: false),
+                style: const TextStyle(
+                  color: AppColors.deepBlue,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                comparison.hasAllProducts ? 'total' : 'subtotal',
+                style: const TextStyle(
+                  color: AppColors.textGray,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+      ],
     );
   }
 }

@@ -1,8 +1,10 @@
 import '../models/discount.dart';
+import '../models/nearby_store_suggestion.dart';
 import '../models/payment_method.dart';
 import '../models/price_quote.dart';
 import '../models/product.dart';
 import '../models/supermarket.dart';
+import '../models/shopping_context.dart';
 import 'conviene_repository.dart';
 
 class MockRepository implements ConvieneRepository {
@@ -66,6 +68,12 @@ class MockRepository implements ConvieneRepository {
       logoAsset: '',
     ),
   ];
+
+  @override
+  Future<NearbyStoreSuggestion?> findNearbyCotoStore({
+    required double latitude,
+    required double longitude,
+  }) async => null;
 
   final List<Product> _products = const [
     Product(
@@ -311,6 +319,7 @@ class MockRepository implements ConvieneRepository {
   Future<List<SearchResult>> searchProducts({
     required String query,
     required Set<String> storeIds,
+    ShoppingContext context = const ShoppingContext(),
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 180));
     final normalizedQuery = _normalize(query);
