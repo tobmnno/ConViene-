@@ -98,6 +98,48 @@ void main() {
     expect(quote.precioFinal, 1499);
   });
 
+  test('elige el mayor descuento efectivo despues de aplicar topes', () {
+    final capped = Promotion(
+      id: 'visa_40_cap',
+      storeId: 'coto',
+      tipoMedioPago: PaymentMethodType.card,
+      entidad: 'Visa',
+      porcentajeDescuento: 40,
+      topeReintegro: 100,
+      diasSemana: const {DateTime.thursday},
+      fechaInicio: DateTime(2026, 1, 1),
+      fechaFin: DateTime(2026, 12, 31),
+      condiciones: 'Con tope',
+      categorias: const ['todos'],
+    );
+    final uncapped = Promotion(
+      id: 'visa_15_sin_tope',
+      storeId: 'coto',
+      tipoMedioPago: PaymentMethodType.card,
+      entidad: 'Visa',
+      porcentajeDescuento: 15,
+      topeReintegro: 0,
+      diasSemana: const {DateTime.thursday},
+      fechaInicio: DateTime(2026, 1, 1),
+      fechaFin: DateTime(2026, 12, 31),
+      condiciones: 'Sin tope',
+      categorias: const ['todos'],
+    );
+
+    final quote = engine.calcularPrecioFinal(
+      product: product,
+      supermercado: 'coto',
+      precioOriginal: 1000,
+      fecha: date,
+      mediosPagoUsuario: const [visa],
+      promociones: [capped, uncapped],
+    );
+
+    expect(quote.promocionUsada?.id, 'visa_15_sin_tope');
+    expect(quote.importeDescuento, 150);
+    expect(quote.precioFinal, 850);
+  });
+
   test('aplica descuentos sin tope', () {
     final uncappedPromotion = Promotion(
       id: 'coto_visa_10_sin_tope',

@@ -10,6 +10,7 @@ from main import sort_results_for_output
 from models import Product
 from services.catalog import rank_search_results
 from scrapers import CarrefourScraper, CotoScraper, LaGallegaScraper
+from scrapers.lagallega_catalog import CatalogPage
 
 
 @unittest.skipUnless(
@@ -71,6 +72,18 @@ class ScraperSmokeTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(ranked[0].product.name, "Leche entera 1000 ml")
         self.assertGreater(ranked[0].score, ranked[1].score)
+
+class CatalogParserTest(unittest.TestCase):
+    def test_lagallega_catalog_removes_corrupted_name_fragment(self):
+        html = (
+            '<li class="cuadProd"><div class="desc">'
+            'Leche La Serenisima entera x1l.3a?a? sachet md'
+            '</div><div class="der">$ 2.208</div></li>'
+        )
+
+        rows = CatalogPage(html).rows
+
+        self.assertEqual(rows[0]["name"], "Leche La Serenisima entera x1l sachet md")
 
 
 if __name__ == "__main__":

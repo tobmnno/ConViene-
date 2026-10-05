@@ -123,6 +123,7 @@ class PriceComparisonService {
 
   Future<CartComparisonResult> compareCartOptions({
     required List<CartItem> cartItems,
+    List<Product>? productCatalog,
     required DateTime fecha,
     required List<PaymentMethod> mediosPagoUsuario,
     required List<Promotion> promociones,
@@ -143,7 +144,7 @@ class PriceComparisonService {
         .toList();
     final storesById = {for (final store in selectedStores) store.id: store};
     final allStoresById = {for (final store in stores) store.id: store};
-    final products = await _repository.getProducts();
+    final products = productCatalog ?? await _repository.getProducts();
     final comparableItems = await Future.wait(
       cartItems.map((cartItem) async {
         final selectedProduct = _productForCartItem(products, cartItem);

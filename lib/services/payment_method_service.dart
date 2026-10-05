@@ -412,6 +412,21 @@ class PaymentMethodService {
     ];
   }
 
+  List<PaymentMethod> restore({
+    required Set<String> activeIds,
+    required List<PaymentMethod> customMethods,
+  }) {
+    final methods = initialMethods();
+    final knownIds = methods.map((method) => method.id).toSet();
+    return [
+      for (final method in methods)
+        method.copyWith(active: activeIds.contains(method.id)),
+      for (final method in customMethods)
+        if (method.id.startsWith('custom_') && !knownIds.contains(method.id))
+          method,
+    ];
+  }
+
   List<PaymentMethod> toggle(List<PaymentMethod> methods, String methodId) {
     return [
       for (final method in methods)

@@ -96,7 +96,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
               IconButton(
                 tooltip: 'Filtros',
-                onPressed: () {},
+                onPressed: () => _showStoreFilters(state),
                 icon: const Icon(Icons.tune, color: AppColors.deepBlue),
               ),
             ],
@@ -137,7 +137,9 @@ class _SearchScreenState extends State<SearchScreen> {
             )
           else
             Expanded(
-              child: state.searchResults.isEmpty
+              child: state.lastError != null
+                  ? const SizedBox.shrink()
+                  : state.searchResults.isEmpty
                   ? const _EmptyResults()
                   : ListView.separated(
                       itemCount: state.searchResults.length,
@@ -173,6 +175,64 @@ class _SearchScreenState extends State<SearchScreen> {
     _controller.selection = TextSelection.collapsed(offset: query.length);
     _focusNode.unfocus();
     unawaited(AppScope.of(context).searchProducts(query));
+  }
+
+  Future<void> _showStoreFilters(AppState state) async {
+    final selectedStores = Set<String>.of(state.selectedStoreIds);
+    final result = await showDialog<Set<String>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Supermercados'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final store in state.enabledSupermarkets)
+                InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () {
+                    setDialogState(() {
+                      _toggleStoreSelection(selectedStores, store.id);
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(store.name)),
+                        Checkbox(
+                          value: selectedStores.contains(store.id),
+                          onChanged: (_) => setDialogState(
+                            () =>
+                                _toggleStoreSelection(selectedStores, store.id),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: selectedStores.isEmpty
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(selectedStores),
+              child: const Text('Aplicar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result != null) await state.setSelectedStores(result);
+  }
+
+  void _toggleStoreSelection(Set<String> selectedStores, String storeId) {
+    if (!selectedStores.add(storeId)) selectedStores.remove(storeId);
   }
 
   Future<void> _addProductToCart(
@@ -460,12 +520,16 @@ class _ResultCardState extends State<_ResultCard> {
                             size: 28,
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            widget.result.supermarket.name,
-                            style: const TextStyle(
-                              color: AppColors.deepBlue,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
+                          Expanded(
+                            child: Text(
+                              widget.result.supermarket.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.deepBlue,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                         ],

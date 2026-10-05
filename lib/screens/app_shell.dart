@@ -16,8 +16,40 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   var _index = 0;
+  Timer? _dateRolloverTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleDateRollover();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _dateRolloverTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      unawaited(AppScope.of(context).refreshPromotionsForTodayIfNeeded());
+    }
+  }
+
+  void _scheduleDateRollover() {
+    final now = DateTime.now();
+    final nextDay = DateTime(now.year, now.month, now.day + 1);
+    _dateRolloverTimer = Timer(nextDay.difference(now), () {
+      if (!mounted) return;
+      unawaited(AppScope.of(context).refreshPromotionsForTodayIfNeeded());
+      _scheduleDateRollover();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +102,12 @@ class _AppShellState extends State<AppShell> {
           ? null
           : BottomNavigationBar(
               currentIndex: _index,
-              onTap: (index) => setState(() => _index = index),
+              onTap: (index) {
+                if (index == 2) {
+                  unawaited(state.refreshPromotionsForTodayIfNeeded());
+                }
+                setState(() => _index = index);
+              },
               items: [
                 const BottomNavigationBarItem(
                   icon: Icon(Icons.home_outlined),

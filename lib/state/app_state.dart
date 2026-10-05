@@ -10,6 +10,7 @@ import '../models/store_comparison.dart';
 import '../models/supermarket.dart';
 import '../models/shopping_context.dart';
 import '../repositories/conviene_repository.dart';
+import '../repositories/promotion_status_repository.dart';
 import '../services/cart_service.dart';
 import '../services/discount_engine.dart';
 import '../services/discount_service.dart';
@@ -17,16 +18,22 @@ import '../services/payment_method_service.dart';
 import '../services/price_comparison_service.dart';
 import '../services/product_search_service.dart';
 import '../services/supermarket_service.dart';
+import '../services/user_data_store.dart';
 
 class AppState extends ChangeNotifier {
-  AppState({required ConvieneRepository repository, DateTime? initialDate})
-    : _repository = repository,
-      selectedDate = initialDate ?? DateTime.now(),
-      _productSearchService = ProductSearchService(repository),
-      _supermarketService = SupermarketService(repository),
-      _discountEngine = const DiscountEngine(),
-      _paymentMethodService = const PaymentMethodService(),
-      _cartService = const CartService() {
+  AppState({
+    required ConvieneRepository repository,
+    DateTime? initialDate,
+    UserDataStore? userDataStore,
+  }) : _repository = repository,
+       _userDataStore = userDataStore ?? LocalUserDataStore(),
+       selectedDate = initialDate ?? DateTime.now(),
+       _followToday = initialDate == null,
+       _productSearchService = ProductSearchService(repository),
+       _supermarketService = SupermarketService(repository),
+       _discountEngine = const DiscountEngine(),
+       _paymentMethodService = const PaymentMethodService(),
+       _cartService = const CartService() {
     _discountService = DiscountService(_repository, _discountEngine);
     _priceComparisonService = PriceComparisonService(
       _repository,
@@ -36,6 +43,7 @@ class AppState extends ChangeNotifier {
   }
 
   final ConvieneRepository _repository;
+  final UserDataStore _userDataStore;
   final ProductSearchService _productSearchService;
   final SupermarketService _supermarketService;
   final DiscountEngine _discountEngine;
@@ -56,6 +64,7 @@ class AppState extends ChangeNotifier {
   MultiStoreComparison? bestPerProductPlan;
 
   DateTime selectedDate;
+  bool _followToday;
   String searchQuery = 'leche entera';
   SearchSort searchSort = SearchSort.bestPrice;
   ShoppingContext shoppingContext = const ShoppingContext();
@@ -65,10 +74,13 @@ class AppState extends ChangeNotifier {
   bool isComparing = false;
   bool isLoadingPromotions = false;
   String? lastError;
+  String? promotionsError;
+  String? promotionsWarning;
 
   int _comparisonGeneration = 0;
   int _promotionsGeneration = 0;
   int _searchGeneration = 0;
+  Future<void> _persistenceQueue = Future<void>.value();
 
   List<PaymentMethod> get activePaymentMethods {
     if (!paymentSetupComplete) {
@@ -108,17 +120,62 @@ class AppState extends ChangeNotifier {
     try {
       supermarkets = await _supermarketService.loadSupermarkets();
       products = await _repository.getProducts();
+      SavedUserData? savedData;
+      try {
+        savedData = await _userDataStore.load();
+      } catch (_) {
+        savedData = null;
+      }
       selectedStoreIds = {
         for (final store in supermarkets.where((store) => store.enabled))
           store.id,
       };
+      if (savedData != null) {
+        final cartProductIds = savedData.cartItems
+            .map((item) => item.productId)
+            .toSet();
+        final productsById = {
+          for (final product in products) product.id: product,
+          for (final product in savedData.productSnapshots)
+            if (cartProductIds.contains(product.id)) product.id: product,
+        };
+        products = productsById.values.toList();
+        final productIds = products.map((product) => product.id).toSet();
+        final storeIds = supermarkets.map((store) => store.id).toSet();
+        cartItems = [
+          for (final item in savedData.cartItems)
+            if (productIds.contains(item.productId))
+              CartItem(
+                productId: item.productId,
+                quantity: item.quantity.clamp(1, 99).toInt(),
+                selectedStoreId: storeIds.contains(item.selectedStoreId)
+                    ? item.selectedStoreId
+                    : null,
+              ),
+        ];
+        paymentMethods = _paymentMethodService.restore(
+          activeIds: savedData.activePaymentMethodIds,
+          customMethods: savedData.customPaymentMethods,
+        );
+      }
       isBootstrapping = false;
       isLoadingPromotions = true;
       notifyListeners();
 
       final promotionsFuture = _discountService.loadPromotions(selectedDate);
       final searchFuture = searchProducts(searchQuery);
-      promotions = await promotionsFuture;
+      try {
+        promotions = await promotionsFuture;
+        promotionsError = null;
+        promotionsWarning = _repository is PromotionStatusRepository
+            ? (_repository as PromotionStatusRepository).lastPromotionWarning
+            : null;
+      } catch (_) {
+        promotions = [];
+        promotionsWarning = null;
+        promotionsError =
+            'No pudimos consultar los descuentos actualizados. Revisa tu conexion e intenta otra vez.';
+      }
       isLoadingPromotions = false;
       notifyListeners();
       await searchFuture;
@@ -135,6 +192,7 @@ class AppState extends ChangeNotifier {
   Future<void> searchProducts(String query) async {
     final generation = ++_searchGeneration;
     searchQuery = query.trim().isEmpty ? 'leche entera' : query.trim();
+    searchResults = [];
     isSearching = true;
     lastError = null;
     notifyListeners();
@@ -150,9 +208,15 @@ class AppState extends ChangeNotifier {
         return;
       }
       searchResults = results;
-      products = loadedProducts;
+      final cartProductIds = cartItems.map((item) => item.productId).toSet();
+      products = {
+        for (final product in loadedProducts) product.id: product,
+        for (final product in products)
+          if (cartProductIds.contains(product.id)) product.id: product,
+      }.values.toList();
     } catch (_) {
       if (generation == _searchGeneration) {
+        searchResults = [];
         lastError =
             'No pudimos actualizar los resultados. Revisa tu conexion e intenta otra vez.';
       }
@@ -216,10 +280,27 @@ class AppState extends ChangeNotifier {
     await refreshComparisons();
   }
 
+  Future<void> setSelectedStores(Set<String> storeIds) async {
+    final enabledIds = enabledSupermarkets.map((store) => store.id).toSet();
+    final validIds = storeIds.intersection(enabledIds);
+    if (validIds.isEmpty || setEquals(validIds, selectedStoreIds)) return;
+    selectedStoreIds = validIds;
+    notifyListeners();
+    await searchProducts(searchQuery);
+    await refreshComparisons();
+  }
+
   Future<void> setSelectedDate(DateTime date) async {
     final generation = ++_promotionsGeneration;
     selectedDate = DateTime(date.year, date.month, date.day);
+    final today = DateTime.now();
+    _followToday =
+        selectedDate.year == today.year &&
+        selectedDate.month == today.month &&
+        selectedDate.day == today.day;
     promotions = [];
+    promotionsError = null;
+    promotionsWarning = null;
     isLoadingPromotions = true;
     notifyListeners();
 
@@ -231,10 +312,15 @@ class AppState extends ChangeNotifier {
         return;
       }
       promotions = loadedPromotions;
-      await refreshComparisons();
+      promotionsWarning = _repository is PromotionStatusRepository
+          ? (_repository as PromotionStatusRepository).lastPromotionWarning
+          : null;
     } catch (_) {
       if (generation == _promotionsGeneration) {
-        lastError = 'No pudimos actualizar los descuentos para ese dia.';
+        promotions = [];
+        promotionsWarning = null;
+        promotionsError =
+            'No pudimos consultar los descuentos actualizados. Revisa tu conexion e intenta otra vez.';
       }
     } finally {
       if (generation == _promotionsGeneration) {
@@ -242,6 +328,20 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }
     }
+    if (generation == _promotionsGeneration) {
+      await refreshComparisons();
+    }
+  }
+
+  Future<void> refreshPromotionsForTodayIfNeeded() async {
+    if (!_followToday) return;
+    final now = DateTime.now();
+    if (selectedDate.year == now.year &&
+        selectedDate.month == now.month &&
+        selectedDate.day == now.day) {
+      return;
+    }
+    await setSelectedDate(now);
   }
 
   Future<void> addProductToCart(
@@ -253,6 +353,7 @@ class AppState extends ChangeNotifier {
       productId,
       selectedStoreId: selectedStoreId,
     );
+    _persistUserData();
     notifyListeners();
     await refreshComparisons();
   }
@@ -268,6 +369,7 @@ class AppState extends ChangeNotifier {
       quantity,
       selectedStoreId,
     );
+    _persistUserData();
     notifyListeners();
     await refreshComparisons();
   }
@@ -281,6 +383,7 @@ class AppState extends ChangeNotifier {
       productId,
       selectedStoreId,
     );
+    _persistUserData();
     notifyListeners();
     await refreshComparisons();
   }
@@ -290,11 +393,13 @@ class AppState extends ChangeNotifier {
     cartComparisons = [];
     selectedStoresPlan = null;
     bestPerProductPlan = null;
+    _persistUserData();
     notifyListeners();
   }
 
   Future<void> togglePaymentMethod(String methodId) async {
     paymentMethods = _paymentMethodService.toggle(paymentMethods, methodId);
+    _persistUserData();
     notifyListeners();
     await refreshComparisons();
   }
@@ -309,9 +414,48 @@ class AppState extends ChangeNotifier {
       displayName: displayName,
     );
     paymentMethods = result.methods;
+    _persistUserData();
     notifyListeners();
     await refreshComparisons();
     return result.added;
+  }
+
+  void _persistUserData() {
+    final initialIds = _paymentMethodService
+        .initialMethods()
+        .map((method) => method.id)
+        .toSet();
+    final snapshot = SavedUserData(
+      cartItems: List.unmodifiable(cartItems),
+      productSnapshots: List.unmodifiable(
+        products.where(
+          (product) => cartItems.any((item) => item.productId == product.id),
+        ),
+      ),
+      activePaymentMethodIds: paymentMethods
+          .where((method) => method.active && initialIds.contains(method.id))
+          .map((method) => method.id)
+          .toSet(),
+      customPaymentMethods: List.unmodifiable(
+        paymentMethods.where((method) => method.id.startsWith('custom_')),
+      ),
+    );
+    _persistenceQueue = _persistenceQueue.then(
+      (_) async {
+        try {
+          await _userDataStore.save(snapshot);
+        } catch (_) {
+          // Storage can be unavailable in restricted browser contexts.
+        }
+      },
+      onError: (Object _) async {
+        try {
+          await _userDataStore.save(snapshot);
+        } catch (_) {
+          // Keep later saves usable if an earlier write failed.
+        }
+      },
+    );
   }
 
   Future<void> savePaymentMethods() async {
@@ -347,6 +491,7 @@ class AppState extends ChangeNotifier {
     try {
       final comparisonResult = await _priceComparisonService.compareCartOptions(
         cartItems: cartItems,
+        productCatalog: products,
         fecha: selectedDate,
         mediosPagoUsuario: activePaymentMethods,
         promociones: promotions,

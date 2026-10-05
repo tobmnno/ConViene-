@@ -250,18 +250,22 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Estas ahorrando!',
-                              style: TextStyle(
+                            Text(
+                              savings > 0
+                                  ? 'Estas ahorrando!'
+                                  : 'Ahorra en tu proxima compra',
+                              style: const TextStyle(
                                 color: AppColors.green,
                                 fontWeight: FontWeight.w900,
                                 fontSize: 15,
                               ),
                             ),
                             const SizedBox(height: 6),
-                            const Text(
-                              'Con Conviene ya encontraste descuentos reales.',
-                              style: TextStyle(
+                            Text(
+                              savings > 0
+                                  ? 'Con Conviene ya encontraste descuentos reales.'
+                                  : 'Compara el changuito para conocer tu ahorro.',
+                              style: const TextStyle(
                                 color: AppColors.deepBlue,
                                 fontSize: 12,
                               ),

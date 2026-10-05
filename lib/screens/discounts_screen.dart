@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/discount.dart';
@@ -101,31 +103,51 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: state.isLoadingPromotions
-                ? const _DiscountsLoading()
-                : filteredPromotions.isEmpty
-                ? _NoDiscounts(hasPaymentMethods: activeMethods.isNotEmpty)
-                : ListView.separated(
-                    itemCount: filteredPromotions.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final promotion = filteredPromotions[index];
-                      final supermarket = state.supermarkets.firstWhere(
-                        (store) => store.id == promotion.storeId,
-                      );
-                      return _PromotionCard(
-                        promotion: promotion,
-                        supermarketName: supermarket.name,
-                        compatible: true,
-                        storeLogo: StoreLogo(
-                          supermarket: supermarket,
-                          size: 48,
+            child: Column(
+              children: [
+                if (state.promotionsWarning != null &&
+                    !state.isLoadingPromotions) ...[
+                  _DiscountsWarning(message: state.promotionsWarning!),
+                  const SizedBox(height: 10),
+                ],
+                Expanded(
+                  child: state.isLoadingPromotions
+                      ? const _DiscountsLoading()
+                      : state.promotionsError != null
+                      ? _DiscountsError(
+                          message: state.promotionsError!,
+                          onRetry: () => unawaited(
+                            state.setSelectedDate(state.selectedDate),
+                          ),
+                        )
+                      : filteredPromotions.isEmpty
+                      ? _NoDiscounts(
+                          hasPaymentMethods: activeMethods.isNotEmpty,
+                        )
+                      : ListView.separated(
+                          itemCount: filteredPromotions.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final promotion = filteredPromotions[index];
+                            final supermarket = state.supermarkets.firstWhere(
+                              (store) => store.id == promotion.storeId,
+                            );
+                            return _PromotionCard(
+                              promotion: promotion,
+                              supermarketName: supermarket.name,
+                              compatible: true,
+                              storeLogo: StoreLogo(
+                                supermarket: supermarket,
+                                size: 48,
+                              ),
+                              selectedDate: state.selectedDate,
+                            );
+                          },
                         ),
-                        selectedDate: state.selectedDate,
-                      );
-                    },
-                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -684,6 +706,62 @@ class _DiscountsLoading extends StatelessWidget {
         width: 28,
         height: 28,
         child: CircularProgressIndicator(strokeWidth: 3),
+      ),
+    );
+  }
+}
+
+class _DiscountsError extends StatelessWidget {
+  const _DiscountsError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: AppCard(
+        color: const Color(0xFFFFF4ED),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, color: Color(0xFFB54708)),
+            const SizedBox(height: 10),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DiscountsWarning extends StatelessWidget {
+  const _DiscountsWarning({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      color: const Color(0xFFFFF8E7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, color: Color(0xFF8A5A00)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Datos parciales: $message',
+              style: const TextStyle(color: AppColors.deepBlue, fontSize: 12),
+            ),
+          ),
+        ],
       ),
     );
   }

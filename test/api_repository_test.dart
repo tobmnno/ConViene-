@@ -4,6 +4,7 @@ import 'package:conviene/models/payment_method.dart';
 import 'package:conviene/models/shopping_context.dart';
 import 'package:conviene/repositories/api_repository.dart';
 import 'package:conviene/repositories/mock_repository.dart';
+import 'package:conviene/repositories/promotion_status_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -278,6 +279,48 @@ void main() {
     final promotions = await repository.getPromotions(DateTime(2026, 10, 1));
 
     expect(promotions, isEmpty);
+  });
+
+  test(
+    'does not show sample promotions when the discounts API fails',
+    () async {
+      final repository = ApiRepository(
+        baseUrl: Uri.parse('http://127.0.0.1:8000'),
+        fallback: MockRepository(),
+        client: MockClient(
+          (request) async => http.Response('unavailable', 503),
+        ),
+      );
+
+      await expectLater(
+        repository.getPromotions(DateTime(2026, 10, 5)),
+        throwsA(isA<StateError>()),
+      );
+    },
+  );
+
+  test('preserves source warnings for partial discount catalogs', () async {
+    final repository = ApiRepository(
+      baseUrl: Uri.parse('http://127.0.0.1:8000'),
+      fallback: MockRepository(),
+      client: MockClient(
+        (request) async => http.Response(
+          jsonEncode({
+            'results': <Object>[],
+            'warnings': ['La Gallega: se uso el catalogo local como respaldo'],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        ),
+      ),
+    );
+
+    await repository.getPromotions(DateTime(2026, 10, 5));
+
+    expect(
+      (repository as PromotionStatusRepository).lastPromotionWarning,
+      'La Gallega: se uso el catalogo local como respaldo',
+    );
   });
 
   test(

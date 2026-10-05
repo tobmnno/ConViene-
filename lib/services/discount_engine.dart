@@ -30,12 +30,17 @@ class DiscountEngine {
     Promotion? bestPromotion;
     PaymentMethod? bestMethod;
     var bestRawDiscount = 0.0;
+    var bestDiscount = 0.0;
 
     for (final promotion in compatiblePromos) {
       final rawDiscount = precioOriginal * promotion.porcentajeDescuento / 100;
-      if (rawDiscount > bestRawDiscount) {
+      final cappedDiscount = promotion.topeReintegro <= 0
+          ? rawDiscount
+          : rawDiscount.clamp(0, promotion.topeReintegro).toDouble();
+      if (cappedDiscount > bestDiscount) {
         bestPromotion = promotion;
         bestRawDiscount = rawDiscount;
+        bestDiscount = cappedDiscount;
         bestMethod = activeMethods.firstWhere(promotion.isCompatibleWith);
       }
     }
@@ -44,10 +49,7 @@ class DiscountEngine {
       return DiscountQuote.noDiscount(precioOriginal);
     }
 
-    final cappedDiscount = bestPromotion.topeReintegro <= 0
-        ? bestRawDiscount
-        : bestRawDiscount.clamp(0, bestPromotion.topeReintegro);
-    final discount = cappedDiscount.toDouble();
+    final discount = bestDiscount;
     return DiscountQuote(
       precioOriginal: precioOriginal,
       descuentoAplicado: true,

@@ -7,6 +7,12 @@ from .base import parse_price
 BASE_URL = "https://www.lagallega.com.ar/"
 
 
+def _clean_product_name(value):
+    value = re.sub(r"\b[\w?]*\?+[\w?]*", " ", value or "")
+    value = re.sub(r"(?<=\w)\.(?=\s|$)", "", value)
+    return re.sub(r"\s+", " ", value).strip()
+
+
 class CatalogPage(HTMLParser):
     """Parse the published product cards, including current and crossed-out prices."""
 
@@ -57,9 +63,10 @@ class CatalogPage(HTMLParser):
             self.div_classes.pop()
         if tag == "li":
             price = parse_price(self.card["der"] or self.card["izq"])
-            if self.card["name"].strip() and price is not None and price > 0:
+            name = _clean_product_name(self.card["name"])
+            if name and price is not None and price > 0:
                 self.rows.append({
-                    "name": self.card["name"].strip(), "price": price,
+                    "name": name, "price": price,
                     "regular_price": parse_price(self.card["izqdes"]),
                     "ean": self.card["ean"], "image": self.card["image"],
                     "url": self.card["url"],

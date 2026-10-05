@@ -11,10 +11,14 @@ import '../models/product.dart';
 import '../models/supermarket.dart';
 import '../models/shopping_context.dart';
 import 'conviene_repository.dart';
+import 'promotion_status_repository.dart';
 import 'product_equivalence_repository.dart';
 
 class ApiRepository
-    implements ConvieneRepository, ProductEquivalenceRepository {
+    implements
+        ConvieneRepository,
+        ProductEquivalenceRepository,
+        PromotionStatusRepository {
   ApiRepository({
     required this.baseUrl,
     required this.fallback,
@@ -30,6 +34,10 @@ class ApiRepository
   final Map<String, List<ProductPrice>> _cachedPrices = {};
   List<Supermarket>? _cachedSupermarkets;
   String? _pricesContextKey;
+  String? _lastPromotionWarning;
+
+  @override
+  String? get lastPromotionWarning => _lastPromotionWarning;
 
   @override
   Future<List<Supermarket>> getSupermarkets() async {
@@ -124,9 +132,17 @@ class ApiRepository
         );
       }
       final promotions = _parsePromotions(rawResults, date);
+      final warnings = decoded['warnings'];
+      _lastPromotionWarning = warnings is List
+          ? warnings
+                .map(_asString)
+                .where((warning) => warning.isNotEmpty)
+                .join(' ')
+          : null;
       return promotions;
     } on Object {
-      return fallback.getPromotions(date);
+      _lastPromotionWarning = null;
+      throw StateError('No se pudieron consultar los descuentos actualizados.');
     }
   }
 
