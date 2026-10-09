@@ -13,6 +13,8 @@ import '../widgets/price_block.dart';
 import '../widgets/product_art.dart';
 import '../widgets/screen_frame.dart';
 import '../widgets/store_logo.dart';
+import 'barcode_scanner_screen.dart';
+import 'favorites_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key, required this.onBack});
@@ -95,6 +97,18 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               ),
               IconButton(
+                tooltip: 'Favoritos',
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => const FavoritesScreen(),
+                  ),
+                ),
+                icon: const Icon(
+                  Icons.favorite_border,
+                  color: AppColors.deepBlue,
+                ),
+              ),
+              IconButton(
                 tooltip: 'Filtros',
                 onPressed: () => _showStoreFilters(state),
                 icon: const Icon(Icons.tune, color: AppColors.deepBlue),
@@ -110,10 +124,26 @@ class _SearchScreenState extends State<SearchScreen> {
             decoration: InputDecoration(
               hintText: 'Buscar producto...',
               prefixIcon: const Icon(Icons.search),
-              suffixIcon: IconButton(
-                tooltip: 'Buscar',
-                onPressed: () => _submitSearch(_controller.text),
-                icon: const Icon(Icons.arrow_forward, color: AppColors.blue),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Escanear codigo de barras',
+                    onPressed: _scanBarcode,
+                    icon: const Icon(
+                      Icons.qr_code_scanner,
+                      color: AppColors.deepBlue,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Buscar',
+                    onPressed: () => _submitSearch(_controller.text),
+                    icon: const Icon(
+                      Icons.arrow_forward,
+                      color: AppColors.blue,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -154,6 +184,9 @@ class _SearchScreenState extends State<SearchScreen> {
                         return _ResultCard(
                           result: result,
                           isBest: isBest,
+                          isFavorite: state.isFavorite(result.product.id),
+                          onToggleFavorite: () =>
+                              state.toggleFavorite(result.product),
                           onAdd: () => _addProductToCart(
                             state,
                             result.product.id,
@@ -175,6 +208,12 @@ class _SearchScreenState extends State<SearchScreen> {
     _controller.selection = TextSelection.collapsed(offset: query.length);
     _focusNode.unfocus();
     unawaited(AppScope.of(context).searchProducts(query));
+  }
+
+  Future<void> _scanBarcode() async {
+    final code = await scanBarcode(context);
+    if (!mounted || code == null) return;
+    _submitSearch(code);
   }
 
   Future<void> _showStoreFilters(AppState state) async {
@@ -467,11 +506,15 @@ class _ResultCard extends StatefulWidget {
   const _ResultCard({
     required this.result,
     required this.isBest,
+    required this.isFavorite,
+    required this.onToggleFavorite,
     required this.onAdd,
   });
 
   final SearchResult result;
   final bool isBest;
+  final bool isFavorite;
+  final VoidCallback onToggleFavorite;
   final VoidCallback onAdd;
 
   @override
@@ -603,6 +646,18 @@ class _ResultCardState extends State<_ResultCard> {
                 const SizedBox(width: 8),
                 Column(
                   children: [
+                    IconButton(
+                      tooltip: widget.isFavorite
+                          ? 'Quitar de favoritos'
+                          : 'Guardar en favoritos',
+                      onPressed: widget.onToggleFavorite,
+                      icon: Icon(
+                        widget.isFavorite
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                      ),
+                      color: AppColors.blue,
+                    ),
                     IconButton.filled(
                       tooltip: 'Agregar al changuito',
                       onPressed: _isAdded ? null : _handleAdd,

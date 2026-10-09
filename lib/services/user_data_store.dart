@@ -79,10 +79,14 @@ class LocalUserDataStore implements UserDataStore {
           : const <Product>[];
 
       final activeIds = decoded['activePaymentMethodIds'];
+      final favoriteIds = decoded['favoriteProductIds'];
       final customJson = decoded['customPaymentMethods'];
       return SavedUserData(
         cartItems: cart,
         productSnapshots: productSnapshots,
+        favoriteProductIds: favoriteIds is List
+            ? favoriteIds.whereType<String>().toSet()
+            : const {},
         activePaymentMethodIds: activeIds is List
             ? activeIds.whereType<String>().toSet()
             : const {},
@@ -126,6 +130,7 @@ class LocalUserDataStore implements UserDataStore {
             'imageUrl': product.imageUrl,
           },
       ],
+      'favoriteProductIds': data.favoriteProductIds.toList(),
       'activePaymentMethodIds': data.activePaymentMethodIds.toList(),
       'customPaymentMethods': [
         for (final method in data.customPaymentMethods)
@@ -194,12 +199,14 @@ class SavedUserData {
   const SavedUserData({
     required this.cartItems,
     required this.productSnapshots,
+    this.favoriteProductIds = const {},
     required this.activePaymentMethodIds,
     required this.customPaymentMethods,
   });
 
   final List<CartItem> cartItems;
   final List<Product> productSnapshots;
+  final Set<String> favoriteProductIds;
   final Set<String> activePaymentMethodIds;
   final List<PaymentMethod> customPaymentMethods;
 }

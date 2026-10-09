@@ -27,6 +27,7 @@ void main() {
           ),
         ],
         activePaymentMethodIds: {'visa'},
+        favoriteProductIds: {'milk-1'},
         customPaymentMethods: [
           PaymentMethod(
             id: 'custom_wallet_prueba',
@@ -44,6 +45,7 @@ void main() {
     expect(restored?.cartItems.single.quantity, 2);
     expect(restored?.productSnapshots.single.name, 'Leche entera 1L');
     expect(restored?.activePaymentMethodIds, {'visa'});
+    expect(restored?.favoriteProductIds, {'milk-1'});
     expect(
       restored?.customPaymentMethods.single.displayName,
       'Billetera prueba',
@@ -62,6 +64,15 @@ void main() {
       expect(await store.load(), isNull);
     },
   );
+
+  test('loads older saved data without favorites', () async {
+    final store = LocalUserDataStore(
+      preferences: _MemoryStringPreferences(
+        '{"version":1,"cart":[],"products":[],"activePaymentMethodIds":[],"customPaymentMethods":[]}',
+      ),
+    );
+    expect((await store.load())?.favoriteProductIds, isEmpty);
+  });
 }
 
 class _MemoryStringPreferences implements StringPreferences {

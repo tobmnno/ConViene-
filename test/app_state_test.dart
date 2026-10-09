@@ -55,6 +55,8 @@ void main() {
         PaymentMethodType.wallet,
         'Billetera test',
       );
+      final favorite = firstState.products.last;
+      firstState.toggleFavorite(favorite);
 
       final reloadedState = AppState(
         repository: _EmptyProductRepository(),
@@ -85,6 +87,12 @@ void main() {
         isTrue,
       );
       expect(reloadedState.bestComparison?.items, isNotEmpty);
+      expect(
+        reloadedState.favoriteProducts.map((product) => product.id),
+        contains(favorite.id),
+      );
+      reloadedState.toggleFavorite(favorite);
+      expect(reloadedState.favoriteProducts, isEmpty);
 
       firstState.dispose();
       reloadedState.dispose();

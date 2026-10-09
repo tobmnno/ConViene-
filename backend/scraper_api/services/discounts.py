@@ -566,6 +566,11 @@ def _scrape_carrefour(selected_date: date, warnings: list[str]) -> list[Discount
             card_names,
             f"{title} {subtitle}",
         )
+        compatible_entities, required_groups = _carrefour_payment_requirements(
+            title, legal, compatible_entities
+        )
+        if required_groups:
+            entity = " y ".join(compatible_entities)
         payment_type, payment_types = _payment_type(title, legal, compatible_entities)
         channels = _carrefour_channels(raw)
         benefit = _benefit_text(title, percentage)
@@ -590,6 +595,7 @@ def _scrape_carrefour(selected_date: date, warnings: list[str]) -> list[Discount
                 valid_text=_valid_text(valid_from, valid_until, weekdays),
                 source_url=CARREFOUR_URL,
                 compatible_entities=compatible_entities,
+                required_entity_groups=required_groups,
                 compatible_payment_types=payment_types,
                 any_entity=_is_all_payment_methods(title, legal),
                 scraped_at=scraped_at,
@@ -657,6 +663,8 @@ def _coto_from_api(raw: dict[str, Any], channel: str, selected_date: date, scrap
         monthrange(selected_date.year, selected_date.month)[1],
     )
     entities = _entities_from_text(f"{description} {observation} {raw.get('icono', '')}")
+    if "Naranja X" in entities:
+        entities = [entity for entity in entities if entity not in {"Visa", "Mastercard"}]
     payment_type, payment_types = _payment_type(combined, combined, entities)
     title = _clean_text(f"{discount_text} {description}").strip(" .")
     return DiscountPromotion(
@@ -677,9 +685,26 @@ def _coto_from_api(raw: dict[str, Any], channel: str, selected_date: date, scrap
         valid_text=_valid_text(start_date, end_date, weekdays),
         source_url=COTO_URL,
         compatible_entities=entities,
+        required_entity_groups=_required_entity_groups(entities),
         compatible_payment_types=payment_types,
         scraped_at=scraped_at,
     )
+
+
+def _required_entity_groups(entities: list[str]) -> list[list[str]]:
+    wallets = [entity for entity in entities if entity in {"MODO", "Mercado Pago", "Cuenta DNI"}]
+    cards = [
+        entity
+        for entity in entities
+        if entity in {"Visa", "Mastercard", "American Express", "Cabal", "Naranja X", "Tarjeta TCI"}
+    ]
+    banks = [
+        entity
+        for entity in entities
+        if entity.startswith("Banco ") or entity in {"BBVA", "ICBC"}
+    ]
+    groups = [group for group in (wallets, cards, banks) if group]
+    return groups if len(groups) > 1 else []
 
 
 def _scrape_lagallega(selected_date: date, warnings: list[str]) -> list[DiscountPromotion]:
@@ -905,6 +930,7 @@ def _lagallega_promotions_from_html(html: str, selected_date: date, scraped_at: 
                 valid_text=_valid_text(start_date, end_date, weekdays),
                 source_url=LAGALLEGA_URL,
                 compatible_entities=entities,
+                required_entity_groups=_required_entity_groups(entities),
                 compatible_payment_types=payment_types,
                 scraped_at=scraped_at,
             )
@@ -941,8 +967,27 @@ def _carrefour_entities(
     return (" y ".join(entities) if entities else "Medios de pago", entities)
 
 
+def _carrefour_payment_requirements(
+    title: str, legal: str, entities: list[str]
+) -> tuple[list[str], list[list[str]]]:
+    if not re.search(r"\bexclusiv[oa]\b.{0,30}\bmodo\b", _normalize(title)):
+        return entities, []
+    issuer = re.search(
+        r"\bemitidas? por (?:el )?banco [a-z]+",
+        _normalize(legal),
+    )
+    if issuer:
+        banks = [
+            entity
+            for entity in _entities_from_text(issuer.group(0))
+            if entity.startswith("Banco ")
+        ]
+        entities = _unique(entities + banks)
+    return entities, _required_entity_groups(entities)
+
+
 def _entities_from_text(text: str) -> list[str]:
-    normalized = _normalize(text)
+    normalized = re.sub(r"[^a-z]+", " ", _normalize(text))
     candidates: list[str] = []
     known = {
         "visa": "Visa",
@@ -977,7 +1022,7 @@ def _entities_from_text(text: str) -> list[str]:
         "tci": "Tarjeta TCI",
     }
     for token, label in known.items():
-        if token in normalized:
+        if re.search(rf"(?<![a-z]){re.escape(token)}(?![a-z])", normalized):
             candidates.append(label)
     return _unique(candidates)
 

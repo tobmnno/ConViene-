@@ -1,10 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/cart_item.dart';
 import '../models/product.dart';
 import '../models/store_comparison.dart';
+import '../services/cart_share_service.dart';
 import '../state/app_scope.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
@@ -59,6 +63,18 @@ class CartScreen extends StatelessWidget {
               ),
               const Spacer(),
               IconButton(
+                tooltip: kIsWeb
+                    ? 'Copiar changuito para compartir'
+                    : 'Compartir changuito',
+                onPressed: state.cartItems.isEmpty
+                    ? null
+                    : () => _shareCart(context, state),
+                icon: const Icon(
+                  kIsWeb ? Icons.copy_outlined : Icons.share_outlined,
+                  color: AppColors.deepBlue,
+                ),
+              ),
+              IconButton(
                 tooltip: 'Actualizar precios',
                 onPressed: state.cartItems.isEmpty || state.isComparing
                     ? null
@@ -112,7 +128,7 @@ class CartScreen extends StatelessWidget {
                   ],
                   const Text(
                     'Productos elegidos',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: AppColors.deepBlue,
                       fontWeight: FontWeight.w900,
                       fontSize: 15,
@@ -142,6 +158,11 @@ class CartScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                     ],
+                  ] else ...[
+                    for (final item in state.cartItems) ...[
+                      _CartLine(cartItem: item),
+                      const SizedBox(height: 10),
+                    ],
                   ],
                 ],
               ),
@@ -168,6 +189,45 @@ class CartScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _shareCart(BuildContext context, AppState state) async {
+    final text = const CartShareService().buildText(
+      items: state.cartItems,
+      products: state.products,
+      supermarkets: state.supermarkets,
+    );
+    if (kIsWeb) {
+      await _copyCart(context, text);
+      return;
+    }
+    final box = context.findRenderObject() as RenderBox?;
+    try {
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          text: text,
+          subject: 'Mi changuito en Conviene',
+          downloadFallbackEnabled: false,
+          sharePositionOrigin: box == null
+              ? null
+              : box.localToGlobal(Offset.zero) & box.size,
+        ),
+      );
+      if (result.status != ShareResultStatus.unavailable) return;
+    } catch (_) {
+      // Clipboard remains available when the platform share sheet is not.
+    }
+    await _copyCart(context, text);
+  }
+
+  Future<void> _copyCart(BuildContext context, String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Changuito copiado para compartir.')),
+      );
   }
 
   Future<void> _confirmClearCart(BuildContext context, AppState state) async {
@@ -578,6 +638,22 @@ class _CartLine extends StatelessWidget {
                       ),
                     ],
                   ),
+                ] else if (cartItem.selectedStoreId != null) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    state.supermarkets
+                            .where(
+                              (store) => store.id == cartItem.selectedStoreId,
+                            )
+                            .map((store) => store.name)
+                            .firstOrNull ??
+                        'Supermercado elegido',
+                    style: const TextStyle(
+                      color: AppColors.deepBlue,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 8),
                 QuantityStepper(
@@ -600,14 +676,14 @@ class _CartLine extends StatelessWidget {
               if (line != null)
                 PriceBlock(discount: line.discount, alignEnd: true)
               else
-                const SizedBox(
+                SizedBox(
                   width: 86,
                   child: Text(
-                    'No disponible',
+                    state.isComparing ? 'Buscando precio' : 'Sin precio actual',
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.end,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: AppColors.textGray,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,

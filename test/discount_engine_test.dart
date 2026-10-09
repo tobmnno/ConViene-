@@ -296,6 +296,83 @@ void main() {
     expect(complete.descuentoAplicado, isTrue);
   });
 
+  test('Visa de Comafi requiere la tarjeta y el banco correcto', () {
+    final promotion = Promotion(
+      id: 'coto_comafi',
+      storeId: 'coto',
+      tipoMedioPago: PaymentMethodType.card,
+      entidad: 'Visa y Banco Comafi',
+      porcentajeDescuento: 35,
+      topeReintegro: 15000,
+      diasSemana: const {DateTime.thursday},
+      fechaInicio: DateTime(2026, 1, 1),
+      fechaFin: DateTime(2026, 12, 31),
+      condiciones: 'Visa de Banco Comafi',
+      categorias: const ['todos'],
+      entidadesCompatibles: const {'Visa', 'Banco Comafi'},
+      entidadesRequeridas: const [
+        {'Visa'},
+        {'Banco Comafi'},
+      ],
+      tiposMedioPagoCompatibles: const {
+        PaymentMethodType.card,
+        PaymentMethodType.bank,
+      },
+    );
+    const galicia = PaymentMethod(
+      id: 'galicia',
+      type: PaymentMethodType.bank,
+      entity: 'Banco Galicia',
+      displayName: 'Banco Galicia',
+      active: true,
+    );
+    const comafi = PaymentMethod(
+      id: 'comafi',
+      type: PaymentMethodType.bank,
+      entity: 'Banco Comafi',
+      displayName: 'Banco Comafi',
+      active: true,
+    );
+    const mislabeledVisa = PaymentMethod(
+      id: 'visa_wallet',
+      type: PaymentMethodType.wallet,
+      entity: 'Visa',
+      displayName: 'Visa',
+      active: true,
+    );
+
+    expect(promotion.isCompatibleWithAny(const [visa, galicia]), isFalse);
+    expect(promotion.isCompatibleWithAny(const [comafi]), isFalse);
+    expect(promotion.isCompatibleWithAny(const [mislabeledVisa, comafi]), isFalse);
+    expect(promotion.isCompatibleWithAny(const [visa, comafi]), isTrue);
+  });
+
+  test('Visa y Mastercard son alternativas cuando ambas sirven', () {
+    final promotion = Promotion(
+      id: 'coto_marcas',
+      storeId: 'coto',
+      tipoMedioPago: PaymentMethodType.card,
+      entidad: 'Visa y Mastercard',
+      porcentajeDescuento: 20,
+      topeReintegro: 0,
+      diasSemana: const {DateTime.thursday},
+      fechaInicio: DateTime(2026, 1, 1),
+      fechaFin: DateTime(2026, 12, 31),
+      condiciones: 'Visa o Mastercard',
+      categorias: const ['todos'],
+      entidadesCompatibles: const {'Visa', 'Mastercard'},
+    );
+    const mastercard = PaymentMethod(
+      id: 'mastercard',
+      type: PaymentMethodType.card,
+      entity: 'Mastercard',
+      displayName: 'Mastercard',
+      active: true,
+    );
+
+    expect(promotion.isCompatibleWithAny(const [mastercard]), isTrue);
+  });
+
   test('no toma entidades vacias como comodin', () {
     final carrefourCardPromotion = Promotion(
       id: 'carrefour_banco_card',

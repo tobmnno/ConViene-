@@ -20,7 +20,13 @@ class ProductSearchService {
       storeIds: storeIds,
       context: context,
     );
-    return sortResults(results, sort, query: query);
+    final hasSpecificTerm = _queryTokens(query).any(
+      (token) => int.tryParse(token) == null,
+    );
+    final visibleResults = hasSpecificTerm
+        ? results.where((result) => result.isExactMatch).toList()
+        : results;
+    return sortResults(visibleResults, sort, query: query);
   }
 
   List<SearchResult> sortResults(

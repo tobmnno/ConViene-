@@ -8,8 +8,8 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-from models import CompareRequest, CompareResponse, DiscountsResponse, SearchRequest, SearchResponse, ShoppingContext, EquivalentsRequest, EquivalentsResponse, ProductReference
-from services.catalog import rank_search_results, extract_measurement
+from models import CompareRequest, CompareResponse, DiscountsResponse, SearchMatch, SearchRequest, SearchResponse, ShoppingContext, EquivalentsRequest, EquivalentsResponse, ProductReference
+from services.catalog import rank_search_results, extract_measurement, valid_gtin
 from services.comparison import compare_cart
 from services.equivalents import find_equivalents, reference_queries
 from services.discounts import clear_discount_cache, scrape_discounts
@@ -56,7 +56,22 @@ async def root():
 
 
 def _build_search_response(query: str, stores: list[str], rows, limit: int, context: ShoppingContext | None = None) -> SearchResponse:
-    ranked = rank_search_results(query, rows, limit=len(rows))
+    barcode = valid_gtin(query)
+    if barcode:
+        ranked = [
+            SearchMatch(
+                product=row,
+                score=100,
+                normalized_query=barcode,
+                normalized_name=row.name.lower(),
+                match_type="exact",
+            )
+            for row in rows
+            if valid_gtin(row.ean) == barcode and row.available is not False and row.price is not None
+        ]
+        ranked.sort(key=lambda match: (match.product.price, match.product.store))
+    else:
+        ranked = rank_search_results(query, rows, limit=len(rows))
     # Reserve coverage for each source without discarding the relevance order.
     coverage = {store: next((index for index, match in enumerate(ranked) if match.product.store == store), None) for store in stores}
     reserved = {index for index in coverage.values() if index is not None} if limit >= len(stores) else set()

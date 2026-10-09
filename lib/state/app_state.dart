@@ -58,6 +58,7 @@ class AppState extends ChangeNotifier {
   List<Promotion> promotions = [];
   List<PaymentMethod> paymentMethods = [];
   List<CartItem> cartItems = const [];
+  Set<String> favoriteProductIds = {};
   List<SearchResult> searchResults = [];
   List<StoreComparison> cartComparisons = [];
   MultiStoreComparison? selectedStoresPlan;
@@ -91,6 +92,25 @@ class AppState extends ChangeNotifier {
 
   int get cartQuantity {
     return cartItems.fold<int>(0, (total, item) => total + item.quantity);
+  }
+
+  List<Product> get favoriteProducts => [
+    for (final product in products)
+      if (favoriteProductIds.contains(product.id)) product,
+  ];
+
+  bool isFavorite(String productId) => favoriteProductIds.contains(productId);
+
+  void toggleFavorite(Product product) {
+    favoriteProductIds = {...favoriteProductIds};
+    if (!favoriteProductIds.add(product.id))
+      favoriteProductIds.remove(product.id);
+    if (favoriteProductIds.contains(product.id) &&
+        !products.any((item) => item.id == product.id)) {
+      products = [...products, product];
+    }
+    _persistUserData();
+    notifyListeners();
   }
 
   StoreComparison? get bestComparison {
@@ -134,13 +154,16 @@ class AppState extends ChangeNotifier {
         final cartProductIds = savedData.cartItems
             .map((item) => item.productId)
             .toSet();
+        favoriteProductIds = savedData.favoriteProductIds;
+        final retainedIds = {...cartProductIds, ...favoriteProductIds};
         final productsById = {
           for (final product in products) product.id: product,
           for (final product in savedData.productSnapshots)
-            if (cartProductIds.contains(product.id)) product.id: product,
+            if (retainedIds.contains(product.id)) product.id: product,
         };
         products = productsById.values.toList();
         final productIds = products.map((product) => product.id).toSet();
+        favoriteProductIds = favoriteProductIds.intersection(productIds);
         final storeIds = supermarkets.map((store) => store.id).toSet();
         cartItems = [
           for (final item in savedData.cartItems)
@@ -209,10 +232,11 @@ class AppState extends ChangeNotifier {
       }
       searchResults = results;
       final cartProductIds = cartItems.map((item) => item.productId).toSet();
+      final retainedIds = {...cartProductIds, ...favoriteProductIds};
       products = {
         for (final product in loadedProducts) product.id: product,
         for (final product in products)
-          if (cartProductIds.contains(product.id)) product.id: product,
+          if (retainedIds.contains(product.id)) product.id: product,
       }.values.toList();
     } catch (_) {
       if (generation == _searchGeneration) {
@@ -429,9 +453,12 @@ class AppState extends ChangeNotifier {
       cartItems: List.unmodifiable(cartItems),
       productSnapshots: List.unmodifiable(
         products.where(
-          (product) => cartItems.any((item) => item.productId == product.id),
+          (product) =>
+              cartItems.any((item) => item.productId == product.id) ||
+              favoriteProductIds.contains(product.id),
         ),
       ),
+      favoriteProductIds: Set.unmodifiable(favoriteProductIds),
       activePaymentMethodIds: paymentMethods
           .where((method) => method.active && initialIds.contains(method.id))
           .map((method) => method.id)

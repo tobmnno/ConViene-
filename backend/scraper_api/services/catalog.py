@@ -127,6 +127,7 @@ _VARIANT_ALIASES = {
         "prebioticos": "prebioticos", "multivit": "multivit",
         "multivitaminas": "multivit", "multidefensas": "multidefensas",
     },
+    "richness": {"doble": "double"},
     "form": {"banada": "coated", "banadas": "coated", "banado": "coated", "rellena": "filled", "rellenas": "filled"},
 }
 
@@ -137,6 +138,7 @@ _GENERIC_IDENTITY_TOKENS = {
     "relleno", "sabor", "sin", "tradicional", "unidad", "unidades", "yerba", "yogur",
     "descremada", "semidescremada", "regular", "diet", "zero", "protein", "proteina",
     "barista", "vainilla", "chocolate", "frutilla", "banana", "coco", "limon", "naranja",
+    "doble",
     "con", "palo", "conpalo", "sinpalo", "banada", "banadas", "banado",
     "mas", "sachet", "botella", "carton", "pote", "lata", "caja", "bolsa",
     "larga", "vida", "uat", "uht", "ttb", "tetra", "brick", "fortificada", "parcialmente",

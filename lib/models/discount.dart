@@ -102,10 +102,12 @@ class Promotion {
     }
     return entidadesRequeridas.every(
       (group) => activeMethods.any(
-        (method) => group.any(
-          (entity) =>
-              _normalizeEntity(entity) == _normalizeEntity(method.entity),
-        ),
+        (method) =>
+            isCompatibleWith(method) &&
+            group.any(
+              (entity) =>
+                  _normalizeEntity(entity) == _normalizeEntity(method.entity),
+            ),
       ),
     );
   }

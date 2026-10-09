@@ -1,6 +1,7 @@
 import 'package:conviene/models/price_quote.dart';
 import 'package:conviene/models/product.dart';
 import 'package:conviene/models/supermarket.dart';
+import 'package:conviene/models/shopping_context.dart';
 import 'package:conviene/repositories/mock_repository.dart';
 import 'package:conviene/services/product_search_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -69,6 +70,86 @@ void main() {
 
     expect(sorted.first.isExactMatch, isTrue);
   });
+
+  test('busqueda especifica muestra solo el producto pedido', () async {
+    final store = _store('coto', 'Coto');
+    final exact = _result(
+      supermarket: store,
+      productId: 'plain',
+      name: 'Crema La Paulina 200 cc',
+      presentation: '200 cc',
+      price: 2400,
+    );
+    final double = SearchResult(
+      product: _result(
+        supermarket: store,
+        productId: 'double',
+        name: 'Crema La Paulina Doble 200 cc',
+        presentation: '200 cc',
+        price: 2000,
+      ).product,
+      price: _result(
+        supermarket: store,
+        productId: 'double',
+        name: 'Crema La Paulina Doble 200 cc',
+        presentation: '200 cc',
+        price: 2000,
+      ).price,
+      supermarket: store,
+      isExactMatch: false,
+    );
+    final service = ProductSearchService(_FixedSearchRepository([double, exact]));
+
+    final found = await service.search(
+      query: 'crema la paulina 200cc',
+      storeIds: {'coto'},
+      sort: SearchSort.bestPrice,
+    );
+
+    expect(found.map((result) => result.product.id), ['plain']);
+  });
+
+  test('busqueda general sigue mostrando variantes', () async {
+    final store = _store('coto', 'Coto');
+    final similar = _result(
+      supermarket: store,
+      productId: 'milk',
+      name: 'Leche entera 1 L',
+      presentation: '1 L',
+      price: 1500,
+    );
+    final service = ProductSearchService(
+      _FixedSearchRepository([
+        SearchResult(
+          product: similar.product,
+          price: similar.price,
+          supermarket: similar.supermarket,
+          isExactMatch: false,
+        ),
+      ]),
+    );
+
+    final found = await service.search(
+      query: 'leche 1L',
+      storeIds: {'coto'},
+      sort: SearchSort.bestPrice,
+    );
+
+    expect(found, hasLength(1));
+  });
+}
+
+class _FixedSearchRepository extends MockRepository {
+  _FixedSearchRepository(this.results);
+
+  final List<SearchResult> results;
+
+  @override
+  Future<List<SearchResult>> searchProducts({
+    required String query,
+    required Set<String> storeIds,
+    ShoppingContext context = const ShoppingContext(),
+  }) async => results;
 }
 
 Supermarket _store(String id, String name) {

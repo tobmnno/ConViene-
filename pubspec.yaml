@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   flutter_svg: ^2.2.0
   http: ^1.6.0
+  mobile_scanner: ^7.4.2
+  share_plus: ^11.1.0
   shared_preferences: ^2.5.5
 
 dev_dependencies:

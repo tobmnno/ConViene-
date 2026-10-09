@@ -13,6 +13,7 @@ import '../widgets/payment_method_logo.dart';
 import '../widgets/screen_frame.dart';
 import '../widgets/store_logo.dart';
 import 'payment_methods_screen.dart';
+import 'barcode_scanner_screen.dart';
 import 'shopping_context_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -151,13 +152,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   decoration: InputDecoration(
                     hintText: 'Buscar producto...',
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: IconButton(
-                      tooltip: 'Buscar',
-                      onPressed: () => _submitSearch(_controller.text),
-                      icon: const Icon(
-                        Icons.arrow_forward,
-                        color: AppColors.blue,
-                      ),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Escanear codigo de barras',
+                          onPressed: _scanBarcode,
+                          icon: const Icon(
+                            Icons.qr_code_scanner,
+                            color: AppColors.deepBlue,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Buscar',
+                          onPressed: () => _submitSearch(_controller.text),
+                          icon: const Icon(
+                            Icons.arrow_forward,
+                            color: AppColors.blue,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -326,6 +340,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _scanBarcode() async {
+    final code = await scanBarcode(context);
+    if (!mounted || code == null) return;
+    _controller.text = code;
+    _submitSearch(code);
   }
 
   void _submitSearch(String value) {

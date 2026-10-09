@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from models import DiscountPromotion, DiscountsResponse, Product, SearchResponse
+from api import _build_search_response
 from scrapers.base import parse_price
 from services.catalog import (
     extract_measurement,
@@ -15,12 +16,26 @@ from services.catalog import (
     search_query_for_product_name,
     sort_results_for_output,
 )
-from services.discounts import _coto_from_api, _static_promotions
+from services.discounts import (
+    _carrefour_payment_requirements,
+    _coto_from_api,
+    _entities_from_text,
+    _lagallega_promotions_from_html,
+    _static_promotions,
+)
 from services.locations import nearby_coto_branches
 from services.scraper import resolve_stores
 
 
 class ContractTest(unittest.TestCase):
+    def test_barcode_search_returns_only_matching_gtin(self):
+        common = {"store": "coto", "price": 1200, "scraped_at": "2026-10-09T00:00:00+00:00"}
+        matched = Product(name="Leche entera La Serenisima", ean="7790742448309", **common)
+        other = Product(name="Leche multidefensas La Serenisima", ean="7790742348302", **common)
+        response = _build_search_response("7790742448309", ["coto"], [other, matched], 20)
+        self.assertEqual([match.product.ean for match in response.results], ["7790742448309"])
+        self.assertEqual(response.results[0].match_type, "exact")
+
     def test_parse_price_argentine_format(self):
         self.assertEqual(parse_price("$1.099,00"), 1099)
         self.assertEqual(parse_price("$1.099"), 1099)
@@ -118,6 +133,16 @@ class ContractTest(unittest.TestCase):
         ranked = rank_search_results("dulce de leche la paulina 400g", rows, limit=3)
 
         self.assertEqual([match.product.name for match in ranked], ["Dulce De Leche LA PAULINA 400g"])
+
+    def test_double_cream_is_not_the_plain_cream_requested(self):
+        rows = [
+            Product(store="coto", name="Crema De Leche LA PAULINA 200cc", price=2640, scraped_at="x"),
+            Product(store="la_gallega", name="crema de leche la paulina pote x 200 cc doble", price=2400, scraped_at="x"),
+        ]
+
+        ranked = rank_search_results("crema la paulina 200cc", rows)
+
+        self.assertEqual([match.match_type for match in ranked], ["exact", "similar"])
 
     def test_product_search_query_removes_percent_noise_but_keeps_size(self):
         query = search_query_for_product_name("Leche La Serenisima Liviana 1% 1L")
@@ -226,6 +251,86 @@ class ContractTest(unittest.TestCase):
         self.assertEqual(row.refund_cap, 15000)
         self.assertEqual(row.weekdays, [2])
         self.assertIn("Banco Comafi", row.compatible_entities)
+        self.assertEqual(row.required_entity_groups, [["Visa"], ["Banco Comafi"]])
+
+    def test_coto_modo_and_bank_require_both_entities(self):
+        row = _coto_from_api(
+            {
+                "id": "367",
+                "textoDescuento": "35% DE DESCUENTO",
+                "descripcion": "Pagando con MODO desde la app de Comafi con tarjetas del banco",
+                "icono": "logo_comafi2.png",
+                "dias": [{"id": 3, "descripcion": "Martes"}],
+            },
+            "Sucursal",
+            __import__("datetime").date(2026, 10, 6),
+            "2026-10-06T00:00:00+00:00",
+        )
+
+        self.assertEqual(row.required_entity_groups, [["MODO"], ["Banco Comafi"]])
+
+    def test_coto_card_brands_remain_alternatives_with_required_bank(self):
+        row = _coto_from_api(
+            {
+                "id": "409",
+                "textoDescuento": "12 CUOTAS SIN INTERES",
+                "descripcion": "Con tarjetas Visa y Mastercard del Banco Comafi",
+                "dias": [{"id": 3, "descripcion": "Martes"}],
+            },
+            "Digital",
+            __import__("datetime").date(2026, 10, 6),
+            "2026-10-06T00:00:00+00:00",
+        )
+
+        self.assertEqual(row.required_entity_groups, [["Visa", "Mastercard"], ["Banco Comafi"]])
+
+    def test_entity_detection_does_not_find_nacion_inside_iluminacion(self):
+        entities = _entities_from_text(
+            "Productos de iluminacion con tarjetas Visa y Mastercard logo_macro_bma3.png"
+        )
+
+        self.assertEqual(entities, ["Visa", "Mastercard", "Banco Macro"])
+
+    def test_coto_naranja_x_visa_requires_naranja_x(self):
+        row = _coto_from_api(
+            {
+                "id": "382",
+                "textoDescuento": "30% DE DESCUENTO",
+                "descripcion": "Con tarjeta de credito Naranja X o Debito Naranja X VISA",
+                "dias": [{"id": 3, "descripcion": "Martes"}],
+            },
+            "Digital",
+            __import__("datetime").date(2026, 10, 13),
+            "2026-10-13T00:00:00+00:00",
+        )
+
+        self.assertEqual(row.compatible_entities, ["Naranja X"])
+
+    def test_lagallega_bank_card_offer_requires_both(self):
+        rows = _lagallega_promotions_from_html(
+            "<div>30% descuento con tarjetas Visa y Mastercard de Banco Santa Fe.</div>",
+            __import__("datetime").date(2026, 10, 13),
+            "2026-10-13T00:00:00+00:00",
+        )
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(
+            rows[0].required_entity_groups,
+            [["Visa", "Mastercard"], ["Banco Santa Fe"]],
+        )
+
+    def test_carrefour_exclusive_modo_offer_requires_issuer_and_card(self):
+        entities, groups = _carrefour_payment_requirements(
+            "5% de ahorro con tarjetas Visa y Mastercard. Exclusivo pagando con Modo.",
+            "Tarjetas emitidas por el Banco Nacion a traves de Modo o BNA+.",
+            ["Visa", "Mastercard", "MODO"],
+        )
+
+        self.assertEqual(entities, ["Visa", "Mastercard", "MODO", "Banco Nacion"])
+        self.assertEqual(
+            groups,
+            [["MODO"], ["Visa", "Mastercard"], ["Banco Nacion"]],
+        )
 
     def test_static_promotions_keep_weekday_and_minimum_purchase(self):
         covered, rows = _static_promotions(
