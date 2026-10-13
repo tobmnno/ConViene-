@@ -548,6 +548,12 @@ class PriceComparisonService {
         !_isComparableSize(selectedProduct, candidate)) {
       return false;
     }
+    if (selectedProduct.ean.isNotEmpty &&
+        candidate.ean.isNotEmpty &&
+        selectedProduct.ean == candidate.ean) {
+      return !_hasPercentageMismatch(selectedProduct.name, candidate.name) ||
+          !RegExp(r'\d+(?:[,.]\d+)?\s*%').hasMatch(candidate.name);
+    }
     return !_hasVariantConflict(selectedProduct.name, candidate.name);
   }
 

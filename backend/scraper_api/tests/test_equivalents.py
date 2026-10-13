@@ -65,6 +65,52 @@ class IdentityTests(unittest.TestCase):
             reference, product("Leche La Serenisima entera 3% 1 L", reference.ean)
         ))
 
+    def test_same_gtin_accepts_catalog_marketing_names_and_abbreviations(self):
+        pairs = [
+            ("Leche Multidefensas 1% LA SERENISIMA Sachet 1l",
+             "Leche La Serenísima ultra parc descremada multivit 1% sachet 1 lt",
+             "7790742348005"),
+            ("Leche Multidefensas 1% LA SERENISIMA Sachet 1l",
+             "leche la serenisima descremada x1l sachet md", "7790742348005"),
+            ("Leche con Prebióticos La Serenisima 1L",
+             "leche larga vida la serenisima con prebioticos x 1", "7790742358509"),
+            ("LA SERENISIMA 100% Vegetal Almendra 1l",
+             "Alimento bebible a base de almendras La Serenísima 1 l",
+             "7790742340108"),
+            ("Galletitas OREO Golden Sabor Vainilla Rellenas Con Crema 354g",
+             "galletitas oreo golden x 354 gr", "7622201806538"),
+        ]
+        for name, other, ean in pairs:
+            with self.subTest(ean=ean):
+                self.assertTrue(same_catalog_product(
+                    ProductReference(name=name, ean=ean), product(other, ean)
+                ))
+
+    def test_weight_takes_precedence_over_unit_count_in_catalog_name(self):
+        name = "Galletitas OREO Bañadas En Chocolate Blanco X 7 Unidades 119g"
+        self.assertEqual(extract_measurement(name), (119, "g"))
+        self.assertTrue(same_catalog_product(
+            ProductReference(name=name, ean="7622201745608"),
+            product("Galletitas Oreo bañadas en chocolate blanco x7 119 g.", "7622201745608"),
+        ))
+
+    def test_same_gtin_still_rejects_hard_variant_and_quantity_conflicts(self):
+        reference = ProductReference(name="Leche La Serenisima 1% multidefensas 1 L", ean="7790742348005")
+        self.assertFalse(same_catalog_product(
+            reference, product("Leche La Serenisima 2% multivit 1 L", reference.ean)
+        ))
+        self.assertFalse(same_catalog_product(
+            reference, product("Leche La Serenisima 1% multivit 1.5 L", reference.ean)
+        ))
+        self.assertFalse(same_catalog_product(
+            ProductReference(name="Galletitas Oreo bañadas chocolate blanco 119 g", ean="7622201745608"),
+            product("Galletitas Oreo rellenas chocolate blanco 119 g", "7622201745608"),
+        ))
+        self.assertFalse(same_catalog_product(
+            ProductReference(name="Preservativos Tulipan ultrafinos 1 uni", ean="7791014121906"),
+            product("Preservativos Tulipan ultrafinos 6 u", "7791014121906"),
+        ))
+
     def test_unrequested_special_formulas_and_compound_types_are_rejected(self):
         reference = ProductReference(name="Leche Las Tres Ninas entera 200 ml")
         for name in ["Leche Las 3 Ninas primeros anos entera 200 ml",

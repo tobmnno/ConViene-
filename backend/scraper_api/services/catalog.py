@@ -210,7 +210,9 @@ def extract_measurement(text: str) -> tuple[float | None, str | None]:
     pack_total, pack_unit, _, _ = _pack_measurement(text)
     if pack_total is not None:
         return pack_total, pack_unit
-    match = _MEASURE_RE.search(_strip_accents(text).lower())
+    matches = list(_MEASURE_RE.finditer(_strip_accents(text).lower()))
+    match = next((item for item in matches if _canonical_unit(item.group("unit"))[1] != "unit"), None)
+    match = match or (matches[0] if matches else None)
     if not match:
         count = _COUNT_SUFFIX_RE.search(_strip_accents(text).lower())
         return (float(count.group("value")), "unit") if count else (None, None)
@@ -232,6 +234,7 @@ def normalize_text(text: str) -> NormalizedText:
     stripped = re.sub(r"\bpreservativos\b", "preservativo", stripped)
     stripped = re.sub(r"\bgalletitas?\b", "galletita", stripped)
     stripped = re.sub(r"\bgalletas?\b", "galletita", stripped)
+    stripped = re.sub(r"\balmendras\b", "almendra", stripped)
     stripped = re.sub(r"\bfideos\b", "fideo", stripped)
     stripped = re.sub(r"\bsup\s*/?\s*fino\b", "super fino", stripped)
     stripped = re.sub(r"\bsuper\s+fino\b", "superfino", stripped)
@@ -428,21 +431,46 @@ def valid_gtin(value: str | None) -> str | None:
 
 def same_catalog_product(reference, candidate: Product) -> bool:
     left, right = normalize_text(reference.name), normalize_text(candidate.name)
-    if left.size_value is not None and right.size_value is not None and not _size_is_compatible(left, right):
-        return False
-    if _variant_conflict(left, right) or _percentage_conflict(left, right):
-        return False
-    # Compound types and special formulas must not be interchangeable.
-    markers = ("crema", "dulce", "polvo", "infantil", "primeros",
-               "repostero", "chocolatada", "almendras")
-    left_tokens, right_tokens = set(left.text.split()), set(right.text.split())
-    for marker in markers:
-        if (marker in left_tokens) != (marker in right_tokens):
-            return False
     reference_ean = valid_gtin(reference.ean)
     candidate_ean = valid_gtin(candidate.ean)
+    same_ean = bool(reference_ean and candidate_ean and reference_ean == candidate_ean)
+    if left.size_value is not None and right.size_value is not None and not _size_is_compatible(left, right):
+        # Some catalogs append "x 1" for a single item without stating its volume.
+        unspecified_single = ((left.size_unit == "unit" and left.size_value == 1 and right.size_unit != "unit")
+                              or (right.size_unit == "unit" and right.size_value == 1 and left.size_unit != "unit"))
+        if not (same_ean and unspecified_single):
+            return False
+    if _percentage_conflict(left, right):
+        return False
+    # Compound product types must not be interchangeable.
+    markers = ("crema", "dulce", "polvo", "infantil", "primeros",
+               "repostero", "chocolatada", "almendra")
+    left_tokens, right_tokens = set(left.text.split()), set(right.text.split())
+    for marker in markers:
+        if marker == "crema" and "galletita" in left_tokens and "galletita" in right_tokens:
+            continue
+        if (marker in left_tokens) != (marker in right_tokens):
+            return False
     if reference_ean and candidate_ean:
-        return reference_ean == candidate_ean
+        if not same_ean:
+            return False
+        left_variants, right_variants = _variants(left), _variants(right)
+        # Identical GTINs can have abbreviated or renamed marketing formulas.
+        # Keep explicit conflicts in characteristics that identify a different SKU.
+        for dimension in ("milk", "diet", "sugar", "lactose", "flavor", "intensity", "stems", "condom", "form"):
+            requested, offered = left_variants[dimension], right_variants[dimension]
+            if requested and offered and requested.isdisjoint(offered):
+                if dimension == "milk":
+                    percentages = set(left.percentages) | set(right.percentages)
+                    milk_aliases = {1.0: {"liviana", "descremada"},
+                                    2.0: {"semidescremada"}, 3.0: {"entera"}}
+                    if (len(percentages) == 1 and next(iter(percentages)) in milk_aliases
+                            and requested | offered <= milk_aliases[next(iter(percentages))]):
+                        continue
+                return False
+        return True
+    if _variant_conflict(left, right):
+        return False
     if reference.brand and candidate.brand:
         if normalize_text(reference.brand).text != normalize_text(candidate.brand).text:
             return False

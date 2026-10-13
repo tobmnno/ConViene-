@@ -255,6 +255,75 @@ void main() {
     },
   );
 
+  test(
+    'keeps same-EAN milk with abbreviated fat label but rejects another percentage',
+    () async {
+      final repository = ApiRepository(
+        baseUrl: Uri.parse('http://localhost:8010'),
+        fallback: MockRepository(),
+        client: MockClient((request) async {
+          if (request.url.path == '/search') {
+            return http.Response(
+              jsonEncode({
+                'results': [
+                  milk('carrefour', 'Leche La Serenisima liviana 1% 1L', 2000),
+                ],
+              }),
+              200,
+            );
+          }
+          return http.Response(
+            jsonEncode({
+              'results': [
+                milk('carrefour', 'Leche La Serenisima liviana 1% 1L', 2000),
+                milk(
+                  'la_gallega',
+                  'leche la serenisima descremada x1l sachet md',
+                  1900,
+                ),
+                milk('coto', 'Leche La Serenisima semidescremada 2% 1L', 1800),
+              ],
+              'store_status': {
+                'carrefour': 'found',
+                'la_gallega': 'found',
+                'coto': 'found',
+              },
+            }),
+            200,
+          );
+        }),
+      );
+      final selected = (await repository.searchProducts(
+        query: 'leche',
+        storeIds: {'carrefour'},
+      )).single;
+      final comparison =
+          await PriceComparisonService(
+            repository,
+            const DiscountEngine(),
+          ).compareCartOptions(
+            cartItems: [
+              CartItem(
+                productId: selected.product.id,
+                quantity: 1,
+                selectedStoreId: 'carrefour',
+              ),
+            ],
+            fecha: DateTime(2026, 10, 13),
+            mediosPagoUsuario: const [],
+            promociones: const [],
+            storeIds: {'coto', 'carrefour', 'lagallega'},
+          );
+      final byStore = {
+        for (final row in comparison.singleStoreComparisons)
+          row.supermarket.id: row,
+      };
+      expect(byStore['lagallega']!.hasAllProducts, isTrue);
+      expect(byStore['lagallega']!.totalFinal, 1900);
+      expect(byStore['coto']!.hasAllProducts, isFalse);
+    },
+  );
+
   for (final status in ['error', 'unavailable', 'not_found']) {
     test('keeps $status distinct from fabricated offers', () async {
       final repository = ApiRepository(
