@@ -26,7 +26,7 @@ class StoreComparison {
   String missingLabel(Product product) => switch (missingStatus[product.id]) {
     'error' => 'No se pudo consultar',
     'unavailable' => 'Sin stock publicado',
-    _ => 'No encontrado',
+    _ => 'No verificado',
   };
 
   int get foundProductsCount => items.length;

@@ -56,6 +56,7 @@ void main() {
     expect(results.single.supermarket.id, 'lagallega');
     expect(results.single.product.id, 'api_leche-entera-ilolay-1-l');
     expect(results.single.product.presentation, '1 L');
+    expect(results.single.product.brand, isEmpty);
     expect(
       results.single.product.imageUrl,
       startsWith('http://127.0.0.1:8000/image?url='),

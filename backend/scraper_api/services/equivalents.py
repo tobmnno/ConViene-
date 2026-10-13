@@ -24,11 +24,11 @@ async def _query_store(store, query, context):
 def reference_queries(reference) -> list[str]:
     normalized = normalize_text(reference.name)
     words = normalized.text.split()
-    product_types = {"leche", "crema", "dulce", "galletitas", "galletas", "yerba",
-                     "cafe", "aceite", "arroz", "yogur", "cerveza", "gaseosa"}
+    product_types = {"leche", "crema", "dulce", "galletita", "galleta", "fideo", "yerba",
+                     "cafe", "aceite", "arroz", "yogur", "cerveza", "gaseosa", "preservativo"}
     kind = next((word for word in words if word in product_types), words[0] if words else reference.name)
     if kind in {"crema", "dulce"} and "leche" in words:
-        kind += " leche"
+        kind += " de leche"
     brand = normalize_text(reference.brand or "").text
     if not brand or brand in product_types:
         known_brands = ("serenisima", "tres ninas", "ilolay", "paulina", "tregar",
@@ -37,8 +37,11 @@ def reference_queries(reference) -> list[str]:
     if not brand:
         # Keep distinctive words in their original order, never alphabetically.
         ignored = product_types | {"entera", "descremada", "liviana", "larga", "vida",
-                                   "sachet", "brick", "tetra", "fortificada", "uat", "uht"}
-        brand = " ".join(word for word in words if word not in ignored)[:100]
+                                   "sachet", "brick", "tetra", "fortificada", "uat", "uht",
+                                   "superfino", "ultrafino", "texturado", "lubricado",
+                                   "extralubricado", "retardante", "natural", "tachas",
+                                   "regular", "light", "diet", "zero", "original"}
+        brand = " ".join(word for word in words if word not in ignored and not word.isdigit())[:100]
     size = ""
     if normalized.size_value is not None:
         size = f"{normalized.size_value:g}"
@@ -46,37 +49,58 @@ def reference_queries(reference) -> list[str]:
             size = f"{normalized.size_value / 1000:g}"
     compact = " ".join(part for part in (kind, brand, size) if part)
     clean = search_query_for_product_name(reference.name)
-    candidates = [reference.ean if valid_gtin(reference.ean) else "", compact, clean]
+    broad = " ".join(part for part in (kind, brand) if part)
+    candidates = [reference.ean if valid_gtin(reference.ean) else "", compact, clean, broad]
     # The legacy La Gallega catalog indexes '3' and 'tres' inconsistently.
     if "tres ninas" in compact:
-        candidates[-1] = re.sub(r"tres ninas", "3", compact)
-    return list(dict.fromkeys(query for query in candidates if query))[:3]
+        candidates[2] = re.sub(r"tres ninas", "3", compact)
+    return list(dict.fromkeys(query for query in candidates if query))[:4]
 
 
 async def _find_in_store(reference, store, context):
     queries = reference_queries(reference)
     responses = []
     if valid_gtin(reference.ean):
-        rows = await _query_store(store, queries.pop(0), context)
-        responses.append(rows)
-        exact = [row for row in rows or [] if valid_gtin(row.ean) == valid_gtin(reference.ean)]
+        ean_query = queries.pop(0)
+        rows = await _query_store(store, ean_query, context)
+        responses.append((ean_query, rows))
+        exact = [row for row in rows or []
+                 if valid_gtin(row.ean) == valid_gtin(reference.ean)
+                 and same_catalog_product(reference, row)]
         if exact:
             available = [row for row in exact if row.available is not False and row.price and row.price > 0]
-            if not available:
-                return None, "unavailable"
-            match = score_product_match(reference.name, min(available, key=lambda row: row.price))
-            match.score, match.match_type = 100, "exact"
-            return match, "found"
-    responses.extend(await asyncio.gather(*[
+            if available:
+                match = score_product_match(reference.name, min(available, key=lambda row: row.price))
+                match.score, match.match_type = 100, "exact"
+                return match, "found"
+    broad_query = queries.pop() if len(queries) > 1 else None
+    responses.extend(zip(queries, await asyncio.gather(*[
         _query_store(store, query, context) for query in queries
-    ]))
-    compatible = {}
-    for rows in responses:
-        for product in rows or []:
-            if same_catalog_product(reference, product):
-                compatible[product.url or product.name] = product
-    available = [row for row in compatible.values()
-                 if row.available is not False and row.price is not None and row.price > 0]
+    ])))
+
+    def matching_rows():
+        compatible = {}
+        for _, rows in responses:
+            for product in rows or []:
+                if same_catalog_product(reference, product):
+                    compatible[product.url or product.name] = product
+        available = [row for row in compatible.values()
+                     if row.available is not False and row.price is not None and row.price > 0]
+        return compatible, available
+
+    compatible, available = matching_rows()
+    if not available and broad_query and any(rows is not None for _, rows in responses):
+        responses.append((broad_query, await _query_store(store, broad_query, context)))
+        compatible, available = matching_rows()
+    if not available and any(rows is not None for _, rows in responses):
+        failed = [(index, query) for index, (query, rows) in enumerate(responses) if rows is None][:2]
+        if failed:
+            retried = await asyncio.gather(*[
+                _query_store(store, query, context) for _, query in failed
+            ])
+            for (index, query), rows in zip(failed, retried):
+                responses[index] = (query, rows)
+            compatible, available = matching_rows()
     if available:
         best = min(available, key=lambda row: row.price)
         match = score_product_match(reference.name, best)
@@ -84,10 +108,10 @@ async def _find_in_store(reference, store, context):
         if valid_gtin(reference.ean) == valid_gtin(best.ean) and valid_gtin(best.ean):
             match.score = 100
         return match, "found"
-    if compatible:
-        return None, "unavailable"
     # A failed attempt could be the only query that finds a differently named SKU.
-    return None, "error" if any(rows is None for rows in responses) else "not_found"
+    if any(rows is None for _, rows in responses):
+        return None, "error"
+    return None, "unavailable" if compatible else "not_found"
 
 
 async def find_equivalents(payload: EquivalentsRequest) -> EquivalentsResponse:

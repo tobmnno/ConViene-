@@ -69,10 +69,14 @@ class _StoreComparisonScreenState extends State<StoreComparisonScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            _expandAll
-                                ? 'Ocultar detalle de cada opcion'
-                                : 'Ver detalle de cada opcion',
+                          Flexible(
+                            child: Text(
+                              _expandAll
+                                  ? 'Ocultar detalle de cada opcion'
+                                  : 'Ver detalle de cada opcion',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Icon(
@@ -148,43 +152,38 @@ class _BestPerProductOptionCardState extends State<_BestPerProductOptionCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          const Flexible(
-                            child: Text(
-                              'Por producto',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: AppColors.deepBlue,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
+                      const Text(
+                        'Por producto',
+                        style: TextStyle(
+                          color: AppColors.deepBlue,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.green.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          plan.hasAllProducts ? 'MEJOR MIX' : 'PARCIAL',
+                          style: const TextStyle(
+                            color: AppColors.green,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.green.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              'MEJOR MIX',
-                              style: TextStyle(
-                                color: AppColors.green,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        plan.storeCount == 1
+                        !plan.hasAllProducts
+                            ? 'Faltan ${plan.missingProducts.length} productos por verificar'
+                            : plan.storeCount == 1
                             ? 'Todo queda en 1 supermercado'
                             : 'Reparte la compra en ${plan.storeCount} supermercados',
                         style: const TextStyle(
@@ -206,6 +205,14 @@ class _BestPerProductOptionCardState extends State<_BestPerProductOptionCard> {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
+                    if (!plan.hasAllProducts)
+                      const Text(
+                        'Subtotal',
+                        style: TextStyle(
+                          color: AppColors.textGray,
+                          fontSize: 10,
+                        ),
+                      ),
                     Icon(
                       _expanded
                           ? Icons.keyboard_arrow_up
@@ -249,6 +256,17 @@ class _BestPerProductOptionCardState extends State<_BestPerProductOptionCard> {
                   ],
                 ),
               ),
+            for (final product in plan.missingProducts)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  '${product.name}: sin precio verificado',
+                  style: const TextStyle(
+                    color: AppColors.textGray,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
           ],
         ],
       ),
@@ -285,102 +303,143 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
         children: [
           InkWell(
             onTap: () => setState(() => _expanded = !_expanded),
-            child: Row(
+            child: Column(
               children: [
-                StoreLogo(supermarket: comparison.supermarket, size: 48),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
+                Row(
+                  children: [
+                    StoreLogo(supermarket: comparison.supermarket, size: 38),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             comparison.supermarket.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: AppColors.deepBlue,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                          if (widget.best) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.green.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'MEJOR OPCION',
-                                style: TextStyle(
-                                  color: AppColors.green,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
+                          const SizedBox(height: 3),
+                          Text(
+                            comparison.hasAllProducts
+                                ? 'Todos los productos comparados'
+                                : 'Comparados ${comparison.foundProductsCount} de ${comparison.totalProductsCount}',
+                            style: const TextStyle(
+                              color: AppColors.textGray,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
                             ),
-                          ],
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(
+                    ),
+                    if (widget.best)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.green.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'MEJOR OPCION',
+                          style: TextStyle(
+                            color: AppColors.green,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      expanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: AppColors.deepBlue,
+                      size: 20,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Text(
                         comparison.hasAllProducts
                             ? 'Total con descuentos'
                             : 'Subtotal disponible',
                         style: const TextStyle(
-                          color: AppColors.deepBlue,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        comparison.hasAllProducts
-                            ? 'Todos los productos comparados'
-                            : 'Comparados ${comparison.foundProductsCount} de ${comparison.totalProductsCount}',
-                        style: const TextStyle(
                           color: AppColors.textGray,
                           fontSize: 11,
-                          fontWeight: FontWeight.w700,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      comparison.items.isEmpty
-                          ? 'Sin precio'
-                          : formatMoney(
-                              comparison.totalFinal,
-                              compactCents: false,
-                            ),
-                      style: TextStyle(
-                        color: AppColors.deepBlue,
-                        fontSize: comparison.items.isEmpty ? 13 : 22,
-                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                    if (comparison.items.isNotEmpty)
-                      Text(
-                        'Ahorras ${formatMoney(comparison.totalDiscount)}',
-                        style: const TextStyle(
-                          color: AppColors.green,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          comparison.items.isEmpty
+                              ? 'Sin precio'
+                              : formatMoney(
+                                  comparison.totalFinal,
+                                  compactCents: false,
+                                ),
+                          style: TextStyle(
+                            color: AppColors.deepBlue,
+                            fontSize: comparison.items.isEmpty ? 13 : 21,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                      ),
+                        if (comparison.totalDiscount > 0)
+                          Text(
+                            'Descuentos ${formatMoney(comparison.totalDiscount)}',
+                            style: const TextStyle(
+                              color: AppColors.green,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ],
             ),
           ),
           if (!comparison.hasAllProducts) ...[
+            if (comparison.items.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline,
+                    size: 16,
+                    color: AppColors.green,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Encontrado: ${comparison.items.first.product.name}'
+                      '${comparison.items.length > 1 ? ' y ${comparison.items.length - 1} mas' : ''}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.deepBlue,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
@@ -391,9 +450,12 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                 border: Border.all(color: const Color(0xFFFFE7B3)),
               ),
               child: Text(
-                comparison.hasSourceError
-                    ? 'No se pudo completar la consulta. Proba nuevamente.'
-                    : 'No se verificaron todos los productos en este catalogo y sucursal.',
+                comparison.missingProducts
+                    .map(
+                      (product) =>
+                          '${product.name}: ${comparison.missingLabel(product).toLowerCase()}',
+                    )
+                    .join('\n'),
                 style: const TextStyle(color: AppColors.deepBlue, fontSize: 12),
               ),
             ),

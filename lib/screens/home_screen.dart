@@ -64,7 +64,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final best = state.bestCompleteComparison;
-    final savings = best?.totalDiscount ?? 0;
+    final completeComparisons = state.cartComparisons
+        .where((comparison) => comparison.hasAllProducts)
+        .toList();
+    final savings = best != null && completeComparisons.length > 1
+        ? completeComparisons.last.totalFinal - best.totalFinal
+        : 0.0;
     final activePaymentMethods = state.activePaymentMethods;
 
     return ScreenFrame(
@@ -277,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             const SizedBox(height: 6),
                             Text(
                               savings > 0
-                                  ? 'Con Conviene ya encontraste descuentos reales.'
+                                  ? 'Menos que en la opcion completa mas cara.'
                                   : 'Compara el changuito para conocer tu ahorro.',
                               style: const TextStyle(
                                 color: AppColors.deepBlue,
@@ -285,14 +290,15 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            Text(
-                              formatMoney(savings),
-                              style: const TextStyle(
-                                color: AppColors.green,
-                                fontSize: 25,
-                                fontWeight: FontWeight.w900,
+                            if (savings > 0)
+                              Text(
+                                formatMoney(savings),
+                                style: const TextStyle(
+                                  color: AppColors.green,
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),

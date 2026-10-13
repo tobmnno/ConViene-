@@ -76,13 +76,14 @@ class BreakdownScreen extends StatelessWidget {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        Text(
-                          'Ahorras ${formatMoney(comparison.totalDiscount)}',
-                          style: const TextStyle(
-                            color: AppColors.green,
-                            fontWeight: FontWeight.w800,
+                        if (comparison.totalDiscount > 0)
+                          Text(
+                            'Descuentos ${formatMoney(comparison.totalDiscount)}',
+                            style: const TextStyle(
+                              color: AppColors.green,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),

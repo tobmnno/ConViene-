@@ -98,7 +98,9 @@ void main() {
       supermarket: store,
       isExactMatch: false,
     );
-    final service = ProductSearchService(_FixedSearchRepository([double, exact]));
+    final service = ProductSearchService(
+      _FixedSearchRepository([double, exact]),
+    );
 
     final found = await service.search(
       query: 'crema la paulina 200cc',
@@ -136,6 +138,67 @@ void main() {
     );
 
     expect(found, hasLength(1));
+  });
+
+  test(
+    'una busqueda de marca sin modelo exacto muestra variantes identificadas',
+    () async {
+      final store = _store('coto', 'Coto');
+      final variant = _result(
+        supermarket: store,
+        productId: 'tulipan-superfino',
+        name: 'Preservativos Tulipan super fino 6 u',
+        presentation: '6 u',
+        price: 6605.99,
+      );
+      final service = ProductSearchService(
+        _FixedSearchRepository([
+          SearchResult(
+            product: variant.product,
+            price: variant.price,
+            supermarket: variant.supermarket,
+            isExactMatch: false,
+          ),
+        ]),
+      );
+
+      final found = await service.search(
+        query: 'preservativos tulipan',
+        storeIds: {'coto'},
+        sort: SearchSort.bestPrice,
+      );
+
+      expect(found.map((row) => row.product.id), ['tulipan-superfino']);
+    },
+  );
+
+  test('una variante pedida no se reemplaza por una parecida', () async {
+    final store = _store('coto', 'Coto');
+    final plain = _result(
+      supermarket: store,
+      productId: 'oreo-plain',
+      name: 'Galletitas Oreo 118 g',
+      presentation: '118 g',
+      price: 1800,
+    );
+    final service = ProductSearchService(
+      _FixedSearchRepository([
+        SearchResult(
+          product: plain.product,
+          price: plain.price,
+          supermarket: plain.supermarket,
+          isExactMatch: false,
+        ),
+      ]),
+    );
+
+    final found = await service.search(
+      query: 'galletitas oreo frutilla 118g',
+      storeIds: {'coto'},
+      sort: SearchSort.bestPrice,
+    );
+
+    expect(found, isEmpty);
   });
 }
 

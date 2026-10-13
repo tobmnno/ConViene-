@@ -10,9 +10,10 @@ from rapidfuzz import fuzz
 from models import Product, SearchMatch
 
 _MEASURE_RE = re.compile(
-    r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>kg|kilos?|grs?|gramos?|gm|g|lt|lts?|litros?|l|ml|cc|cm3|u|un|unid(?:ades)?)\b",
+    r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>kg|kilos?|grs?|gramos?|gm|g|lt|lts?|litros?|l|ml|cc|cm3|uni|unid(?:ades)?|un|u)\b",
     re.IGNORECASE,
 )
+_COUNT_SUFFIX_RE = re.compile(r"\bx\s*(?P<value>\d{1,2})\b", re.IGNORECASE)
 
 _PACK_BEFORE_RE = re.compile(
     r"\b(?P<count>\d{1,2})\s*(?:x|por)\s*(?P<value>\d+(?:[.,]\d+)?)\s*"
@@ -48,6 +49,8 @@ _STOPWORDS = {
     "los",
     "aprox",
     "aproximadamente",
+    "bli",
+    "cja",
 }
 
 _INTENT_TOKENS = {
@@ -63,6 +66,9 @@ _INTENT_TOKENS = {
     "dulce",
     "entera",
     "fideos",
+    "fideo",
+    "galletita",
+    "galleta",
     "galletitas",
     "harina",
     "jabon",
@@ -70,6 +76,7 @@ _INTENT_TOKENS = {
     "manteca",
     "mayonesa",
     "pan",
+    "preservativo",
     "papel",
     "pollo",
     "queso",
@@ -81,7 +88,7 @@ _INTENT_TOKENS = {
 
 _MASS_UNITS = {"g": 1.0, "gm": 1.0, "gr": 1.0, "grs": 1.0, "gramo": 1.0, "gramos": 1.0, "kg": 1000.0, "kilo": 1000.0, "kilos": 1000.0}
 _VOLUME_UNITS = {"ml": 1.0, "cc": 1.0, "cm3": 1.0, "l": 1000.0, "lt": 1000.0, "lts": 1000.0, "litro": 1000.0, "litros": 1000.0}
-_COUNT_UNITS = {"u", "un", "unid", "unidad", "unidades"}
+_COUNT_UNITS = {"u", "un", "uni", "unid", "unidad", "unidades"}
 
 _VARIANT_ALIASES = {
     "milk": {
@@ -128,17 +135,25 @@ _VARIANT_ALIASES = {
         "multivitaminas": "multivit", "multidefensas": "multidefensas",
     },
     "richness": {"doble": "double"},
+    "condom": {
+        "superfino": "super_fino", "ultrafino": "ultrafino",
+        "texturado": "texturado", "lubricado": "lubricado",
+        "extralubricado": "extra_lubricado", "retardante": "retardante",
+        "skyn": "skyn", "tachas": "tachas", "natural": "natural",
+    },
     "form": {"banada": "coated", "banadas": "coated", "banado": "coated", "rellena": "filled", "rellenas": "filled"},
 }
 
 _GENERIC_IDENTITY_TOKENS = {
     "aceite", "agua", "arroz", "azucar", "bebida", "cafe", "clasica", "clasico",
-    "combo", "crema", "cracker", "dulce", "entera", "galleta", "galletitas",
+    "combo", "crema", "cracker", "dulce", "entera", "fideo", "galleta", "galletita", "galletitas",
     "leche", "light", "liviana", "liviano", "original", "pack", "pan", "queso", "rellena",
     "relleno", "sabor", "sin", "tradicional", "unidad", "unidades", "yerba", "yogur",
     "descremada", "semidescremada", "regular", "diet", "zero", "protein", "proteina",
     "barista", "vainilla", "chocolate", "frutilla", "banana", "coco", "limon", "naranja",
     "doble",
+    "preservativo", "super", "fino", "superfino", "ultrafino",
+    "texturado", "lubricado", "extralubricado", "retardante", "natural", "tachas",
     "con", "palo", "conpalo", "sinpalo", "banada", "banadas", "banado",
     "mas", "sachet", "botella", "carton", "pote", "lata", "caja", "bolsa",
     "larga", "vida", "uat", "uht", "ttb", "tetra", "brick", "fortificada", "parcialmente",
@@ -197,7 +212,8 @@ def extract_measurement(text: str) -> tuple[float | None, str | None]:
         return pack_total, pack_unit
     match = _MEASURE_RE.search(_strip_accents(text).lower())
     if not match:
-        return None, None
+        count = _COUNT_SUFFIX_RE.search(_strip_accents(text).lower())
+        return (float(count.group("value")), "unit") if count else (None, None)
     raw_value = match.group("value").replace(",", ".")
     try:
         numeric_value = float(raw_value)
@@ -213,11 +229,22 @@ def normalize_text(text: str) -> NormalizedText:
     raw = (text or "").strip()
     stripped = _strip_accents(raw).lower()
     stripped = re.sub(r"\b(?:las\s+)?3\s+ninas\b", "tres ninas", stripped)
+    stripped = re.sub(r"\bpreservativos\b", "preservativo", stripped)
+    stripped = re.sub(r"\bgalletitas?\b", "galletita", stripped)
+    stripped = re.sub(r"\bgalletas?\b", "galletita", stripped)
+    stripped = re.sub(r"\bfideos\b", "fideo", stripped)
+    stripped = re.sub(r"\bsup\s*/?\s*fino\b", "super fino", stripped)
+    stripped = re.sub(r"\bsuper\s+fino\b", "superfino", stripped)
+    stripped = re.sub(r"\bultra\s*finos?\b", "ultrafino", stripped)
+    stripped = re.sub(r"\btexturados\b", "texturado", stripped)
+    stripped = re.sub(r"\bextralubricados\b", "extralubricado", stripped)
+    stripped = re.sub(r"\blubricad(?:os?)?\b", "lubricado", stripped)
     percentages = tuple(float(value.replace(",", ".")) for value in _PERCENT_RE.findall(stripped))
     size_value, size_unit = extract_measurement(raw)
     _, _, pack_count, item_size_value = _pack_measurement(raw)
     stripped = _PERCENT_RE.sub(" ", stripped)
     stripped = _MEASURE_RE.sub(" ", stripped)
+    stripped = _COUNT_SUFFIX_RE.sub(" ", stripped)
     stripped = re.sub(r"[^a-z0-9\s]", " ", stripped)
     tokens = [token for token in stripped.split() if token and token not in _STOPWORDS]
     return NormalizedText(
@@ -286,6 +313,8 @@ def _variants(value: NormalizedText) -> dict[str, set[str]]:
         dimension: {canonical for token, canonical in aliases.items() if token in tokens}
         for dimension, aliases in _VARIANT_ALIASES.items()
     }
+    if "preservativo" not in tokens:
+        variants["condom"] = set()
     if "leche" in tokens and not tokens.intersection({"crema", "dulce", "lactosa"}):
         for percentage in value.percentages:
             milk = {0.0: "descremada", 1.0: "liviana", 2.0: "semidescremada", 3.0: "entera"}.get(percentage)
@@ -398,20 +427,24 @@ def valid_gtin(value: str | None) -> str | None:
 
 
 def same_catalog_product(reference, candidate: Product) -> bool:
+    left, right = normalize_text(reference.name), normalize_text(candidate.name)
+    if left.size_value is not None and right.size_value is not None and not _size_is_compatible(left, right):
+        return False
+    if _variant_conflict(left, right) or _percentage_conflict(left, right):
+        return False
+    # Compound types and special formulas must not be interchangeable.
+    markers = ("crema", "dulce", "polvo", "infantil", "primeros",
+               "repostero", "chocolatada", "almendras")
+    left_tokens, right_tokens = set(left.text.split()), set(right.text.split())
+    for marker in markers:
+        if (marker in left_tokens) != (marker in right_tokens):
+            return False
     reference_ean = valid_gtin(reference.ean)
     candidate_ean = valid_gtin(candidate.ean)
     if reference_ean and candidate_ean:
         return reference_ean == candidate_ean
     if reference.brand and candidate.brand:
         if normalize_text(reference.brand).text != normalize_text(candidate.brand).text:
-            return False
-    # Compound types and special formulas must not be interchangeable.
-    markers = ("crema", "dulce", "polvo", "infantil", "primeros",
-               "repostero", "chocolatada", "almendras")
-    left, right = normalize_text(reference.name), normalize_text(candidate.name)
-    left_tokens, right_tokens = set(left.text.split()), set(right.text.split())
-    for marker in markers:
-        if (marker in left_tokens) != (marker in right_tokens):
             return False
     return products_are_comparable(reference.name, candidate.name)
 

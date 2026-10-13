@@ -60,7 +60,7 @@ class ApiRepository
     if (cached != null && cached.isNotEmpty) {
       return cached;
     }
-    return fallback.getPricesForProduct(productId);
+    return const [];
   }
 
   @override
@@ -331,7 +331,7 @@ class ApiRepository
         name: name,
         brand: _asString(productData['brand']).isNotEmpty
             ? _asString(productData['brand'])
-            : _brandFromName(name),
+            : '',
         presentation: presentation,
         unit: _unitFromPresentation(presentation),
         category: _categoryFromName(name),
@@ -534,18 +534,6 @@ class ApiRepository
       _ => amount,
     };
     return normalizedAmount <= 0 ? price : price / normalizedAmount;
-  }
-
-  String _brandFromName(String name) {
-    final cleaned = name.trim();
-    if (cleaned.isEmpty) {
-      return '';
-    }
-    final words = cleaned.split(RegExp(r'\s+'));
-    if (words.length >= 2 && words.first.length <= 4) {
-      return words[1];
-    }
-    return words.first;
   }
 
   String _categoryFromName(String name) {

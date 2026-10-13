@@ -200,13 +200,21 @@ class PriceComparisonService {
                     );
             storeStatus.addAll(response.storeStatus);
             offersByStore.clear();
+            selectedOffer = null;
             for (final result in response.results) {
               if (missingStoreIds.contains(result.supermarket.id) &&
-                  result.price.stock) {
+                  result.price.stock &&
+                  _isVerifiedEquivalent(selectedProduct, result)) {
                 offersByStore[result.supermarket.id] = result;
                 if (result.supermarket.id == cartItem.selectedStoreId) {
                   selectedOffer = result;
                 }
+              }
+            }
+            for (final storeId in missingStoreIds) {
+              if (storeStatus[storeId] == 'found' &&
+                  !offersByStore.containsKey(storeId)) {
+                storeStatus[storeId] = 'not_found';
               }
             }
           } else {
@@ -521,6 +529,26 @@ class PriceComparisonService {
     final difference = (selectedSize.value - candidateSize.value).abs();
     final tolerance = (selectedSize.value * 0.02).clamp(1, 50).toDouble();
     return difference <= tolerance;
+  }
+
+  bool _isVerifiedEquivalent(Product selectedProduct, SearchResult result) {
+    if (!result.isExactMatch) {
+      return false;
+    }
+    final candidate = result.product;
+    if (selectedProduct.ean.isNotEmpty &&
+        candidate.ean.isNotEmpty &&
+        selectedProduct.ean != candidate.ean) {
+      return false;
+    }
+    final selectedSize = _measurementFor(selectedProduct);
+    final candidateSize = _measurementFor(candidate);
+    if (selectedSize != null &&
+        candidateSize != null &&
+        !_isComparableSize(selectedProduct, candidate)) {
+      return false;
+    }
+    return !_hasVariantConflict(selectedProduct.name, candidate.name);
   }
 
   bool _isComparableProduct(Product selectedProduct, Product candidateProduct) {

@@ -167,6 +167,19 @@ class ContractTest(unittest.TestCase):
         self.assertEqual([match.product.name for match in ranked], ["Leche La Serenisima Liviana 1% 1 L"])
         self.assertEqual(ranked[0].match_type, "exact")
 
+    def test_generic_brand_search_keeps_named_variants_as_similar(self):
+        rows = [
+            Product(store="coto", name="Preservativos Tulipan super fino 6 u", price=6605, scraped_at="x"),
+            Product(store="coto", name="Preservativos Maxx super fino 6 u", price=5900, scraped_at="x"),
+        ]
+
+        ranked = rank_search_results("preservativos tulipan", rows)
+
+        self.assertEqual([match.product.name for match in ranked], [
+            "Preservativos Tulipan super fino 6 u"
+        ])
+        self.assertEqual(ranked[0].match_type, "similar")
+
     def test_ranking_understands_synonyms_and_rejects_opposites(self):
         rows = [
             Product(store="coto", name="Mayonesa Hellmanns Liviana 475 g", price=2000, scraped_at="x"),

@@ -20,13 +20,32 @@ class ProductSearchService {
       storeIds: storeIds,
       context: context,
     );
-    final hasSpecificTerm = _queryTokens(query).any(
-      (token) => int.tryParse(token) == null,
-    );
-    final visibleResults = hasSpecificTerm
-        ? results.where((result) => result.isExactMatch).toList()
+    final hasSpecificTerm = _queryTokens(
+      query,
+    ).any((token) => int.tryParse(token) == null);
+    final exactResults = results
+        .where((result) => result.isExactMatch)
+        .toList();
+    final visibleResults =
+        _hasRequestedVariant(query) ||
+            (hasSpecificTerm && exactResults.isNotEmpty)
+        ? exactResults
         : results;
     return sortResults(visibleResults, sort, query: query);
+  }
+
+  bool _hasRequestedVariant(String query) {
+    final normalized = _normalize(query);
+    final tokens = _tokens(normalized).toSet();
+    if (tokens.any(_variantQueryTokens.contains)) {
+      return true;
+    }
+    return RegExp(
+          r'\b(?:super|ultra|extra)\s*[/ -]?\s*fino\b',
+        ).hasMatch(normalized) ||
+        RegExp(
+          r'\b(?:sin|con)\s+(?:palo|azucar|lactosa)\b',
+        ).hasMatch(normalized);
   }
 
   List<SearchResult> sortResults(
@@ -177,6 +196,36 @@ class ProductSearchService {
     'sabor',
     'sin',
     'yerba',
+  };
+
+  static const _variantQueryTokens = {
+    'entera',
+    'descremada',
+    'semidescremada',
+    'liviana',
+    'light',
+    'diet',
+    'zero',
+    'vainilla',
+    'chocolate',
+    'frutilla',
+    'banana',
+    'coco',
+    'limon',
+    'naranja',
+    'doble',
+    'repostero',
+    'texturado',
+    'lubricado',
+    'retardante',
+    'superfino',
+    'ultrafino',
+    'extralubricado',
+    'barista',
+    'protein',
+    'proteina',
+    'sinpalo',
+    'conpalo',
   };
 }
 
