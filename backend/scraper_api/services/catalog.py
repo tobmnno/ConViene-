@@ -10,19 +10,19 @@ from rapidfuzz import fuzz
 from models import Product, SearchMatch
 
 _MEASURE_RE = re.compile(
-    r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>kg|kilos?|grs?|gramos?|gm|g|lt|lts?|litros?|l|ml|cc|cm3|uni|unid(?:ades)?|un|u)\b",
+    r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>kg|kilos?|grs?|grm|gramos?|gm|g|lt|lts?|litros?|l|ml|cc|cm3|uni|unid(?:ades)?|un|u)\b",
     re.IGNORECASE,
 )
 _COUNT_SUFFIX_RE = re.compile(r"\bx\s*(?P<value>\d{1,2})\b", re.IGNORECASE)
 
 _PACK_BEFORE_RE = re.compile(
     r"\b(?P<count>\d{1,2})\s*(?:x|por)\s*(?P<value>\d+(?:[.,]\d+)?)\s*"
-    r"(?P<unit>kg|kilos?|grs?|gramos?|gm|g|lt|lts?|litros?|l|ml|cc|cm3)\b",
+    r"(?P<unit>kg|kilos?|grs?|grm|gramos?|gm|g|lt|lts?|litros?|l|ml|cc|cm3)\b",
     re.IGNORECASE,
 )
 _PACK_AFTER_RE = re.compile(
     r"\b(?P<value>\d+(?:[.,]\d+)?)\s*"
-    r"(?P<unit>kg|kilos?|grs?|gramos?|gm|g|lt|lts?|litros?|l|ml|cc|cm3)\s*"
+    r"(?P<unit>kg|kilos?|grs?|grm|gramos?|gm|g|lt|lts?|litros?|l|ml|cc|cm3)\s*"
     r"(?:x|por)\s*(?P<count>\d{1,2})(?:\s*(?:u|un|unid(?:ades)?))?\b",
     re.IGNORECASE,
 )
@@ -38,7 +38,6 @@ _STOPWORDS = {
     "combo",
     "nuevo",
     "nueva",
-    "tradicional",
     "familiar",
     "x",
     "de",
@@ -86,7 +85,7 @@ _INTENT_TOKENS = {
     "yogur",
 }
 
-_MASS_UNITS = {"g": 1.0, "gm": 1.0, "gr": 1.0, "grs": 1.0, "gramo": 1.0, "gramos": 1.0, "kg": 1000.0, "kilo": 1000.0, "kilos": 1000.0}
+_MASS_UNITS = {"g": 1.0, "gm": 1.0, "gr": 1.0, "grs": 1.0, "grm": 1.0, "gramo": 1.0, "gramos": 1.0, "kg": 1000.0, "kilo": 1000.0, "kilos": 1000.0}
 _VOLUME_UNITS = {"ml": 1.0, "cc": 1.0, "cm3": 1.0, "l": 1000.0, "lt": 1000.0, "lts": 1000.0, "litro": 1000.0, "litros": 1000.0}
 _COUNT_UNITS = {"u", "un", "uni", "unid", "unidad", "unidades"}
 
@@ -103,6 +102,7 @@ _VARIANT_ALIASES = {
         "clasica": "regular",
         "clasico": "regular",
         "original": "regular",
+        "tradicional": "regular",
         "regular": "regular",
         "light": "light",
         "liviana": "light",
@@ -155,7 +155,7 @@ _GENERIC_IDENTITY_TOKENS = {
     "preservativo", "super", "fino", "superfino", "ultrafino",
     "texturado", "lubricado", "extralubricado", "retardante", "natural", "tachas",
     "con", "palo", "conpalo", "sinpalo", "banada", "banadas", "banado",
-    "mas", "sachet", "botella", "carton", "pote", "lata", "caja", "bolsa",
+    "mas", "sachet", "botella", "carton", "pote", "lata", "caja", "bolsa", "tradicional",
     "larga", "vida", "uat", "uht", "ttb", "tetra", "brick", "fortificada", "parcialmente",
 }
 
@@ -215,7 +215,14 @@ def extract_measurement(text: str) -> tuple[float | None, str | None]:
     match = match or (matches[0] if matches else None)
     if not match:
         count = _COUNT_SUFFIX_RE.search(_strip_accents(text).lower())
-        return (float(count.group("value")), "unit") if count else (None, None)
+        if count:
+            return float(count.group("value")), "unit"
+        stripped = _strip_accents(text).lower()
+        if "preservativo" in stripped:
+            counts = re.findall(r"\b\d{1,2}\b", _PERCENT_RE.sub(" ", stripped))
+            if len(counts) == 1 and 1 <= int(counts[0]) <= 36:
+                return float(counts[0]), "unit"
+        return None, None
     raw_value = match.group("value").replace(",", ".")
     try:
         numeric_value = float(raw_value)
@@ -400,6 +407,10 @@ def _size_is_compatible(query: NormalizedText, candidate: NormalizedText) -> boo
 
 
 def _is_eligible_match(query: NormalizedText, candidate: NormalizedText) -> bool:
+    if "cafe" in query.text.split() and "instantaneo" in query.text.split():
+        candidate_tokens = set(candidate.text.split())
+        if {"coffee", "mate"} <= candidate_tokens or {"cofee", "mate"} <= candidate_tokens:
+            return False
     if not _size_is_compatible(query, candidate):
         return False
     if _variant_conflict(query, candidate) or _percentage_conflict(query, candidate):
@@ -422,7 +433,7 @@ def products_are_comparable(reference: str, candidate: str) -> bool:
 
 def valid_gtin(value: str | None) -> str | None:
     code = str(value or "").strip()
-    if not code.isdigit() or len(code) not in {8, 12, 13, 14}:
+    if not code.isdigit() or len(code) not in {8, 12, 13, 14} or set(code) == {"0"}:
         return None
     checksum = sum(int(digit) * (3 if index % 2 == 0 else 1)
                    for index, digit in enumerate(reversed(code[:-1])))
@@ -474,7 +485,59 @@ def same_catalog_product(reference, candidate: Product) -> bool:
     if reference.brand and candidate.brand:
         if normalize_text(reference.brand).text != normalize_text(candidate.brand).text:
             return False
+    elif not _identity_tokens(left) or not _identity_tokens(right):
+        # Generic descriptions alone cannot prove commercial identity.
+        return False
     return products_are_comparable(reference.name, candidate.name)
+
+
+def product_category(value: NormalizedText) -> str | None:
+    tokens = set(value.text.split())
+    if "preservativo" in tokens:
+        return "preservativo"
+    if "dulce" in tokens and "leche" in tokens:
+        if tokens & ((_INTENT_TOKENS - {"dulce", "leche"}) | {"alfajor", "helado", "postre", "torta", "yogur", "cereal"}):
+            return None
+        return "dulce de leche"
+    if "crema" in tokens and "leche" in tokens:
+        if tokens & ((_INTENT_TOKENS - {"leche"}) | {"alfajor", "helado", "postre", "torta", "yogur", "cereal"}):
+            return None
+        return "crema de leche"
+    if "leche" in tokens and "polvo" in tokens:
+        return "leche en polvo"
+    if "almendra" in tokens:
+        return "bebida de almendra"
+    return next((token for token in value.text.split() if token in _INTENT_TOKENS), None)
+
+
+def alternative_match(reference, candidate: Product) -> SearchMatch | None:
+    left, right = normalize_text(reference.name), normalize_text(candidate.name)
+    category = product_category(left)
+    if not category or category != product_category(right):
+        return None
+    if (left.size_value is not None and right.size_value is not None
+            and not _size_is_compatible(left, right)):
+        return None
+    if _variant_conflict(left, right) or _percentage_conflict(left, right):
+        return None
+    left_tokens, right_tokens = set(left.text.split()), set(right.text.split())
+    for marker in ("repostero", "infantil", "primeros", "chocolatada"):
+        if (marker in left_tokens) != (marker in right_tokens):
+            return None
+    if valid_gtin(reference.ean) and valid_gtin(reference.ean) == valid_gtin(candidate.ean):
+        return None
+    incomplete = (left.size_value is None or right.size_value is None
+                  or _missing_requested_variant(left, right)
+                  or _has_unrequested_variant(left, right))
+    if category == "preservativo" and (not _variants(left)["condom"] or not _variants(right)["condom"]):
+        incomplete = True
+    if not reference.brand or not candidate.brand:
+        incomplete = True
+    score = score_product_match(reference.name, candidate)
+    score.match_type = "review" if incomplete else "alternative"
+    score.score = min(70.0 if incomplete else 85.0,
+                      max(40.0, 55.0 + 0.3 * fuzz.token_set_ratio(left.text, right.text)))
+    return score
 
 
 def score_product_match(query: str, product: Product | dict) -> SearchMatch:

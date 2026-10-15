@@ -51,6 +51,9 @@ class SearchResponse(BaseModel):
     count: int
     results: list[SearchMatch]
     context: Optional[ShoppingContext] = None
+    store_status: dict[str, str] = Field(default_factory=dict)
+    partial: bool = False
+    unavailable_products: list[Product] = Field(default_factory=list)
 
 
 class ProductReference(BaseModel):
@@ -67,6 +70,7 @@ class EquivalentsRequest(BaseModel):
 
 class EquivalentsResponse(BaseModel):
     results: list[SearchMatch]
+    alternatives: list[SearchMatch] = Field(default_factory=list)
     # not_found means not located in this catalog/context, never proof of absence.
     store_status: dict[str, str]
     checked_at: str

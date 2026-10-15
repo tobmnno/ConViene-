@@ -451,10 +451,15 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
               ),
               child: Text(
                 comparison.missingProducts
-                    .map(
-                      (product) =>
-                          '${product.name}: ${comparison.missingLabel(product).toLowerCase()}',
-                    )
+                    .map((product) {
+                      final suggestion =
+                          comparison.alternativesByProduct[product.id];
+                      final label = suggestion?.matchType == 'review'
+                          ? 'Posible alternativa para revisar'
+                          : 'Alternativa';
+                      return '${product.name}: ${comparison.missingLabel(product).toLowerCase()}'
+                          '${suggestion == null ? '' : '\n$label: ${suggestion.product.name} (${formatMoney(suggestion.price.priceOriginal)}). No incluida en el total.'}';
+                    })
                     .join('\n'),
                 style: const TextStyle(color: AppColors.deepBlue, fontSize: 12),
               ),

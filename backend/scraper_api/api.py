@@ -1,10 +1,9 @@
 import asyncio
 from contextlib import asynccontextmanager, suppress
 import os
-from urllib.parse import urlparse
+import secrets
 
-import requests
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -15,16 +14,24 @@ from services.equivalents import find_equivalents, reference_queries
 from services.discounts import clear_discount_cache, scrape_discounts
 from services.monitoring import status_snapshot
 from services.locations import nearby_coto_branches
-from services.refresh import refresh_lagallega_catalog
-from services.scraper import resolve_stores, scrape_query
+from services.refresh import RefreshInProgress, refresh_lagallega_catalog
+from services.scraper import resolve_stores, scrape_query_with_status
+from services.images import ImageProxyError, fetch_image
 from scrapers import SCRAPERS
+
+_refresh_lock = asyncio.Lock()
+_development = os.getenv("CONVIENE_ENV", "production").lower() == "development"
+_cors_origins = [origin.strip() for origin in os.getenv("CONVIENE_CORS_ORIGINS", "").split(",") if origin.strip()]
 
 async def _refresh_promotions_periodically():
     interval = max(int(os.getenv("CONVIENE_PROMOTIONS_REFRESH_SECONDS", "21600")), 300)
     while True:
         await asyncio.sleep(interval)
-        await asyncio.to_thread(refresh_lagallega_catalog, force=True)
-        clear_discount_cache()
+        if not _refresh_lock.locked():
+            async with _refresh_lock:
+                catalog = await asyncio.to_thread(refresh_lagallega_catalog, force=True)
+                if catalog:
+                    clear_discount_cache()
 
 
 @asynccontextmanager
@@ -43,20 +50,22 @@ app = FastAPI(title="Comparador de supermercados", version="1.1.0", lifespan=lif
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
+    allow_origin_regex=r"^http://(?:localhost|127\.0\.0\.1):\d+$" if _development else None,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "X-Admin-Key"],
 )
 
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "service": "Comparador de supermercados", "version": "1.0.0"}
+    return {"status": "ok", "service": "Comparador de supermercados", "version": app.version}
 
 
-def _build_search_response(query: str, stores: list[str], rows, limit: int, context: ShoppingContext | None = None) -> SearchResponse:
+def _build_search_response(query: str, stores: list[str], rows, limit: int, context: ShoppingContext | None = None, source_status: dict[str, str] | None = None) -> SearchResponse:
     barcode = valid_gtin(query)
+    barcode_rows = [row for row in rows if valid_gtin(row.ean) == barcode] if barcode else []
     if barcode:
         ranked = [
             SearchMatch(
@@ -67,7 +76,7 @@ def _build_search_response(query: str, stores: list[str], rows, limit: int, cont
                 match_type="exact",
             )
             for row in rows
-            if valid_gtin(row.ean) == barcode and row.available is not False and row.price is not None
+            if valid_gtin(row.ean) == barcode and row.available is not False and row.price is not None and row.price > 0
         ]
         ranked.sort(key=lambda match: (match.product.price, match.product.store))
     else:
@@ -81,27 +90,58 @@ def _build_search_response(query: str, stores: list[str], rows, limit: int, cont
             break
         selected.add(index)
     matches = [match for index, match in enumerate(ranked) if index in selected]
+    found_stores = {match.product.store for match in ranked}
+    unavailable_by_store = {}
+    for row in barcode_rows:
+        if row.store not in found_stores and (row.available is False or row.price is None or row.price <= 0):
+            unavailable_by_store.setdefault(row.store, row)
+    status = {}
+    for store in stores:
+        if store in found_stores:
+            status[store] = "found"
+        elif source_status and source_status.get(store) == "error":
+            status[store] = "error"
+        elif store in unavailable_by_store:
+            status[store] = "unavailable"
+        elif any(row.store == store and row.available is False for row in rows) and not any(
+            row.store == store and row.available is not False for row in rows
+        ):
+            status[store] = "unavailable"
+        else:
+            status[store] = "not_found"
     return SearchResponse(
         query=query,
         stores=stores,
         count=len(matches),
         results=matches,
         context=context,
+        store_status=status,
+        partial="error" in status.values(),
+        unavailable_products=list(unavailable_by_store.values()),
     )
 
 
+def _validate_search_barcode(query: str) -> None:
+    if query.isdigit() and 8 <= len(query) <= 14 and not valid_gtin(query):
+        raise HTTPException(status_code=422, detail="Codigo de barras invalido. Revisa los digitos.")
+
+
 async def _search_catalogs(query, stores, limit, engine, context):
-    rows = await scrape_query(query, stores, limit, True, engine, context)
+    result = await scrape_query_with_status(query, stores, limit, True, engine, context)
     # Size-specific queries often include retailer-only descriptors. Retry only
     # sources with no eligible result, while still ranking against the user's query.
     if extract_measurement(query)[0] is not None:
-        found = {match.product.store for match in rank_search_results(query, rows, limit=len(rows))}
+        found = {match.product.store for match in rank_search_results(query, result.rows, limit=len(result.rows))}
         missing = [store for store in stores if store not in found]
         if missing:
             compact = reference_queries(ProductReference(name=query))[0]
             if compact.casefold() != query.casefold():
-                rows.extend(await scrape_query(compact, missing, 50, True, engine, context))
-    return rows
+                retry = await scrape_query_with_status(compact, missing, 50, True, engine, context)
+                result.rows.extend(retry.rows)
+                for store in missing:
+                    if store in retry.source_status:
+                        result.source_status[store] = retry.source_status[store]
+    return result
 
 
 @app.get("/health")
@@ -110,20 +150,40 @@ async def health():
         "status": "ok",
         "stores": list(SCRAPERS),
         "app_store_ids": ["carrefour", "coto", "lagallega"],
-        "monitoring": status_snapshot(),
     }
 
 
+def _require_admin(request: Request, x_admin_key: str | None) -> None:
+    configured_key = os.getenv("CONVIENE_ADMIN_KEY", "")
+    local = request.client is not None and request.client.host in {"127.0.0.1", "::1"}
+    if not _development and (len(configured_key) < 24 or configured_key.strip() != configured_key):
+        raise HTTPException(status_code=503, detail="Operacion administrativa no configurada")
+    if configured_key:
+        if not x_admin_key or not secrets.compare_digest(x_admin_key, configured_key):
+            raise HTTPException(status_code=403, detail="Operacion no autorizada")
+    elif not (_development and local):
+        raise HTTPException(status_code=503, detail="Operacion administrativa no configurada")
+
+
 @app.get("/operations")
-async def operations():
+async def operations(request: Request, x_admin_key: str | None = Header(default=None)):
     """Operational status for the scraper sources and promotion refresh job."""
+    _require_admin(request, x_admin_key)
     return status_snapshot()
 
 
 @app.post("/operations/promotions/refresh")
-async def refresh_promotions():
-    catalog = await asyncio.to_thread(refresh_lagallega_catalog, force=True)
-    clear_discount_cache()
+async def refresh_promotions(request: Request, x_admin_key: str | None = Header(default=None)):
+    _require_admin(request, x_admin_key)
+    if _refresh_lock.locked():
+        raise HTTPException(status_code=409, detail="Actualizacion en curso")
+    async with _refresh_lock:
+        try:
+            catalog = await asyncio.to_thread(refresh_lagallega_catalog, force=True, raise_if_locked=True)
+        except RefreshInProgress as exc:
+            raise HTTPException(status_code=409, detail="Actualizacion en curso") from exc
+        if catalog:
+            clear_discount_cache()
     return {
         "status": "ok" if catalog else "degraded",
         "source": catalog.get("source_url") if catalog else None,
@@ -134,27 +194,12 @@ async def refresh_promotions():
 
 @app.get("/image")
 async def image_proxy(url: str = Query(min_length=8, max_length=1200)):
-    parsed = urlparse(url)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise HTTPException(status_code=400, detail="URL de imagen invalida")
     try:
-        response = requests.get(
-            url,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-            },
-            timeout=20,
-        )
-        response.raise_for_status()
-    except requests.RequestException as exc:
-        raise HTTPException(status_code=502, detail="No se pudo cargar la imagen") from exc
-
-    content_type = response.headers.get("content-type", "image/jpeg").split(";")[0]
-    if not content_type.startswith("image/"):
-        raise HTTPException(status_code=415, detail="La URL no devolvio una imagen")
+        content, content_type = await asyncio.to_thread(fetch_image, url)
+    except ImageProxyError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     return Response(
-        content=response.content,
+        content=content,
         media_type=content_type,
         headers={"Cache-Control": "public, max-age=86400"},
     )
@@ -207,26 +252,28 @@ async def search(
     latitude: float | None = Query(default=None, ge=-90, le=90),
     longitude: float | None = Query(default=None, ge=-180, le=180),
 ):
+    _validate_search_barcode(q)
     try:
         selected_stores = resolve_stores(stores)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     context = ShoppingContext(postal_code=postal_code, fulfillment=fulfillment, coto_store=coto_store, carrefour_sales_channel=carrefour_sales_channel, latitude=latitude, longitude=longitude)
-    rows = await _search_catalogs(q, selected_stores, limit, engine, context.model_dump(exclude_none=True))
-    return _build_search_response(q, selected_stores, rows, limit, context)
+    result = await _search_catalogs(q, selected_stores, limit, engine, context.model_dump(exclude_none=True))
+    return _build_search_response(q, selected_stores, result.rows, limit, context, result.source_status)
 
 
 @app.post("/search", response_model=SearchResponse)
 async def search_body(payload: SearchRequest):
+    _validate_search_barcode(payload.query)
     try:
         selected_stores = resolve_stores(payload.stores)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     context = payload.context or ShoppingContext()
-    rows = await _search_catalogs(payload.query, selected_stores, payload.limit, "camoufox", context.model_dump(exclude_none=True))
-    return _build_search_response(payload.query, selected_stores, rows, payload.limit, context)
+    result = await _search_catalogs(payload.query, selected_stores, payload.limit, "camoufox", context.model_dump(exclude_none=True))
+    return _build_search_response(payload.query, selected_stores, result.rows, payload.limit, context, result.source_status)
 
 
 @app.post("/compare", response_model=CompareResponse)

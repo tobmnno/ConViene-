@@ -1,6 +1,7 @@
 String? normalizedBarcode(String? value) {
   final code = value?.trim() ?? '';
   if (!RegExp(r'^\d{8}$|^\d{12,14}$').hasMatch(code)) return null;
+  if (RegExp(r'^0+$').hasMatch(code)) return null;
   final digits = code.split('').map(int.parse).toList();
   var sum = 0;
   for (

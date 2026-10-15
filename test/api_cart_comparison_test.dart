@@ -571,4 +571,77 @@ void main() {
       }
     },
   );
+
+  test('alternatives are visible but excluded from every cart total', () async {
+    final selected = offer(
+      'coto',
+      'Dulce de leche La Paulina 200 g',
+      '7794990184897',
+      'La Paulina',
+      2500,
+    );
+    final alternative = offer(
+      'carrefour',
+      'Dulce de leche repostero La Paulina 200 g',
+      '7794990184996',
+      'La Paulina',
+      1900,
+    );
+    alternative['match_type'] = 'alternative';
+    final repository = ApiRepository(
+      baseUrl: Uri.parse('http://localhost:8010'),
+      fallback: MockRepository(),
+      client: MockClient((request) async {
+        if (request.url.path == '/search') {
+          return http.Response(
+            jsonEncode({
+              'results': [selected],
+            }),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode({
+            'results': [selected],
+            'alternatives': [alternative],
+            'store_status': {'coto': 'found', 'carrefour': 'not_found'},
+          }),
+          200,
+        );
+      }),
+    );
+    final product = (await repository.searchProducts(
+      query: 'dulce de leche',
+      storeIds: {'coto'},
+    )).single.product;
+    final result =
+        await PriceComparisonService(
+          repository,
+          const DiscountEngine(),
+        ).compareCartOptions(
+          cartItems: [
+            CartItem(
+              productId: product.id,
+              quantity: 1,
+              selectedStoreId: 'coto',
+            ),
+          ],
+          fecha: DateTime(2026, 10, 15),
+          mediosPagoUsuario: const [],
+          promociones: const [],
+          storeIds: {'coto', 'carrefour'},
+        );
+    final carrefour = result.singleStoreComparisons.firstWhere(
+      (store) => store.supermarket.id == 'carrefour',
+    );
+    expect(carrefour.items, isEmpty);
+    expect(carrefour.totalFinal, 0);
+    expect(
+      carrefour.alternativesByProduct[product.id]!.matchType,
+      'alternative',
+    );
+    expect(result.selectedStoresPlan!.totalFinal, 2500);
+    expect(result.bestPerProductPlan!.totalFinal, 2500);
+    expect(result.bestPerProductPlan!.items.single.supermarket.id, 'coto');
+  });
 }

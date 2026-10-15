@@ -19,7 +19,8 @@ from scrapers.lagallega_catalog import CatalogPage
 )
 class ScraperSmokeTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.browser = await AsyncCamoufox(headless=True).__aenter__()
+        self.camoufox = AsyncCamoufox(headless=True)
+        self.browser = await self.camoufox.__aenter__()
         self.context = await self.browser.new_context(
             locale="es-AR",
             timezone_id="America/Argentina/Cordoba",
@@ -27,7 +28,7 @@ class ScraperSmokeTest(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         await self.context.close()
-        await self.browser.__aexit__(None, None, None)
+        await self.camoufox.__aexit__(None, None, None)
 
     async def _assert_has_results(self, scraper, query: str = "leche", limit: int = 3):
         page = await self.context.new_page()
@@ -47,6 +48,8 @@ class ScraperSmokeTest(unittest.IsolatedAsyncioTestCase):
     async def test_lagallega_search(self):
         await self._assert_has_results(LaGallegaScraper())
 
+
+class OutputRankingTest(unittest.TestCase):
     def test_sort_results_for_output_keeps_all_and_orders_by_price(self):
         rows = [
             {"store": "coto", "name": "caro", "price": 2500},
@@ -71,7 +74,7 @@ class ScraperSmokeTest(unittest.IsolatedAsyncioTestCase):
         ranked = rank_search_results("leche entera 1l", rows, limit=3)
 
         self.assertEqual(ranked[0].product.name, "Leche entera 1000 ml")
-        self.assertGreater(ranked[0].score, ranked[1].score)
+        self.assertEqual(len(ranked), 1)
 
 class CatalogParserTest(unittest.TestCase):
     def test_lagallega_catalog_removes_corrupted_name_fragment(self):

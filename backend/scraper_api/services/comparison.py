@@ -15,6 +15,8 @@ async def compare_cart(
     engine: str = "camoufox",
     context: ShoppingContext | None = None,
 ):
+    # Legacy controls are kept for API/CLI compatibility. The equivalence
+    # service owns its per-store search breadth and returns one verified offer.
     selected_stores = resolve_stores(stores)
     totals = {store: 0.0 for store in selected_stores}
     found_items = {store: 0 for store in selected_stores}

@@ -12,5 +12,10 @@ android/app/build/
 .localappdata/
 .server_*.log
 __pycache__/
+.pytest_cache/
 backend/scraper_api/.venv/
 backend/scraper_api/output.json
+.env
+.env.*
+!.env.example
+*.tmp

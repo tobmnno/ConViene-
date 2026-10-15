@@ -48,6 +48,7 @@ virtualenv modificada manualmente.
 ## Ejecucion
 
 ```powershell
+$env:CONVIENE_ENV = 'development'
 .\.venv\Scripts\python.exe -m uvicorn api:app `
   --host 127.0.0.1 `
   --port 8000 `
@@ -102,6 +103,23 @@ normalizada, nombre normalizado y compatibilidad de tamaño. Tambien informa
 `delivery_available`; asi una cotizacion sin sucursal no se presenta como stock
 local confirmado.
 
+`store_status` informa `found`, `not_found`, `unavailable` o `error` para cada
+tienda consultada. `partial` vale `true` si fallo alguna fuente: se conservan
+los productos de las fuentes que respondieron, pero no se interpreta el error
+como ausencia del producto. Una busqueda con todas las fuentes fallidas puede
+devolver HTTP 200 con `results` vacio y `partial: true`; los clientes deben
+consultar `store_status` antes de mostrar "sin resultados". Las respuestas
+parciales por error no se guardan en cache.
+
+Si `q` es un GTIN/EAN valido, la busqueda exige coincidencia exacta de codigo
+en cada tienda. Carrefour consulta su indice de EAN y La Gallega su
+autocompletado, ademas de la busqueda de Coto. Un codigo de 8 a 14 digitos con
+checksum invalido devuelve HTTP 422. `unavailable_products` enumera los
+productos identificados por ese codigo que no tienen oferta comprable en el
+canal consultado; no se incluyen en `results` ni en los calculos de precios.
+La ausencia de un EAN en un catalogo no demuestra que no exista en otras
+sucursales o canales.
+
 ### `POST /search`
 
 ```json
@@ -132,6 +150,9 @@ que el changuito y devuelve `store_status` por item.
 
 El ranking informa productos encontrados, faltantes y total. Una tienda con
 productos faltantes no se presenta como una compra completa.
+`limit` se conserva en este endpoint por compatibilidad; el motor de
+equivalencias devuelve como maximo una oferta verificada por tienda. Los
+controles internos `headless` y `engine` tampoco alteran ese motor directo.
 
 ### `POST /products/equivalents`
 
@@ -154,6 +175,10 @@ Valida el digito de control del GTIN y prioriza ese identificador sobre las
 diferencias de nombres o unidades publicadas. Sin identificador verificable,
 aplica las reglas de marca, contenido, packs y variantes. Dos GTIN validos
 distintos nunca se consideran equivalentes.
+
+`results` contiene solo productos confirmados: `exact` para GTIN coincidente y
+`same_product` para identidad corroborada por atributos. `alternatives` contiene
+sugerencias `alternative` o `review`; sus precios no entran en los totales.
 
 `store_status` distingue `found`, `not_found`, `unavailable` y `error`.
 `not_found` solo describe el catalogo y contexto consultados; no confirma que
@@ -191,21 +216,38 @@ Proxy de imagenes utilizado por Flutter Web:
 GET /image?url=https://dominio-del-supermercado/imagen.jpg
 ```
 
-Solo acepta URLs HTTP o HTTPS, valida que la respuesta sea una imagen y agrega
-cache de navegador por 24 horas.
+Solo acepta dominios oficiales/CDN permitidos, rechaza IP privadas o reservadas
+en cada redireccion, valida el tipo de imagen y limita la respuesta a 5 MiB.
+Las consultas bloqueantes se ejecutan fuera del event loop. La variable
+`CONVIENE_IMAGE_ALLOWED_HOSTS` agrega CDN separados por comas. El navegador
+almacena la imagen 24 horas.
 
 ### Operacion
 
 - `GET /operations` devuelve estado de cada fuente, latencia, errores recientes
-  y alertas luego de dos fallas consecutivas.
+  y alertas luego de dos fallas consecutivas; requiere autorizacion.
 - `POST /operations/promotions/refresh` fuerza la actualizacion del feed de
-  promociones de La Gallega.
+  promociones de La Gallega; requiere autorizacion y rechaza trabajos simultaneos.
+
+Fuera del desarrollo local, configura `CONVIENE_ADMIN_KEY` con un valor aleatorio
+no versionado de al menos 24 caracteres, sin espacios al inicio o al final, y
+envialo en `X-Admin-Key`. Sin una clave valida, estas rutas devuelven `503`;
+con clave incorrecta, `403`. `GET /health` sigue siendo publico sin exponer
+diagnosticos. `CONVIENE_CORS_ORIGINS` define los origenes Web permitidos
+(separados por comas). En desarrollo (`CONVIENE_ENV=development`) se admiten
+ademas `localhost` y `127.0.0.1` con puerto. El script Windows activa ese modo;
+Docker usa produccion y Compose publica solo en loopback.
 
 Al iniciar, y luego cada seis horas, el backend actualiza ese feed estructurado.
 Se puede modificar el intervalo con `CONVIENE_PROMOTIONS_REFRESH_SECONDS`
 (minimo 300 segundos). El ultimo catalogo valido se conserva en
 `data/runtime/la-gallega-catalog.json` y los eventos se registran en
 `data/runtime/scraper-events.jsonl`; ambos archivos se excluyen de Git.
+El refresco usa un bloqueo de archivo en `data/runtime` para evitar trabajos
+simultaneos entre procesos que comparten ese directorio. Una solicitud manual
+concurrente recibe HTTP 409; el refresco programado conserva el ultimo catalogo
+valido mientras otro proceso trabaja. En despliegues con varias instancias, el
+directorio runtime debe estar en un volumen compartido para mantener esa garantia.
 
 ## Supermercados y alias
 
@@ -234,12 +276,20 @@ Para comparar productos se validan ademas:
 El margen de tamaño evita diferencias de formato menores, pero rechaza cambios
 materiales de presentacion.
 
+En consultas a la API, Python decide la identidad y Flutter solo aplica una
+comprobacion defensiva antes de sumar precios. Las reglas Dart de busqueda por
+nombre siguen disponibles para el modo local; las pruebas de ambos lados cubren
+los mismos riesgos de EAN, tamaño, pack y variantes para detectar divergencias.
+La referencia compartida esta en `test/fixtures/product_identity_cases.json`.
+
 ## Rendimiento y cache
 
 - Las tiendas se consultan en paralelo.
 - Los productos de un changuito se comparan en paralelo.
 - Los detalles de La Gallega se descargan con un grupo limitado de workers.
 - Las busquedas se almacenan durante 120 segundos y consideran el contexto de sucursal/canal.
+- Las caches de productos y equivalencias tienen un maximo de entradas; un
+  resultado vacio de busqueda general se reintenta en la siguiente solicitud.
 - Los descuentos se almacenan durante 5 minutos por fecha y conjunto de tiendas.
 - Las solicitudes simultaneas identicas comparten el mismo trabajo en curso.
 
@@ -282,8 +332,9 @@ el navegador durante una prueba se puede agregar `--headed`.
 Desde la raiz del repositorio:
 
 ```powershell
+.\backend\scraper_api\.venv\Scripts\python.exe -m pip install -r backend\scraper_api\requirements-dev.txt
 .\backend\scraper_api\.venv\Scripts\python.exe `
-  -m unittest discover -s backend\scraper_api\tests -q
+  -m pytest backend\scraper_api\tests -q
 ```
 
 Prueba manual del navegador:
@@ -316,6 +367,6 @@ flutter run -d chrome `
   --dart-define=CONVIENE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-Si la API falla, `ApiRepository` delega en `MockRepository`. Este comportamiento
-mantiene la interfaz disponible, pero los datos de respaldo no representan una
-consulta actual a los supermercados.
+`ApiRepository` conserva un directorio local de supermercados y productos para
+mantener la interfaz disponible. Si falla la API, las busquedas, cotizaciones y
+promociones reales muestran un error: no se sustituyen con precios de muestra.

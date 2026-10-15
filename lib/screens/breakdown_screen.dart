@@ -414,7 +414,8 @@ class _MissingProductsCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Text(
-                '${product.name}: ${comparison.missingLabel(product)}',
+                '${product.name}: ${comparison.missingLabel(product)}'
+                '${comparison.alternativesByProduct[product.id] == null ? '' : '\nAlternativa sugerida: ${comparison.alternativesByProduct[product.id]!.product.name} (no incluida en el total)'}',
                 style: const TextStyle(
                   color: AppColors.textGray,
                   fontSize: 12,

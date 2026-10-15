@@ -4,6 +4,7 @@ import asyncio
 import re
 import time
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 
 from scrapers import SCRAPERS, STORE_NAMES
 from services.monitoring import timed_check
@@ -20,8 +21,15 @@ STORE_ALIASES = {
 _SEARCH_CACHE_TTL_SECONDS = 120
 _DIRECT_STORE_TIMEOUT_SECONDS = 14
 _BROWSER_STORE_TIMEOUT_SECONDS = 38
-_search_cache: dict[tuple, tuple[float, list]] = {}
-_search_locks: dict[tuple, asyncio.Lock] = {}
+@dataclass
+class SearchQueryResult:
+    rows: list
+    source_status: dict[str, str]
+
+
+_search_cache: dict[tuple, tuple[float, SearchQueryResult]] = {}
+_search_inflight: dict[tuple, asyncio.Task] = {}
+_SEARCH_CACHE_MAX_ENTRIES = 200
 
 
 def _store_tokens(stores: list[str] | str | None) -> list[str]:
@@ -90,13 +98,16 @@ async def scrape_query_with_browser(browser, query: str, stores: list[str], limi
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         rows = []
+        source_status = {}
         for store_name, result in zip(stores, results):
             if isinstance(result, Exception):
-                print(f"{store_name}: ERROR {type(result).__name__}: {result}", flush=True)
+                print(f"{store_name}: ERROR {type(result).__name__}", flush=True)
+                source_status[store_name] = "error"
                 continue
             rows.extend(result)
+            source_status[store_name] = "ok"
             print(f"{store_name}: {len(result)} productos", flush=True)
-        return rows
+        return SearchQueryResult(rows, source_status)
     finally:
         await context.close()
 
@@ -115,7 +126,7 @@ async def _search_one_direct_store(store_name: str, query: str, limit: int, cont
         return rows
     except Exception as exc:
         finish(success=False, detail=f"{type(exc).__name__}: {exc}")
-        print(f"{store_name}: DIRECT ERROR {type(exc).__name__}: {exc}", flush=True)
+        print(f"{store_name}: DIRECT ERROR {type(exc).__name__}", flush=True)
         return None
 
 
@@ -127,6 +138,18 @@ async def scrape_query(
     engine: str = "camoufox",
     context: dict | None = None,
 ):
+    result = await scrape_query_with_status(query, stores, limit, headless, engine, context)
+    return result.rows
+
+
+async def scrape_query_with_status(
+    query: str,
+    stores: list[str] | None,
+    limit: int,
+    headless: bool,
+    engine: str = "camoufox",
+    context: dict | None = None,
+) -> SearchQueryResult:
     selected_stores = resolve_stores(stores)
     # Coordinates only select a branch before this point. Including them here
     # would create a distinct cache entry for every GPS reading.
@@ -136,26 +159,35 @@ async def scrape_query(
         if key not in {"latitude", "longitude", "location_accuracy_meters"}
     }
     context_key = tuple(sorted(cache_context.items()))
-    cache_key = (query.strip().casefold(), tuple(selected_stores), limit, context_key)
+    cache_key = (query.strip().casefold(), tuple(selected_stores), limit, headless, engine, context_key)
     cached = _search_cache.get(cache_key)
     now = time.monotonic()
     if cached and now - cached[0] < _SEARCH_CACHE_TTL_SECONDS:
-        return list(cached[1])
+        return SearchQueryResult(list(cached[1].rows), dict(cached[1].source_status))
 
-    lock = _search_locks.setdefault(cache_key, asyncio.Lock())
-    async with lock:
-        cached = _search_cache.get(cache_key)
+    task = _search_inflight.get(cache_key)
+    if task is None:
+        task = asyncio.create_task(_scrape_and_cache(cache_key, query, selected_stores, limit, headless, engine, context))
+        _search_inflight[cache_key] = task
+    result = await asyncio.shield(task)
+    return SearchQueryResult(list(result.rows), dict(result.source_status))
+
+
+async def _scrape_and_cache(cache_key, query, selected_stores, limit, headless, engine, context):
+    try:
+        result = await _scrape_query_uncached(query, selected_stores, limit, headless, engine, context)
+        # An empty result may be a transient upstream failure, so retry on the next request.
+        if result.rows and "error" not in result.source_status.values():
+            _search_cache[cache_key] = (time.monotonic(), result)
         now = time.monotonic()
-        if cached and now - cached[0] < _SEARCH_CACHE_TTL_SECONDS:
-            return list(cached[1])
-        rows = await _scrape_query_uncached(query, selected_stores, limit, headless, engine, context)
-        _search_cache[cache_key] = (time.monotonic(), list(rows))
-        if len(_search_cache) > 200:
-            expired = [key for key, (created, _) in _search_cache.items() if now - created >= _SEARCH_CACHE_TTL_SECONDS]
-            for key in expired:
+        for key, (created, _) in list(_search_cache.items()):
+            if now - created >= _SEARCH_CACHE_TTL_SECONDS:
                 _search_cache.pop(key, None)
-                _search_locks.pop(key, None)
-        return rows
+        while len(_search_cache) > _SEARCH_CACHE_MAX_ENTRIES:
+            _search_cache.pop(next(iter(_search_cache)))
+        return result
+    finally:
+        _search_inflight.pop(cache_key, None)
 
 
 async def _scrape_query_uncached(query, selected_stores, limit, headless, engine, context=None):
@@ -166,17 +198,25 @@ async def _scrape_query_uncached(query, selected_stores, limit, headless, engine
     direct_results = await asyncio.gather(*direct_tasks)
 
     rows = []
+    source_status = {}
     browser_stores = []
     for store_name, result in zip(selected_stores, direct_results):
         if result is None:
             browser_stores.append(store_name)
             continue
         rows.extend(result)
+        source_status[store_name] = "ok"
         print(f"{store_name}: {len(result)} productos directos", flush=True)
 
     if not browser_stores:
-        return rows
+        return SearchQueryResult(rows, source_status)
 
-    async with open_browser(headless=headless, engine=engine) as browser:
-        rows.extend(await scrape_query_with_browser(browser, query, browser_stores, limit))
-    return rows
+    try:
+        async with open_browser(headless=headless, engine=engine) as browser:
+            browser_result = await scrape_query_with_browser(browser, query, browser_stores, limit)
+        rows.extend(browser_result.rows)
+        source_status.update(browser_result.source_status)
+    except Exception as exc:
+        print(f"Browser search: ERROR {type(exc).__name__}", flush=True)
+        source_status.update({store: "error" for store in browser_stores})
+    return SearchQueryResult(rows, source_status)

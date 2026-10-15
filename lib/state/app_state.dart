@@ -11,6 +11,7 @@ import '../models/supermarket.dart';
 import '../models/shopping_context.dart';
 import '../repositories/conviene_repository.dart';
 import '../repositories/promotion_status_repository.dart';
+import '../repositories/search_status_repository.dart';
 import '../services/cart_service.dart';
 import '../services/discount_engine.dart';
 import '../services/discount_service.dart';
@@ -19,6 +20,7 @@ import '../services/price_comparison_service.dart';
 import '../services/product_search_service.dart';
 import '../services/supermarket_service.dart';
 import '../services/user_data_store.dart';
+import '../utils/barcode.dart';
 
 class AppState extends ChangeNotifier {
   AppState({
@@ -75,6 +77,8 @@ class AppState extends ChangeNotifier {
   bool isComparing = false;
   bool isLoadingPromotions = false;
   String? lastError;
+  String? searchWarning;
+  String? searchNotice;
   String? promotionsError;
   String? promotionsWarning;
 
@@ -136,6 +140,8 @@ class AppState extends ChangeNotifier {
   Future<void> initialize() async {
     isBootstrapping = true;
     lastError = null;
+    searchWarning = null;
+    searchNotice = null;
     notifyListeners();
     try {
       supermarkets = await _supermarketService.loadSupermarkets();
@@ -216,8 +222,17 @@ class AppState extends ChangeNotifier {
     final generation = ++_searchGeneration;
     searchQuery = query.trim().isEmpty ? 'leche entera' : query.trim();
     searchResults = [];
-    isSearching = true;
     lastError = null;
+    searchWarning = null;
+    searchNotice = null;
+    if (RegExp(r'^\d{8,14}$').hasMatch(searchQuery) &&
+        normalizedBarcode(searchQuery) == null) {
+      isSearching = false;
+      lastError = 'El codigo de barras no es valido. Revisa los digitos.';
+      notifyListeners();
+      return;
+    }
+    isSearching = true;
     notifyListeners();
     try {
       final results = await _productSearchService.search(
@@ -226,11 +241,19 @@ class AppState extends ChangeNotifier {
         sort: searchSort,
         context: shoppingContext,
       );
+      final warning = _repository is SearchStatusRepository
+          ? (_repository as SearchStatusRepository).lastSearchWarning
+          : null;
+      final notice = _repository is SearchStatusRepository
+          ? (_repository as SearchStatusRepository).lastSearchNotice
+          : null;
       final loadedProducts = await _repository.getProducts();
       if (generation != _searchGeneration) {
         return;
       }
       searchResults = results;
+      searchWarning = warning;
+      searchNotice = notice;
       final cartProductIds = cartItems.map((item) => item.productId).toSet();
       final retainedIds = {...cartProductIds, ...favoriteProductIds};
       products = {

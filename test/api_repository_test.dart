@@ -87,6 +87,105 @@ void main() {
     );
   });
 
+  test('keeps partial search results and names the failed source', () async {
+    final repository = ApiRepository(
+      baseUrl: Uri.parse('http://127.0.0.1:8000'),
+      fallback: MockRepository(),
+      client: MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'results': [
+              {
+                'match_type': 'exact',
+                'score': 90,
+                'product': {
+                  'store': 'coto',
+                  'name': 'Leche entera 1 L',
+                  'price': 2000,
+                  'available': true,
+                  'scraped_at': '2026-10-15T12:00:00Z',
+                },
+              },
+            ],
+            'store_status': {'coto': 'found', 'carrefour': 'error'},
+            'partial': true,
+          }),
+          200,
+        ),
+      ),
+    );
+    final results = await repository.searchProducts(
+      query: 'leche entera',
+      storeIds: {'coto', 'carrefour'},
+    );
+    expect(results, hasLength(1));
+    expect(results.single.supermarket.id, 'coto');
+    expect(repository.lastSearchWarning, contains('Carrefour'));
+  });
+
+  test(
+    'reports an exact barcode listing without a purchasable offer',
+    () async {
+      final repository = ApiRepository(
+        baseUrl: Uri.parse('http://127.0.0.1:8000'),
+        fallback: MockRepository(),
+        client: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'results': <Object>[],
+              'store_status': {'carrefour': 'unavailable'},
+              'unavailable_products': [
+                {
+                  'store': 'carrefour',
+                  'name': 'Alfajor Guaymallen triple 70 g',
+                  'ean': '77980267',
+                  'available': false,
+                },
+              ],
+            }),
+            200,
+          ),
+        ),
+      );
+      final results = await repository.searchProducts(
+        query: '77980267',
+        storeIds: {'carrefour'},
+      );
+      expect(results, isEmpty);
+      expect(repository.lastSearchNotice, contains('Guaymallen'));
+      expect(repository.lastSearchNotice, contains('Carrefour'));
+      expect(repository.lastSearchWarning, isNull);
+    },
+  );
+
+  test(
+    'all failed sources are errors, never an empty confirmed search',
+    () async {
+      final repository = ApiRepository(
+        baseUrl: Uri.parse('http://127.0.0.1:8000'),
+        fallback: MockRepository(),
+        client: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'results': <Object>[],
+              'store_status': {'coto': 'error', 'carrefour': 'error'},
+              'partial': true,
+            }),
+            200,
+          ),
+        ),
+      );
+      await expectLater(
+        repository.searchProducts(
+          query: 'leche',
+          storeIds: {'coto', 'carrefour'},
+        ),
+        throwsStateError,
+      );
+      expect(repository.lastSearchWarning, isNull);
+    },
+  );
+
   test('sends the selected purchase context to the scraper API', () async {
     final repository = ApiRepository(
       baseUrl: Uri.parse('http://127.0.0.1:8000'),

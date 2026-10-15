@@ -34,6 +34,7 @@ class SearchResult {
     required this.supermarket,
     this.relevanceScore = 0,
     this.isExactMatch = true,
+    this.matchType = 'exact',
   });
 
   final Product product;
@@ -41,4 +42,5 @@ class SearchResult {
   final Supermarket supermarket;
   final double relevanceScore;
   final bool isExactMatch;
+  final String matchType;
 }

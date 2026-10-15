@@ -11,5 +11,12 @@ void main() {
     expect(normalizedBarcode('7790742448308'), isNull);
     expect(normalizedBarcode('779074244830x'), isNull);
     expect(normalizedBarcode('12345'), isNull);
+    expect(normalizedBarcode('779089500829'), isNull);
+    expect(normalizedBarcode('00000000'), isNull);
+  });
+
+  test('accepts Sprite EAN-13 and Guaymallen EAN-8', () {
+    expect(normalizedBarcode('7790895000829'), '7790895000829');
+    expect(normalizedBarcode('77980267'), '77980267');
   });
 }

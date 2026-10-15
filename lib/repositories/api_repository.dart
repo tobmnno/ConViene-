@@ -13,12 +13,14 @@ import '../models/shopping_context.dart';
 import 'conviene_repository.dart';
 import 'promotion_status_repository.dart';
 import 'product_equivalence_repository.dart';
+import 'search_status_repository.dart';
 
 class ApiRepository
     implements
         ConvieneRepository,
         ProductEquivalenceRepository,
-        PromotionStatusRepository {
+        PromotionStatusRepository,
+        SearchStatusRepository {
   ApiRepository({
     required this.baseUrl,
     required this.fallback,
@@ -35,6 +37,14 @@ class ApiRepository
   List<Supermarket>? _cachedSupermarkets;
   String? _pricesContextKey;
   String? _lastPromotionWarning;
+  String? _lastSearchWarning;
+  String? _lastSearchNotice;
+
+  @override
+  String? get lastSearchWarning => _lastSearchWarning;
+
+  @override
+  String? get lastSearchNotice => _lastSearchNotice;
 
   @override
   String? get lastPromotionWarning => _lastPromotionWarning;
@@ -152,6 +162,8 @@ class ApiRepository
     required Set<String> storeIds,
     ShoppingContext context = const ShoppingContext(),
   }) async {
+    _lastSearchWarning = null;
+    _lastSearchNotice = null;
     final contextKey = _contextKey(context);
     if (_pricesContextKey != contextKey) {
       // A store branch or fulfillment mode can change product prices and stock.
@@ -174,13 +186,52 @@ class ApiRepository
           'Scraper API response must include results',
         );
       }
+      final rawStatus = decoded['store_status'];
+      if (rawStatus is Map<String, dynamic>) {
+        final failed = [
+          for (final store in storeIds)
+            if (_asString(rawStatus[_storeIdForApi(store)]) == 'error') store,
+        ];
+        if (failed.isNotEmpty) {
+          if (failed.length == storeIds.length && rawResults.isEmpty) {
+            throw StateError('All supermarket sources failed');
+          }
+          _lastSearchWarning =
+              'No se pudo consultar ${failed.map(_storeDisplayName).join(', ')}. '
+              'Los resultados de otros supermercados son parciales.';
+        }
+      }
+      final unavailable = decoded['unavailable_products'];
+      if (unavailable is List<dynamic> && unavailable.isNotEmpty) {
+        final products = unavailable.whereType<Map<String, dynamic>>().toList();
+        if (products.isNotEmpty) {
+          final name = _asString(products.first['name']);
+          final stores = products
+              .map((item) => _storeDisplayName(_asString(item['store'])))
+              .toSet()
+              .join(', ');
+          if (name.isNotEmpty && stores.isNotEmpty) {
+            _lastSearchNotice =
+                'Encontramos $name en $stores, pero figura sin stock o sin precio disponible.';
+          }
+        }
+      }
       return _parseResults(rawResults);
     } on Object {
+      _lastSearchWarning = null;
+      _lastSearchNotice = null;
       throw StateError(
         'No se pudo consultar los precios reales. Intenta nuevamente.',
       );
     }
   }
+
+  String _storeDisplayName(String id) => switch (id) {
+    'coto' => 'Coto',
+    'carrefour' => 'Carrefour',
+    'lagallega' || 'la_gallega' => 'La Gallega',
+    _ => id,
+  };
 
   @override
   Future<EquivalentProductsResult> findEquivalentProducts({
@@ -217,9 +268,13 @@ class ApiRepository
       if (response.statusCode != 200) throw StateError('Equivalence API error');
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       final results = await _parseResults(decoded['results'] as List<dynamic>);
+      final alternatives = decoded['alternatives'] is List
+          ? await _parseResults(decoded['alternatives'] as List<dynamic>)
+          : <SearchResult>[];
       final rawStatus = decoded['store_status'] as Map<String, dynamic>;
       return EquivalentProductsResult(
         results: results,
+        alternatives: alternatives,
         storeStatus: {
           for (final store in storeIds)
             store: _asString(rawStatus[_storeIdForApi(store)]).isEmpty
@@ -361,13 +416,15 @@ class ApiRepository
       cachedPrices.removeWhere((item) => item.storeId == storeId);
       cachedPrices.add(priceQuote);
 
+      final matchType = _asString(result['match_type']);
       parsed.add(
         SearchResult(
           product: product,
           price: priceQuote,
           supermarket: supermarket,
           relevanceScore: _asDouble(result['score']) ?? 0,
-          isExactMatch: _asString(result['match_type']) != 'similar',
+          isExactMatch: matchType == 'exact' || matchType == 'same_product',
+          matchType: matchType.isEmpty ? 'review' : matchType,
         ),
       );
     }

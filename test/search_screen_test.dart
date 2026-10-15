@@ -66,4 +66,102 @@ void main() {
       state.dispose();
     },
   );
+
+  testWidgets('muestra resultados parciales sin ocultar los productos sanos', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final state = AppState(repository: MockRepository());
+    await tester.runAsync(() => state.initialize());
+    expect(state.searchResults, isNotEmpty);
+    state.searchWarning = 'No se pudo consultar Carrefour.';
+
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: MaterialApp(
+          home: Scaffold(body: SearchScreen(onBack: () {})),
+        ),
+      ),
+    );
+
+    expect(find.text('No se pudo consultar Carrefour.'), findsOneWidget);
+    expect(state.searchResults, isNotEmpty);
+    expect(find.byTooltip('Agregar al changuito'), findsWidgets);
+    state.dispose();
+  });
+
+  testWidgets('no afirma ausencia global si la busqueda fue parcial', (
+    tester,
+  ) async {
+    final state = AppState(repository: MockRepository())
+      ..searchWarning = 'No se pudo consultar Carrefour.';
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: MaterialApp(
+          home: Scaffold(body: SearchScreen(onBack: () {})),
+        ),
+      ),
+    );
+    expect(
+      find.text(
+        'No encontramos resultados en los supermercados que respondieron.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'No encontramos ese producto en los supermercados seleccionados.',
+      ),
+      findsNothing,
+    );
+    state.dispose();
+  });
+
+  testWidgets('un EAN valido sin oferta explica que falta precio publicado', (
+    tester,
+  ) async {
+    final state = AppState(repository: MockRepository())
+      ..searchQuery = '77980267';
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: MaterialApp(
+          home: Scaffold(body: SearchScreen(onBack: () {})),
+        ),
+      ),
+    );
+    expect(
+      find.text(
+        'Codigo valido, pero sin precio publicado en los supermercados seleccionados.',
+      ),
+      findsOneWidget,
+    );
+    state.dispose();
+  });
+
+  testWidgets('muestra el producto identificado aunque no este disponible', (
+    tester,
+  ) async {
+    final state = AppState(repository: MockRepository())
+      ..searchQuery = '77980267'
+      ..searchNotice =
+          'Encontramos Guaymallen en Carrefour, pero figura sin stock.';
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: MaterialApp(
+          home: Scaffold(body: SearchScreen(onBack: () {})),
+        ),
+      ),
+    );
+    expect(find.textContaining('Guaymallen en Carrefour'), findsOneWidget);
+    expect(
+      find.text('No hay ofertas disponibles para comprar en este momento.'),
+      findsOneWidget,
+    );
+    state.dispose();
+  });
 }

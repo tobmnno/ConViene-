@@ -6,10 +6,10 @@ from unittest.mock import AsyncMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from models import EquivalentsRequest, Product, ProductReference
-from scrapers.stores import _coto_price, _offer_for_vtex_product
+from scrapers.stores import _carrefour_api_search, _coto_price, _lagallega_api_search, _offer_for_vtex_product
 from scrapers.lagallega_catalog import CatalogPage
-from services.catalog import extract_measurement, same_catalog_product, valid_gtin
-from services.equivalents import _cache, find_equivalents, reference_queries
+from services.catalog import alternative_match, extract_measurement, same_catalog_product, valid_gtin
+from services.equivalents import _cache, _inflight, find_equivalents, reference_queries
 from api import _build_search_response
 
 
@@ -18,6 +18,66 @@ def product(name, ean=None, **fields):
 
 
 class IdentityTests(unittest.TestCase):
+    def test_bare_condom_count_rejects_another_pack_size(self):
+        self.assertEqual(extract_measurement("Preservativos ultrafinos 6"), (6.0, "unit"))
+        self.assertFalse(same_catalog_product(
+            ProductReference(name="Preservativos Tulipan ultrafinos 6"),
+            product("Preservativos Ultrafinos Tulipan Bli 1 Uni"),
+        ))
+
+    def test_coffee_creamer_is_not_instant_coffee(self):
+        from services.catalog import products_are_comparable
+
+        self.assertFalse(products_are_comparable(
+            "cafe instantaneo 170g", "cafe instantaneo nestle coffee mate x 170 gr",
+        ))
+
+    def test_same_brand_classic_and_traditional_are_same_only_with_identity_evidence(self):
+        reference = ProductReference(name="Dulce de leche clasico Coto 400 g", brand="Coto")
+        same = product("Dulce de leche tradicional Coto 400 gramos", brand="Coto")
+        self.assertTrue(same_catalog_product(reference, same))
+        self.assertFalse(same_catalog_product(
+            ProductReference(name="Dulce de leche clasico 400 g"),
+            product("Dulce de leche tradicional 400 gr"),
+        ))
+
+    def test_other_brand_is_alternative_never_identical(self):
+        reference = ProductReference(name="Dulce de leche clasico Coto 400 g", brand="Coto")
+        other = product("Dulce de leche tradicional Carrefour 400gr", brand="Carrefour")
+        self.assertFalse(same_catalog_product(reference, other))
+        self.assertEqual(alternative_match(reference, other).match_type, "alternative")
+        for name in ("Dulce de leche repostero Carrefour 400 g",
+                     "Dulce de leche tradicional Carrefour 1 kg",
+                     "Crema de leche tradicional Carrefour 400 g"):
+            self.assertIsNone(alternative_match(reference, product(name, brand="Carrefour")))
+
+    def test_composite_food_is_not_a_dulce_de_leche_alternative(self):
+        reference = ProductReference(name="Dulce de leche La Paulina 200 gr", brand="La Paulina")
+        for name in ("Arroz con leche con dulce de leche Tregar 180 Grm",
+                     "Alfajor con dulce de leche Tregar 200 gr",
+                     "Helado de dulce de leche Tregar 200 gr"):
+            with self.subTest(name=name):
+                self.assertIsNone(alternative_match(reference, product(name, brand="Tregar")))
+        self.assertEqual(extract_measurement("Dulce Leche Clasico Milkaut Pot 245 Grm"), (245.0, "g"))
+        self.assertIsNone(alternative_match(
+            reference, product("Dulce Leche Clasico Milkaut Pot 245 Grm", brand="Milkaut")
+        ))
+
+    def test_alternatives_keep_condom_model_quantity_and_incomplete_data_separate(self):
+        reference = ProductReference(name="Preservativos Tulipan superfino 6 u", brand="Tulipan")
+        self.assertEqual(alternative_match(
+            reference, product("Preservativos Maxx superfino 6 unidades", brand="Maxx")
+        ).match_type, "alternative")
+        self.assertIsNone(alternative_match(
+            reference, product("Preservativos Maxx texturado 6 u", brand="Maxx")
+        ))
+        self.assertIsNone(alternative_match(
+            reference, product("Preservativos Maxx superfino 12 u", brand="Maxx")
+        ))
+        self.assertEqual(alternative_match(
+            reference, product("Preservativos Maxx 6 u", brand="Maxx")
+        ).match_type, "review")
+
     def test_limited_search_preserves_a_match_from_each_store(self):
         rows = [product("Leche La Serenisima 1 L") for _ in range(10)]
         other = product("Leche La Serenisima 1 L")
@@ -213,10 +273,31 @@ class IdentityTests(unittest.TestCase):
         _, offer = _offer_for_vtex_product({"items": [{"sellers": [{"commertialOffer": stale}, {"commertialOffer": current}]}]})
         self.assertEqual(offer, current)
 
+    def test_carrefour_filters_by_ean_and_prices_the_matching_sku(self):
+        other = {"ean": "7790895064142", "sellers": [{"commertialOffer": {"Price": 100, "IsAvailable": True}}]}
+        selected = {"ean": "7790895000829", "sellers": [{"commertialOffer": {"Price": 1900, "IsAvailable": True}}]}
+        with patch("scrapers.stores.requests.get") as get:
+            get.return_value.status_code = 200
+            get.return_value.json.return_value = [{
+                "productName": "Gaseosa Sprite 500 ml", "items": [other, selected],
+            }]
+            rows = _carrefour_api_search("7790895000829", 20)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual((rows[0].ean, rows[0].price), ("7790895000829", 1900))
+        self.assertEqual(get.call_args.kwargs["params"]["fq"], "alternateIds_Ean:7790895000829")
+
+    def test_lagallega_uses_barcode_autocomplete_instead_of_text_catalog(self):
+        row = product("Gaseosa Sprite 500 ml", "7790895000829")
+        with patch("scrapers.stores._lagallega_autocomplete_search", return_value=[row]) as autocomplete:
+            self.assertEqual(_lagallega_api_search("7790895000829", 20), [row])
+        autocomplete.assert_called_once_with("7790895000829", 20, None)
+
 
 class EquivalentsTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         _cache.clear()
+        _inflight.clear()
 
     def request(self):
         return EquivalentsRequest(product={"name": "Leche La Serenisima liviana 1% 1L", "ean": "7790742363107"}, stores=["coto"])
@@ -325,4 +406,42 @@ class EquivalentsTests(unittest.IsolatedAsyncioTestCase):
             request = self.request()
             request.context.coto_store = "401"
             await find_equivalents(request)
-        self.assertEqual(search.await_count, 8)
+        self.assertEqual(search.await_count, 10)
+
+    async def test_alternative_is_separate_from_verified_results_and_status(self):
+        request = EquivalentsRequest(
+            product={"name": "Dulce de leche clasico Coto 400 g", "brand": "Coto"},
+            stores=["carrefour"],
+        )
+        search = AsyncMock(return_value=[product(
+            "Dulce de leche tradicional Carrefour 400gr", brand="Carrefour"
+        )])
+        with patch("services.equivalents._search_one_direct_store", search):
+            response = await find_equivalents(request)
+        self.assertEqual(response.results, [])
+        self.assertEqual(response.store_status, {"carrefour": "not_found"})
+        self.assertEqual(response.alternatives[0].match_type, "alternative")
+
+    async def test_concurrent_calls_share_work_and_release_inflight_on_failure(self):
+        import asyncio
+        request = self.request()
+        calls = 0
+
+        async def find(*_args):
+            nonlocal calls
+            calls += 1
+            await asyncio.sleep(0.01)
+            return None, "not_found", []
+
+        with patch("services.equivalents._find_in_store", side_effect=find):
+            results = await asyncio.gather(*(find_equivalents(request) for _ in range(8)))
+        self.assertEqual(calls, 1)
+        self.assertTrue(all(result.store_status == {"coto": "not_found"} for result in results))
+        self.assertEqual(_inflight, {})
+
+    async def test_error_does_not_leave_inflight_key(self):
+        with patch("services.equivalents._find_in_store", AsyncMock(side_effect=RuntimeError("failed"))):
+            with self.assertRaises(RuntimeError):
+                await find_equivalents(self.request())
+        self.assertEqual(_inflight, {})
+        self.assertEqual(_cache, {})

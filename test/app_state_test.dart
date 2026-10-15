@@ -31,6 +31,21 @@ void main() {
     },
   );
 
+  test('rejects a mistyped barcode without calling the repository', () async {
+    final repository = _FlakyRepository();
+    final state = AppState(repository: repository);
+    await state.initialize();
+    final calls = repository.searchCalls;
+
+    await state.searchProducts('779089500829');
+
+    expect(repository.searchCalls, calls);
+    expect(state.searchResults, isEmpty);
+    expect(state.lastError, contains('no es valido'));
+    expect(state.isSearching, isFalse);
+    state.dispose();
+  });
+
   test(
     'restores cart, store choice, and selected payment methods on reload',
     () async {
@@ -120,6 +135,7 @@ class _EmptyProductRepository extends MockRepository {
 class _FlakyRepository extends MockRepository {
   bool failSearch = false;
   bool failPromotions = false;
+  int searchCalls = 0;
 
   @override
   Future<List<SearchResult>> searchProducts({
@@ -127,6 +143,7 @@ class _FlakyRepository extends MockRepository {
     required Set<String> storeIds,
     ShoppingContext context = const ShoppingContext(),
   }) {
+    searchCalls++;
     if (failSearch) throw StateError('search unavailable');
     return super.searchProducts(
       query: query,

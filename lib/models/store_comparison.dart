@@ -1,5 +1,6 @@
 import 'cart_item.dart';
 import 'product.dart';
+import 'price_quote.dart';
 import 'supermarket.dart';
 
 class StoreComparison {
@@ -11,6 +12,7 @@ class StoreComparison {
     required this.totalDiscount,
     required this.totalFinal,
     this.missingStatus = const {},
+    this.alternativesByProduct = const {},
   });
 
   final Supermarket supermarket;
@@ -20,6 +22,7 @@ class StoreComparison {
   final double totalDiscount;
   final double totalFinal;
   final Map<String, String> missingStatus;
+  final Map<String, SearchResult> alternativesByProduct;
 
   bool get hasSourceError => missingStatus.values.contains('error');
 

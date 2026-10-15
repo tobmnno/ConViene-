@@ -15,6 +15,7 @@ except Exception:
 import requests
 
 from models import Product
+from services.catalog import valid_gtin
 from .base import BaseScraper, parse_price
 from .lagallega_catalog import read_catalog_page
 
@@ -73,9 +74,11 @@ async def extract_results(scraper: BaseScraper, page: Page, limit: int):
     return await scraper.extract_text_products(page, limit)
 
 
-def _offer_for_vtex_product(product: dict):
+def _offer_for_vtex_product(product: dict, ean: str | None = None):
     fallback = (None, None)
     for item in product.get("items") or []:
+        if ean and valid_gtin(str(item.get("ean") or "")) != ean:
+            continue
         for seller in item.get("sellers") or []:
             offer = seller.get("commertialOffer") or {}
             if offer.get("Price") is not None:
@@ -95,10 +98,19 @@ def _image_for_vtex_item(item: dict | None):
 
 
 def _carrefour_api_search(query: str, limit: int, context: dict | None = None):
+    barcode = valid_gtin(query)
     encoded = quote(query)
+    params = {
+        "_from": 0,
+        "_to": max(limit - 1, 0),
+        "sc": (context or {}).get("carrefour_sales_channel", "1"),
+    }
+    if barcode:
+        params["fq"] = f"alternateIds_Ean:{query}"
     response = requests.get(
-        f"https://www.carrefour.com.ar/api/catalog_system/pub/products/search/{encoded}",
-        params={"_from": 0, "_to": max(limit - 1, 0), "sc": (context or {}).get("carrefour_sales_channel", "1")},
+        "https://www.carrefour.com.ar/api/catalog_system/pub/products/search"
+        + ("" if barcode else f"/{encoded}"),
+        params=params,
         headers=REQUEST_HEADERS,
         timeout=DIRECT_HTTP_TIMEOUT_SECONDS,
     )
@@ -107,7 +119,7 @@ def _carrefour_api_search(query: str, limit: int, context: dict | None = None):
 
     rows = []
     for raw_product in response.json()[:limit]:
-        item, offer = _offer_for_vtex_product(raw_product)
+        item, offer = _offer_for_vtex_product(raw_product, barcode)
         if not offer:
             continue
         price = offer.get("Price")
@@ -346,6 +358,8 @@ def _lagallega_autocomplete_search(query: str, limit: int, context: dict | None 
 
 
 def _lagallega_api_search(query: str, limit: int, context: dict | None = None):
+    if valid_gtin(query):
+        return _lagallega_autocomplete_search(query, limit, context)
     with requests.Session() as session:
         session.get("https://www.lagallega.com.ar/", headers=REQUEST_HEADERS,
                     timeout=DIRECT_HTTP_TIMEOUT_SECONDS)

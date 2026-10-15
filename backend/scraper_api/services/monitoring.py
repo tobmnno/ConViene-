@@ -6,6 +6,7 @@ import json
 import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+import re
 from threading import Lock
 from time import perf_counter
 from typing import Any
@@ -19,6 +20,17 @@ _events: deque[dict[str, Any]] = deque(maxlen=150)
 _stats: dict[str, dict[str, Any]] = defaultdict(
     lambda: {"successes": 0, "failures": 0, "consecutive_failures": 0, "last_success_at": None, "last_error": None, "last_duration_ms": None}
 )
+
+
+def _safe_detail(detail: str) -> str:
+    detail = re.sub(r"https?://[^\s]+", "[url]", detail, flags=re.IGNORECASE)
+    detail = re.sub(
+        r"\b(token|key|secret|password|authorization)\s*[:=]\s*[^\s,;]+",
+        r"\1=[redacted]",
+        detail,
+        flags=re.IGNORECASE,
+    )
+    return detail[:500]
 
 
 def _logger() -> logging.Logger:
@@ -40,7 +52,7 @@ def record_check(source: str, *, success: bool, duration_ms: float, detail: str 
         "source": source,
         "success": success,
         "duration_ms": round(duration_ms, 1),
-        "detail": detail[:500],
+        "detail": _safe_detail(detail),
         "count": count,
     }
     with _lock:

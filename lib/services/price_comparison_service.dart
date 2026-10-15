@@ -52,6 +52,8 @@ class PriceComparisonService {
     'leche',
     'los',
     'pan',
+    'preservativo',
+    'preservativos',
     'queso',
     'sabor',
     'sin',
@@ -63,6 +65,15 @@ class PriceComparisonService {
     'pack',
     'combo',
     'unidad',
+    'unidades',
+    'uni',
+    'bli',
+    'sup',
+    'super',
+    'fino',
+    'superfino',
+    'ultrafino',
+    'texturado',
     'yerba',
   };
 
@@ -152,6 +163,7 @@ class PriceComparisonService {
           return null;
         }
         final offersByStore = <String, SearchResult>{};
+        final alternativesByStore = <String, SearchResult>{};
         final storeStatus = <String, String>{};
         final cachedPrices = await _repository.getPricesForProduct(
           cartItem.productId,
@@ -187,6 +199,7 @@ class PriceComparisonService {
                 cartItem: cartItem,
                 selectedProduct: selectedProduct,
                 offersByStore: offersByStore,
+                alternativesByStore: alternativesByStore,
                 selectedOffer: selectedOffer,
                 storeStatus: storeStatus,
               );
@@ -199,6 +212,15 @@ class PriceComparisonService {
                       context: context,
                     );
             storeStatus.addAll(response.storeStatus);
+            for (final suggestion in response.alternatives) {
+              if (missingStoreIds.contains(suggestion.supermarket.id) &&
+                  !suggestion.isExactMatch) {
+                alternativesByStore.putIfAbsent(
+                  suggestion.supermarket.id,
+                  () => suggestion,
+                );
+              }
+            }
             offersByStore.clear();
             selectedOffer = null;
             for (final result in response.results) {
@@ -236,7 +258,7 @@ class PriceComparisonService {
                 if (!missingStoreIds.contains(storeId) || !result.price.stock) {
                   continue;
                 }
-                if (!_isComparableProduct(selectedProduct, result.product)) {
+                if (!matchesLocalProduct(selectedProduct, result.product)) {
                   continue;
                 }
                 offersByStore.putIfAbsent(storeId, () => result);
@@ -252,6 +274,7 @@ class PriceComparisonService {
           cartItem: cartItem,
           selectedProduct: selectedProduct,
           offersByStore: offersByStore,
+          alternativesByStore: alternativesByStore,
           selectedOffer: selectedOffer,
           storeStatus: storeStatus,
         );
@@ -297,12 +320,17 @@ class PriceComparisonService {
       final lines = <PricedCartItem>[];
       final missing = <Product>[];
       final missingStatus = <String, String>{};
+      final alternativesByProduct = <String, SearchResult>{};
       for (final item in comparableItems) {
         final result = item.offersByStore[store.id];
         if (result == null || !result.price.stock) {
           missing.add(item.selectedProduct);
           missingStatus[item.selectedProduct.id] =
               item.storeStatus[store.id] ?? 'not_found';
+          final alternative = item.alternativesByStore[store.id];
+          if (alternative != null) {
+            alternativesByProduct[item.selectedProduct.id] = alternative;
+          }
           continue;
         }
         final cartItem = item.cartItem;
@@ -335,6 +363,7 @@ class PriceComparisonService {
           totalDiscount: totalDiscount,
           totalFinal: totalOriginal - totalDiscount,
           missingStatus: missingStatus,
+          alternativesByProduct: alternativesByProduct,
         ),
       );
     }
@@ -557,28 +586,157 @@ class PriceComparisonService {
     return !_hasVariantConflict(selectedProduct.name, candidate.name);
   }
 
-  bool _isComparableProduct(Product selectedProduct, Product candidateProduct) {
-    if (selectedProduct.ean.isNotEmpty && candidateProduct.ean.isNotEmpty) {
-      return selectedProduct.ean == candidateProduct.ean;
-    }
-    if (!_isComparableSize(selectedProduct, candidateProduct)) {
+  bool matchesLocalProduct(Product selectedProduct, Product candidateProduct) {
+    final sameEan =
+        selectedProduct.ean.isNotEmpty &&
+        candidateProduct.ean.isNotEmpty &&
+        selectedProduct.ean == candidateProduct.ean;
+    if (selectedProduct.ean.isNotEmpty &&
+        candidateProduct.ean.isNotEmpty &&
+        !sameEan) {
       return false;
     }
-    if (_hasVariantConflict(selectedProduct.name, candidateProduct.name)) {
+    final selectedSize = _measurementFor(selectedProduct);
+    final candidateSize = _measurementFor(candidateProduct);
+    if (selectedSize != null &&
+        candidateSize != null &&
+        !_isComparableSize(selectedProduct, candidateProduct)) {
       return false;
     }
-    if (_hasPercentageMismatch(selectedProduct.name, candidateProduct.name)) {
+    if (!sameEan && !_isComparableSize(selectedProduct, candidateProduct)) {
+      return false;
+    }
+    if (_hasProductTypeConflict(selectedProduct.name, candidateProduct.name)) {
+      return false;
+    }
+    if (_hasVariantConflict(selectedProduct.name, candidateProduct.name) &&
+        !(sameEan &&
+            _isCompatibleMilkAlias(
+              selectedProduct.name,
+              candidateProduct.name,
+            ))) {
+      return false;
+    }
+    if (sameEan
+        ? _hasExplicitPercentageConflict(
+            selectedProduct.name,
+            candidateProduct.name,
+          )
+        : _hasPercentageMismatch(selectedProduct.name, candidateProduct.name)) {
+      return false;
+    }
+    if (sameEan) {
+      return true;
+    }
+    if (selectedProduct.brand.isNotEmpty &&
+        candidateProduct.brand.isNotEmpty &&
+        _normalizedTokens(selectedProduct.brand).join(' ') !=
+            _normalizedTokens(candidateProduct.brand).join(' ')) {
       return false;
     }
 
     final selectedIdentity = _identityTokens(selectedProduct);
     if (selectedIdentity.isEmpty) {
-      return true;
+      return false;
     }
     final candidateIdentity = _identityTokens(candidateProduct);
     final common = selectedIdentity.intersection(candidateIdentity).length;
     final coverage = common / selectedIdentity.length;
     return common > 0 && coverage >= 0.6;
+  }
+
+  bool _hasProductTypeConflict(String selectedName, String candidateName) {
+    final selected = _variantTokens(selectedName);
+    final candidate = _variantTokens(candidateName);
+    for (final marker in {
+      'repostero',
+      'infantil',
+      'primeros',
+      'chocolatada',
+      'almendra',
+    }) {
+      if (selected.contains(marker) != candidate.contains(marker)) {
+        return true;
+      }
+    }
+    final selectedCondom = selected.contains('preservativo');
+    final candidateCondom = candidate.contains('preservativo');
+    if (selectedCondom != candidateCondom) return true;
+    if (selectedCondom) {
+      final selectedCount = _unitCount(selectedName);
+      final candidateCount = _unitCount(candidateName);
+      if (selectedCount == null ||
+          candidateCount == null ||
+          selectedCount != candidateCount) {
+        return true;
+      }
+      final selectedModel = _condomModel(selectedName);
+      final candidateModel = _condomModel(candidateName);
+      if (selectedModel == null ||
+          candidateModel == null ||
+          selectedModel != candidateModel) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  int? _unitCount(String name) {
+    final match = RegExp(
+      r'\b(\d{1,2})\s*(?:u|un|uni|unidades?)\b',
+      caseSensitive: false,
+    ).firstMatch(name);
+    return match == null ? null : int.tryParse(match.group(1)!);
+  }
+
+  String? _condomModel(String name) {
+    final normalized = _normalizeForModel(name);
+    if (RegExp(r'\bultra\s*fino\b|\bultrafino\b').hasMatch(normalized))
+      return 'ultrafino';
+    if (RegExp(
+      r'\b(?:sup|super)\s*[/ -]?\s*fino\b|\bsuperfino\b',
+    ).hasMatch(normalized))
+      return 'superfino';
+    if (normalized.contains('texturado')) return 'texturado';
+    if (normalized.contains('retardante')) return 'retardante';
+    return null;
+  }
+
+  String _normalizeForModel(String value) => value
+      .toLowerCase()
+      .replaceAll('á', 'a')
+      .replaceAll('é', 'e')
+      .replaceAll('í', 'i')
+      .replaceAll('ó', 'o')
+      .replaceAll('ú', 'u');
+
+  bool _isCompatibleMilkAlias(String selectedName, String candidateName) {
+    final first = _normalizeForModel(selectedName);
+    final second = _normalizeForModel(candidateName);
+    final hasOnePercent =
+        RegExp(r'\b1\s*%').hasMatch(first) ||
+        RegExp(r'\b1\s*%').hasMatch(second);
+    return hasOnePercent &&
+        ((first.contains('liviana') && second.contains('descremada')) ||
+            (second.contains('liviana') && first.contains('descremada')));
+  }
+
+  bool _hasExplicitPercentageConflict(
+    String selectedName,
+    String candidateName,
+  ) {
+    final expression = RegExp(r'(\d+(?:[,.]\d+)?)\s*%');
+    final selected = expression
+        .allMatches(selectedName)
+        .map((match) => match.group(1))
+        .toSet();
+    final candidate = expression
+        .allMatches(candidateName)
+        .map((match) => match.group(1))
+        .toSet();
+    return selected.isNotEmpty &&
+        candidate.isNotEmpty &&
+        selected.intersection(candidate).isEmpty;
   }
 
   Set<String> _identityTokens(Product product) {
@@ -923,6 +1081,7 @@ class _ComparableCartItem {
     required this.cartItem,
     required this.selectedProduct,
     required this.offersByStore,
+    required this.alternativesByStore,
     required this.selectedOffer,
     required this.storeStatus,
   });
@@ -930,6 +1089,7 @@ class _ComparableCartItem {
   final CartItem cartItem;
   final Product selectedProduct;
   final Map<String, SearchResult> offersByStore;
+  final Map<String, SearchResult> alternativesByStore;
   final SearchResult? selectedOffer;
   final Map<String, String> storeStatus;
 }

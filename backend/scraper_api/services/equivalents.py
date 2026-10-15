@@ -6,14 +6,16 @@ import re
 import time
 
 from models import EquivalentsRequest, EquivalentsResponse
-from services.catalog import (normalize_text, same_catalog_product,
+from services.catalog import (alternative_match, normalize_text, product_category, same_catalog_product,
                               score_product_match, search_query_for_product_name,
                               valid_gtin)
 from services.scraper import _search_one_direct_store, resolve_stores
 
 _cache: dict[tuple, tuple[float, EquivalentsResponse]] = {}
-_locks: dict[tuple, asyncio.Lock] = {}
+_inflight: dict[tuple, asyncio.Task[EquivalentsResponse]] = {}
 _slots = asyncio.Semaphore(8)
+_CACHE_TTL = 120
+_CACHE_MAX_ENTRIES = 256
 
 
 async def _query_store(store, query, context):
@@ -72,7 +74,7 @@ async def _find_in_store(reference, store, context):
             if available:
                 match = score_product_match(reference.name, min(available, key=lambda row: row.price))
                 match.score, match.match_type = 100, "exact"
-                return match, "found"
+                return match, "found", []
     broad_query = queries.pop() if len(queries) > 1 else None
     responses.extend(zip(queries, await asyncio.gather(*[
         _query_store(store, query, context) for query in queries
@@ -104,14 +106,28 @@ async def _find_in_store(reference, store, context):
     if available:
         best = min(available, key=lambda row: row.price)
         match = score_product_match(reference.name, best)
-        match.match_type = "exact"
+        match.match_type = "same_product"
         if valid_gtin(reference.ean) == valid_gtin(best.ean) and valid_gtin(best.ean):
             match.score = 100
-        return match, "found"
+            match.match_type = "exact"
+        return match, "found", []
+    category = product_category(normalize_text(reference.name))
+    if category and any(rows is not None for _, rows in responses):
+        fallback_rows = await _query_store(store, category, context)
+        responses.append((category, fallback_rows))
+    suggestions = {}
+    for _, rows in responses:
+        for row in rows or []:
+            if row.available is False or row.price is None or row.price <= 0:
+                continue
+            suggestion = alternative_match(reference, row)
+            if suggestion:
+                suggestions[row.ean or row.url or row.name] = suggestion
+    ranked_suggestions = sorted(suggestions.values(), key=lambda row: (-row.score, row.product.price))[:2]
     # A failed attempt could be the only query that finds a differently named SKU.
     if any(rows is None for _, rows in responses):
-        return None, "error"
-    return None, "unavailable" if compatible else "not_found"
+        return None, "error", ranked_suggestions
+    return None, "unavailable" if compatible else "not_found", ranked_suggestions
 
 
 async def find_equivalents(payload: EquivalentsRequest) -> EquivalentsResponse:
@@ -120,21 +136,32 @@ async def find_equivalents(payload: EquivalentsRequest) -> EquivalentsResponse:
     key = (payload.product.model_dump_json(), tuple(stores),
            tuple(sorted((k, v) for k, v in context.items() if k not in {"latitude", "longitude"})))
     now = time.monotonic()
-    async with _locks.setdefault(key, asyncio.Lock()):
-        cached = _cache.get(key)
-        if cached and now - cached[0] < 120:
-            return cached[1]
+    cached = _cache.get(key)
+    if cached and now - cached[0] < _CACHE_TTL:
+        return cached[1]
+    task = _inflight.get(key)
+    if task is None:
+        task = asyncio.create_task(_compute_equivalents(key, payload, stores, context))
+        _inflight[key] = task
+    return await asyncio.shield(task)
+
+
+async def _compute_equivalents(key, payload, stores, context) -> EquivalentsResponse:
+    try:
         rows = await asyncio.gather(*[_find_in_store(payload.product, store, context) for store in stores])
         response = EquivalentsResponse(
-            results=[match for match, _ in rows if match is not None],
-            store_status={store: status for store, (_, status) in zip(stores, rows)},
+            results=[match for match, _, _ in rows if match is not None],
+            alternatives=[suggestion for _, _, suggestions in rows for suggestion in suggestions],
+            store_status={store: status for store, (_, status, _) in zip(stores, rows)},
             checked_at=datetime.now(timezone.utc).isoformat(),
         )
         if "error" not in response.store_status.values():
             _cache[key] = (time.monotonic(), response)
         for old_key, (created, _) in list(_cache.items()):
-            if time.monotonic() - created >= 120:
+            if time.monotonic() - created >= _CACHE_TTL:
                 _cache.pop(old_key, None)
-                if old_key != key:
-                    _locks.pop(old_key, None)
+        while len(_cache) > _CACHE_MAX_ENTRIES:
+            _cache.pop(next(iter(_cache)))
         return response
+    finally:
+        _inflight.pop(key, None)

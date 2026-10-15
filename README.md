@@ -25,10 +25,12 @@ combinacion mas barata entre distintas tiendas.
 - Busqueda simultanea en Coto, Carrefour y La Gallega.
 - Precios, disponibilidad e imagenes obtenidos de fuentes publicas.
 - Matching por codigo de barras, marca, cantidad, presentacion, pack y variante.
+- Alternativas sugeridas por separado, sin sumarlas como equivalencias confirmadas.
 - Changuito con comparacion por supermercado y productos faltantes.
 - Plan combinado con el mejor precio de cada producto.
 - Descuentos compatibles con las tarjetas, bancos y billeteras del usuario.
 - Errores de consulta diferenciados de productos no encontrados, sin precios simulados.
+- Resultados parciales visibles con aviso cuando falla alguna tienda.
 
 ## Como funciona
 
@@ -89,6 +91,7 @@ py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m camoufox fetch
+$env:CONVIENE_ENV = 'development'
 .\.venv\Scripts\python.exe -m uvicorn api:app --host 127.0.0.1 --port 8000 --reload
 ```
 
@@ -147,8 +150,19 @@ flutter build web --release `
   --dart-define=CONVIENE_API_BASE_URL=https://api.tu-dominio.com
 ```
 
-El endpoint `GET /operations` permite conectar un monitor externo. Reporta
-latencia, ultimo resultado y alertas por fuentes que fallen repetidamente.
+Docker Compose publica la API solo en `127.0.0.1:8000`. Para acceso publico,
+usalo detras de un proxy HTTPS y configura `.env` a partir de `.env.example`:
+
+| Variable | Uso |
+| --- | --- |
+| `CONVIENE_CORS_ORIGINS` | Origenes de Flutter Web, separados por comas. |
+| `CONVIENE_ADMIN_KEY` | Clave aleatoria de al menos 24 caracteres para diagnosticos y refresco manual. |
+| `CONVIENE_IMAGE_ALLOWED_HOSTS` | CDN adicionales, separados por comas. |
+
+En produccion, las operaciones administrativas quedan cerradas si falta la
+clave o es demasiado corta. Se envia en `X-Admin-Key`. CORS no sustituye la
+autenticacion. El refresco de La Gallega usa un bloqueo compartido por los
+procesos que montan el mismo directorio `data/runtime`.
 
 ## Comparacion del changuito
 
@@ -163,9 +177,15 @@ abreviados por marca y contenido. Las consultas por tienda no compiten por un
 limite global de resultados. Si ambos catalogos publican codigos distintos,
 no se consideran el mismo producto aunque sus nombres se parezcan.
 
+Si hay un candidato de la misma categoria sin identidad confirmada, la API lo
+devuelve en `alternatives`. Se muestra como sugerencia, sin sumar su precio al
+total ni marcar ese supermercado como proveedor del producto elegido.
+
 Un producto no encontrado en el catalogo consultado no implica que no exista
 en otra sucursal. La app distingue esa situacion de falta de stock publicado
 y errores de la fuente; no completa comparaciones con precios simulados.
+La busqueda devuelve `store_status` por tienda y `partial` cuando alguna fuente
+falla; los resultados de las otras tiendas siguen visibles con una advertencia.
 
 ## Descuentos
 
@@ -187,6 +207,8 @@ inventar una fecha o un porcentaje.
 | `POST` | `/products/equivalents` | Mismo producto por tienda, con estado de consulta. |
 | `GET` | `/discounts` | Promociones por fecha y supermercado. |
 | `GET` | `/image` | Proxy de imagenes para Flutter Web. |
+| `GET` | `/operations` | Diagnosticos administrativos. |
+| `POST` | `/operations/promotions/refresh` | Refresco manual de promociones. |
 
 El contrato completo, ejemplos y detalles del scraper estan en
 [backend/scraper_api/README.md](backend/scraper_api/README.md).
@@ -200,9 +222,13 @@ flutter build web
 ```
 
 ```powershell
+.\backend\scraper_api\.venv\Scripts\python.exe -m pip install -r backend\scraper_api\requirements-dev.txt
 .\backend\scraper_api\.venv\Scripts\python.exe `
-  -m unittest discover -s backend\scraper_api\tests -q
+  -m pytest backend\scraper_api\tests -q
 ```
+
+Los casos de identidad compartidos por Python y Dart viven en
+`test/fixtures/product_identity_cases.json`.
 
 ## Estructura
 
@@ -220,7 +246,8 @@ backend/scraper_api/tests/   Pruebas del backend
 - La primera busqueda puede tardar; las siguientes aprovechan una cache corta.
 - Los sitios externos pueden modificar sus endpoints o estructura sin aviso.
 - El matching reduce errores, pero no reemplaza un catalogo maestro basado en EAN.
-- Sin el backend, la app usa datos locales pensados para desarrollo visual.
+- Sin el backend, la interfaz conserva datos locales, pero las busquedas,
+  cotizaciones y promociones reales muestran error en vez de precios de muestra.
 
 Fuentes: [Coto](https://www.coto.com.ar/),
 [Carrefour Argentina](https://www.carrefour.com.ar/) y

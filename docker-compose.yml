@@ -3,10 +3,14 @@ services:
     build:
       context: ./backend/scraper_api
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       PORT: "8000"
       CONVIENE_PROMOTIONS_REFRESH_SECONDS: "21600"
+      CONVIENE_ENV: production
+      CONVIENE_CORS_ORIGINS: ${CONVIENE_CORS_ORIGINS:-}
+      CONVIENE_ADMIN_KEY: ${CONVIENE_ADMIN_KEY:-}
+      CONVIENE_IMAGE_ALLOWED_HOSTS: ${CONVIENE_IMAGE_ALLOWED_HOSTS:-}
     restart: unless-stopped
     volumes:
       - conviene_runtime:/app/data/runtime

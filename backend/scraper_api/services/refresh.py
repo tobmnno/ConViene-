@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from html import unescape
 from pathlib import Path
@@ -18,6 +20,40 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 RUNTIME_DIR = DATA_DIR / "runtime"
 LAGALLEGA_CATALOG_FILE = RUNTIME_DIR / "la-gallega-catalog.json"
 LAGALLEGA_BLINK_URL = "https://www.blinkapp.com.ar/comercios/la-gallega--merchant_69e2584eab6e5feb86137a1a"
+
+
+class RefreshInProgress(Exception):
+    pass
+
+
+@contextmanager
+def process_refresh_lock():
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    with (RUNTIME_DIR / "la-gallega-refresh.lock").open("a+b") as handle:
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                handle.seek(0, os.SEEK_END)
+                if handle.tell() == 0:
+                    handle.write(b"\0")
+                    handle.flush()
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            raise RefreshInProgress("Actualizacion en curso") from exc
+        try:
+            yield
+        finally:
+            if os.name == "nt":
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def load_lagallega_catalog() -> dict[str, Any]:
@@ -40,40 +76,48 @@ def catalog_is_stale(payload: dict[str, Any], *, max_age_seconds: int = 21_600) 
     return (datetime.now(timezone.utc) - checked).total_seconds() >= max_age_seconds
 
 
-def refresh_lagallega_catalog(*, force: bool = False) -> dict[str, Any]:
+def refresh_lagallega_catalog(*, force: bool = False, raise_if_locked: bool = False) -> dict[str, Any]:
     existing = load_lagallega_catalog()
     if not force and existing and not catalog_is_stale(existing):
         return existing
 
-    started = perf_counter()
     try:
-        response = requests.get(LAGALLEGA_BLINK_URL, headers=REQUEST_HEADERS, timeout=25)
-        response.raise_for_status()
-        match = re.search(
-            r'<script[^>]*id=["\']blink-merchant-bootstrap["\'][^>]*>(.*?)</script>',
-            response.text,
-            flags=re.I | re.S,
-        )
-        if not match:
-            raise ValueError("El feed estructurado de La Gallega no esta disponible")
-        payload = json.loads(unescape(match.group(1)))
-        business = payload.get("business") if isinstance(payload, dict) else None
-        benefits = business.get("benefits") if isinstance(business, dict) else None
-        if not isinstance(benefits, list):
-            raise ValueError("El feed no incluyo beneficios")
-        catalog = {
-            "checked_at": datetime.now(timezone.utc).isoformat(),
-            "source_url": LAGALLEGA_BLINK_URL,
-            "benefits": benefits,
-            "locations": business.get("location", []) if isinstance(business, dict) else [],
-            "source_benefit_count": len(benefits),
-        }
-        RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
-        temporary = LAGALLEGA_CATALOG_FILE.with_suffix(".tmp")
-        temporary.write_text(json.dumps(catalog, ensure_ascii=False, indent=2), encoding="utf-8")
-        temporary.replace(LAGALLEGA_CATALOG_FILE)
-        record_check("promotions.la_gallega", success=True, duration_ms=(perf_counter() - started) * 1000, count=len(benefits))
-        return catalog
-    except (requests.RequestException, ValueError, json.JSONDecodeError, OSError) as exc:
-        record_check("promotions.la_gallega", success=False, duration_ms=(perf_counter() - started) * 1000, detail=f"{type(exc).__name__}: {exc}")
-        return existing
+        with process_refresh_lock():
+            existing = load_lagallega_catalog()
+            if not force and existing and not catalog_is_stale(existing):
+                return existing
+            started = perf_counter()
+            try:
+                response = requests.get(LAGALLEGA_BLINK_URL, headers=REQUEST_HEADERS, timeout=25)
+                response.raise_for_status()
+                match = re.search(
+                    r'<script[^>]*id=["\']blink-merchant-bootstrap["\'][^>]*>(.*?)</script>',
+                    response.text,
+                    flags=re.I | re.S,
+                )
+                if not match:
+                    raise ValueError("El feed estructurado de La Gallega no esta disponible")
+                payload = json.loads(unescape(match.group(1)))
+                business = payload.get("business") if isinstance(payload, dict) else None
+                benefits = business.get("benefits") if isinstance(business, dict) else None
+                if not isinstance(benefits, list):
+                    raise ValueError("El feed no incluyo beneficios")
+                catalog = {
+                    "checked_at": datetime.now(timezone.utc).isoformat(),
+                    "source_url": LAGALLEGA_BLINK_URL,
+                    "benefits": benefits,
+                    "locations": business.get("location", []) if isinstance(business, dict) else [],
+                    "source_benefit_count": len(benefits),
+                }
+                temporary = LAGALLEGA_CATALOG_FILE.with_suffix(".tmp")
+                temporary.write_text(json.dumps(catalog, ensure_ascii=False, indent=2), encoding="utf-8")
+                temporary.replace(LAGALLEGA_CATALOG_FILE)
+                record_check("promotions.la_gallega", success=True, duration_ms=(perf_counter() - started) * 1000, count=len(benefits))
+                return catalog
+            except (requests.RequestException, ValueError, json.JSONDecodeError, OSError) as exc:
+                record_check("promotions.la_gallega", success=False, duration_ms=(perf_counter() - started) * 1000, detail=f"{type(exc).__name__}: {exc}")
+                return existing
+    except RefreshInProgress:
+        if raise_if_locked:
+            raise
+        return load_lagallega_catalog()

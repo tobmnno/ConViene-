@@ -1,0 +1,86 @@
+[
+  {
+    "id": "classic_traditional_same_brand",
+    "selected": {"name": "Dulce de leche clasico Coto 400 g", "brand": "Coto"},
+    "candidate": {"name": "Dulce de Leche Tradicional Coto 400 gramos", "brand": "Coto"},
+    "same_product": true
+  },
+  {
+    "id": "one_kilo_equals_thousand_grams",
+    "selected": {"name": "Yerba Taragui 1 kg", "brand": "Taragui"},
+    "candidate": {"name": "Yerba Taragui 1000 g", "brand": "Taragui"},
+    "same_product": true
+  },
+  {
+    "id": "other_brand_is_alternative",
+    "selected": {"name": "Dulce de leche clasico Coto 400 g", "brand": "Coto"},
+    "candidate": {"name": "Dulce de leche tradicional Carrefour 400gr", "brand": "Carrefour"},
+    "same_product": false
+  },
+  {
+    "id": "repostero_is_different",
+    "selected": {"name": "Dulce de leche clasico Coto 400 g", "brand": "Coto"},
+    "candidate": {"name": "Dulce de leche repostero Coto 400 g", "brand": "Coto"},
+    "same_product": false
+  },
+  {
+    "id": "different_pack_count",
+    "selected": {"name": "Galletitas Oreo 3 x 118 g", "brand": "Oreo"},
+    "candidate": {"name": "Galletitas Oreo 12 x 118 g", "brand": "Oreo"},
+    "same_product": false
+  },
+  {
+    "id": "different_condom_model",
+    "selected": {"name": "Preservativos Tulipan superfino 6 u", "brand": "Tulipan"},
+    "candidate": {"name": "Preservativos Tulipan texturado 6 u", "brand": "Tulipan"},
+    "same_product": false
+  },
+  {
+    "id": "same_condom_abbreviation",
+    "selected": {"name": "Preservativos Sup/Fino TULIPAN Bli 6 Uni", "brand": "Tulipan"},
+    "candidate": {"name": "Preservativos Tulipan super fino 6 unidades", "brand": "Tulipan"},
+    "same_product": true
+  },
+  {
+    "id": "different_condom_count",
+    "selected": {"name": "Preservativos Tulipan superfino 6 u", "brand": "Tulipan"},
+    "candidate": {"name": "Preservativos Tulipan superfino 12 u", "brand": "Tulipan"},
+    "same_product": false
+  },
+  {
+    "id": "same_ean_abbreviated_milk",
+    "selected": {"name": "Leche La Serenisima liviana 1% 1L", "brand": "La Serenisima", "ean": "7790742363107"},
+    "candidate": {"name": "Leche larga vida parcialmente descremada La Serenisima 1 L", "brand": "La Serenisima", "ean": "7790742363107"},
+    "same_product": true
+  },
+  {
+    "id": "different_ean_same_name",
+    "selected": {"name": "Leche La Serenisima liviana 1% 1L", "brand": "La Serenisima", "ean": "7790742363107"},
+    "candidate": {"name": "Leche La Serenisima liviana 1% 1L", "brand": "La Serenisima", "ean": "7790742448309"},
+    "same_product": false
+  },
+  {
+    "id": "same_ean_conflicting_size",
+    "selected": {"name": "Leche La Serenisima 1 L", "brand": "La Serenisima", "ean": "7790742363107"},
+    "candidate": {"name": "Leche La Serenisima 2 L", "brand": "La Serenisima", "ean": "7790742363107"},
+    "same_product": false
+  },
+  {
+    "id": "same_ean_conflicting_flavor",
+    "selected": {"name": "Yogur Tregar frutilla 190 g", "brand": "Tregar", "ean": "7790742363107"},
+    "candidate": {"name": "Yogur Tregar vainilla 190 g", "brand": "Tregar", "ean": "7790742363107"},
+    "same_product": false
+  },
+  {
+    "id": "generic_brandless_not_verified",
+    "selected": {"name": "Dulce de leche clasico 400 g", "brand": ""},
+    "candidate": {"name": "Dulce de leche tradicional 400gr", "brand": ""},
+    "same_product": false
+  },
+  {
+    "id": "compound_dessert_not_dulce",
+    "selected": {"name": "Dulce de leche La Paulina 200 gr", "brand": "La Paulina"},
+    "candidate": {"name": "Arroz con leche con dulce de leche Tregar 200 gr", "brand": "Tregar"},
+    "same_product": false
+  }
+]

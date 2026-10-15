@@ -4,3 +4,8 @@ __pycache__/
 data/runtime/
 output.json
 *.log
+.env
+.env.*
+*.tmp
+tests/
+requirements-dev.txt

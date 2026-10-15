@@ -7,6 +7,7 @@ import '../services/product_search_service.dart';
 import '../state/app_state.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
+import '../utils/barcode.dart';
 import '../utils/money.dart';
 import '../widgets/app_card.dart';
 import '../widgets/price_block.dart';
@@ -157,6 +158,14 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             const SizedBox(height: 12),
           ],
+          if (state.searchWarning != null) ...[
+            _SearchWarning(message: state.searchWarning!),
+            const SizedBox(height: 12),
+          ],
+          if (state.searchNotice != null) ...[
+            _SearchNotice(message: state.searchNotice!),
+            const SizedBox(height: 12),
+          ],
           if (!state.paymentSetupComplete || state.activePaymentMethods.isEmpty)
             const _NoPaymentMethodsHint(),
           if (state.isSearching)
@@ -170,7 +179,11 @@ class _SearchScreenState extends State<SearchScreen> {
               child: state.lastError != null
                   ? const SizedBox.shrink()
                   : state.searchResults.isEmpty
-                  ? const _EmptyResults()
+                  ? _EmptyResults(
+                      partial: state.searchWarning != null,
+                      barcode: normalizedBarcode(state.searchQuery) != null,
+                      identified: state.searchNotice != null,
+                    )
                   : ListView.separated(
                       itemCount: state.searchResults.length,
                       separatorBuilder: (context, index) =>
@@ -366,6 +379,63 @@ class _SearchError extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SearchWarning extends StatelessWidget {
+  const _SearchWarning({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E6),
+        border: Border.all(color: const Color(0xFFE8C86B)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, color: Color(0xFF986400)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: AppColors.deepBlue, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SearchNotice extends StatelessWidget {
+  const _SearchNotice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: AppColors.softBlue,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.inventory_2_outlined, color: AppColors.blue),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            message,
+            style: const TextStyle(color: AppColors.deepBlue, fontSize: 12),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _AnimatedSuccessIcon extends StatefulWidget {
@@ -599,9 +669,13 @@ class _ResultCardState extends State<_ResultCard> {
                             color: const Color(0xFFFFF4D6),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            'Producto similar',
-                            style: TextStyle(
+                          child: Text(
+                            widget.result.matchType == 'alternative'
+                                ? 'Alternativa'
+                                : widget.result.matchType == 'review'
+                                ? 'Revisar coincidencia'
+                                : 'Producto similar',
+                            style: const TextStyle(
                               color: Color(0xFF8A5A00),
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
@@ -763,15 +837,29 @@ class _NoPaymentMethodsHint extends StatelessWidget {
 }
 
 class _EmptyResults extends StatelessWidget {
-  const _EmptyResults();
+  const _EmptyResults({
+    this.partial = false,
+    this.barcode = false,
+    this.identified = false,
+  });
+
+  final bool partial;
+  final bool barcode;
+  final bool identified;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Text(
-        'No encontramos ese producto en los supermercados seleccionados.',
+        identified
+            ? 'No hay ofertas disponibles para comprar en este momento.'
+            : partial
+            ? 'No encontramos resultados en los supermercados que respondieron.'
+            : barcode
+            ? 'Codigo valido, pero sin precio publicado en los supermercados seleccionados.'
+            : 'No encontramos ese producto en los supermercados seleccionados.',
         textAlign: TextAlign.center,
-        style: TextStyle(color: AppColors.textGray),
+        style: const TextStyle(color: AppColors.textGray),
       ),
     );
   }
