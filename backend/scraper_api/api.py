@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
 from models import CompareRequest, CompareResponse, DiscountsResponse, SearchMatch, SearchRequest, SearchResponse, ShoppingContext, EquivalentsRequest, EquivalentsResponse, ProductReference
-from services.catalog import rank_search_results, extract_measurement, valid_gtin
+from services.catalog import rank_search_results, extract_measurement, same_catalog_product, valid_gtin
 from services.comparison import compare_cart
 from services.equivalents import find_equivalents, reference_queries
 from services.discounts import clear_discount_cache, scrape_discounts
@@ -63,7 +63,7 @@ async def root():
     return {"status": "ok", "service": "Comparador de supermercados", "version": app.version}
 
 
-def _build_search_response(query: str, stores: list[str], rows, limit: int, context: ShoppingContext | None = None, source_status: dict[str, str] | None = None) -> SearchResponse:
+def _build_search_response(query: str, stores: list[str], rows, limit: int, context: ShoppingContext | None = None, source_status: dict[str, str] | None = None, name_matches: list[SearchMatch] | None = None, identified_product=None) -> SearchResponse:
     barcode = valid_gtin(query)
     barcode_rows = [row for row in rows if valid_gtin(row.ean) == barcode] if barcode else []
     if barcode:
@@ -78,7 +78,8 @@ def _build_search_response(query: str, stores: list[str], rows, limit: int, cont
             for row in rows
             if valid_gtin(row.ean) == barcode and row.available is not False and row.price is not None and row.price > 0
         ]
-        ranked.sort(key=lambda match: (match.product.price, match.product.store))
+        ranked.extend(name_matches or [])
+        ranked.sort(key=lambda match: (match.match_type != "exact", match.product.price, match.product.store))
     else:
         ranked = rank_search_results(query, rows, limit=len(rows))
     # Reserve coverage for each source without discarding the relevance order.
@@ -118,6 +119,7 @@ def _build_search_response(query: str, stores: list[str], rows, limit: int, cont
         store_status=status,
         partial="error" in status.values(),
         unavailable_products=list(unavailable_by_store.values()),
+        identified_product=identified_product,
     )
 
 
@@ -142,6 +144,54 @@ async def _search_catalogs(query, stores, limit, engine, context):
                     if store in retry.source_status:
                         result.source_status[store] = retry.source_status[store]
     return result
+
+
+async def _barcode_name_matches(query: str, stores: list[str], result, context: ShoppingContext):
+    barcode = valid_gtin(query)
+    if not barcode:
+        return [], None
+    identified_rows = [row for row in result.rows if valid_gtin(row.ean) == barcode and row.name.strip()]
+    if not identified_rows:
+        return [], None
+    identified = max(
+        identified_rows,
+        key=lambda row: (row.available is not False and row.price is not None and row.price > 0, len(row.name)),
+    )
+    available_stores = {
+        row.store for row in identified_rows
+        if row.available is not False and row.price is not None and row.price > 0
+    }
+    missing = [store for store in stores if store not in available_stores]
+    if not missing:
+        return [], identified
+
+    # An EAN identifies the reference; the second pass compares names without
+    # requiring other catalogs to publish that same EAN.
+    reference = ProductReference(name=identified.name[:300], brand=(identified.brand or "")[:100] or None)
+    try:
+        equivalents = await find_equivalents(EquivalentsRequest(
+            product=reference, stores=missing, context=context,
+        ))
+    except Exception as exc:
+        print(f"Barcode name lookup: ERROR {type(exc).__name__}", flush=True)
+        result.source_status.update({store: "error" for store in missing})
+        return [], identified
+
+    for store, status in equivalents.store_status.items():
+        if store in missing:
+            result.source_status[store] = "error" if status == "error" else "ok"
+    matches = []
+    for match in equivalents.results:
+        product = match.product
+        if (product.store not in missing or product.available is False or product.price is None
+                or product.price <= 0 or not same_catalog_product(reference, product)):
+            continue
+        if valid_gtin(product.ean) == barcode:
+            match.score, match.match_type = 100, "exact"
+        else:
+            match.score, match.match_type = min(match.score, 95), "name_match"
+        matches.append(match)
+    return matches, identified
 
 
 @app.get("/health")
@@ -260,7 +310,8 @@ async def search(
 
     context = ShoppingContext(postal_code=postal_code, fulfillment=fulfillment, coto_store=coto_store, carrefour_sales_channel=carrefour_sales_channel, latitude=latitude, longitude=longitude)
     result = await _search_catalogs(q, selected_stores, limit, engine, context.model_dump(exclude_none=True))
-    return _build_search_response(q, selected_stores, result.rows, limit, context, result.source_status)
+    name_matches, identified = await _barcode_name_matches(q, selected_stores, result, context)
+    return _build_search_response(q, selected_stores, result.rows, limit, context, result.source_status, name_matches, identified)
 
 
 @app.post("/search", response_model=SearchResponse)
@@ -273,7 +324,8 @@ async def search_body(payload: SearchRequest):
 
     context = payload.context or ShoppingContext()
     result = await _search_catalogs(payload.query, selected_stores, payload.limit, "camoufox", context.model_dump(exclude_none=True))
-    return _build_search_response(payload.query, selected_stores, result.rows, payload.limit, context, result.source_status)
+    name_matches, identified = await _barcode_name_matches(payload.query, selected_stores, result, context)
+    return _build_search_response(payload.query, selected_stores, result.rows, payload.limit, context, result.source_status, name_matches, identified)
 
 
 @app.post("/compare", response_model=CompareResponse)

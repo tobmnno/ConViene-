@@ -1,6 +1,5 @@
 import 'package:conviene/models/cart_item.dart';
 import 'package:conviene/models/discount.dart';
-import 'package:conviene/models/nearby_store_suggestion.dart';
 import 'package:conviene/models/price_quote.dart';
 import 'package:conviene/models/product.dart';
 import 'package:conviene/models/supermarket.dart';
@@ -332,12 +331,6 @@ class _ComparableGalletitasRepository implements ConvieneRepository {
   }
 
   @override
-  Future<NearbyStoreSuggestion?> findNearbyCotoStore({
-    required double latitude,
-    required double longitude,
-  }) async => null;
-
-  @override
   Future<List<Promotion>> getPromotions(DateTime date) async => const [];
 }
 
@@ -475,12 +468,6 @@ class _DifferentSizeRepository implements ConvieneRepository {
   }
 
   @override
-  Future<NearbyStoreSuggestion?> findNearbyCotoStore({
-    required double latitude,
-    required double longitude,
-  }) async => null;
-
-  @override
   Future<List<Promotion>> getPromotions(DateTime date) async => const [];
 }
 
@@ -576,12 +563,6 @@ class _LiteralSearchRepository implements ConvieneRepository {
       ),
     ];
   }
-
-  @override
-  Future<NearbyStoreSuggestion?> findNearbyCotoStore({
-    required double latitude,
-    required double longitude,
-  }) async => null;
 
   @override
   Future<List<Promotion>> getPromotions(DateTime date) async => const [];

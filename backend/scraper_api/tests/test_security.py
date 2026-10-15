@@ -210,6 +210,8 @@ class ApiSecurityTests(unittest.TestCase):
                             price=500, available=True, scraped_at="2026-10-15T12:00:00Z")
         with patch("api._search_catalogs", new_callable=AsyncMock, return_value=SearchQueryResult(
             [unavailable, unrelated], {"coto": "ok", "carrefour": "ok"}
+        )), patch("api.find_equivalents", new_callable=AsyncMock, return_value=EquivalentsResponse(
+            results=[], store_status={"coto": "not_found", "carrefour": "unavailable"}, checked_at="2026-10-15T12:00:00Z"
         )):
             response = self.client.get("/search", params={"q": "77980267", "stores": ["coto", "carrefour"]})
         self.assertEqual(response.status_code, 200)
@@ -217,6 +219,70 @@ class ApiSecurityTests(unittest.TestCase):
         self.assertEqual(payload["results"], [])
         self.assertEqual(payload["store_status"], {"coto": "not_found", "carrefour": "unavailable"})
         self.assertEqual([item["ean"] for item in payload["unavailable_products"]], ["77980267"])
+        self.assertEqual(payload["identified_product"]["name"], unavailable.name)
+
+    def test_barcode_uses_identified_name_only_for_missing_stores(self):
+        source = Product(store="coto", name="Gaseosa Sprite Lima Limon 500 ml",
+                         brand="Sprite", ean="7790895000829", price=1900,
+                         scraped_at="2026-10-15T12:00:00Z")
+        same = Product(store="la_gallega", name="Gaseosa Lima Limon Sprite 500 ml",
+                       brand="Sprite", price=1990, scraped_at=source.scraped_at)
+        wrong_size = Product(store="carrefour", name="Gaseosa Sprite Lima Limon 1.5 L",
+                             brand="Sprite", price=2500, scraped_at=source.scraped_at)
+        wrong_variant = Product(store="carrefour", name="Gaseosa Sprite Zero Lima Limon 500 ml",
+                                brand="Sprite", price=2100, scraped_at=source.scraped_at)
+        equivalent = EquivalentsResponse(
+            results=[
+                SearchMatch(product=same, score=92, normalized_query=source.name,
+                            normalized_name=same.name, match_type="same_product"),
+                SearchMatch(product=wrong_size, score=85, normalized_query=source.name,
+                            normalized_name=wrong_size.name, match_type="same_product"),
+                SearchMatch(product=wrong_variant, score=85, normalized_query=source.name,
+                            normalized_name=wrong_variant.name, match_type="same_product"),
+            ],
+            store_status={"la_gallega": "found", "carrefour": "found"},
+            checked_at="2026-10-15T12:00:00Z",
+        )
+        with patch("api._search_catalogs", new_callable=AsyncMock, return_value=SearchQueryResult(
+            [source], {"coto": "ok", "la_gallega": "ok", "carrefour": "ok"}
+        )), patch("api.find_equivalents", new_callable=AsyncMock, return_value=equivalent) as lookup:
+            response = self.client.get("/search", params={
+                "q": source.ean, "stores": ["coto", "la_gallega", "carrefour"]
+            })
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual({item["product"]["store"] for item in payload["results"]}, {"coto", "la_gallega"})
+        self.assertEqual({item["match_type"] for item in payload["results"]}, {"exact", "name_match"})
+        self.assertEqual(payload["store_status"]["carrefour"], "not_found")
+        self.assertEqual(payload["identified_product"]["name"], source.name)
+        sent = lookup.await_args.args[0]
+        self.assertIsNone(sent.product.ean)
+        self.assertEqual(sent.stores, ["la_gallega", "carrefour"])
+
+    def test_barcode_with_exact_offers_in_all_stores_skips_name_lookup(self):
+        first = Product(store="coto", name="Gaseosa Sprite 500 ml", ean="7790895000829",
+                        price=1900, scraped_at="2026-10-15T12:00:00Z")
+        second = first.model_copy(update={"store": "la_gallega", "price": 1990})
+        with patch("api._search_catalogs", new_callable=AsyncMock, return_value=SearchQueryResult(
+            [first, second], {"coto": "ok", "la_gallega": "ok"}
+        )), patch("api.find_equivalents", new_callable=AsyncMock) as lookup:
+            response = self.client.get("/search", params={
+                "q": first.ean, "stores": ["coto", "la_gallega"]
+            })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["count"], 2)
+        lookup.assert_not_awaited()
+
+    def test_barcode_without_catalog_identity_does_not_guess_a_name(self):
+        with patch("api._search_catalogs", new_callable=AsyncMock, return_value=SearchQueryResult(
+            [], {"coto": "ok", "carrefour": "ok"}
+        )), patch("api.find_equivalents", new_callable=AsyncMock) as lookup:
+            response = self.client.post("/search", json={
+                "query": "7790895000829", "stores": ["coto", "carrefour"]
+            })
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.json()["identified_product"])
+        lookup.assert_not_awaited()
 
 
 class SearchRetryStatusTests(unittest.IsolatedAsyncioTestCase):

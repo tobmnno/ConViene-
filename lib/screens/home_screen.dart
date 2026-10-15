@@ -14,7 +14,6 @@ import '../widgets/screen_frame.dart';
 import '../widgets/store_logo.dart';
 import 'payment_methods_screen.dart';
 import 'barcode_scanner_screen.dart';
-import 'shopping_context_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -79,25 +78,8 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const ConvieneLogo(compact: true),
-                    IconButton(
-                      tooltip: 'Compra y ubicacion',
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (context) => const ShoppingContextScreen(),
-                        ),
-                      ),
-                      icon: const Icon(
-                        Icons.location_on_outlined,
-                        color: AppColors.deepBlue,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 28),
+                const ConvieneLogo(compact: true),
+                const SizedBox(height: 24),
                 const Text(
                   'Hola, Lucio!',
                   style: TextStyle(
@@ -112,43 +94,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(color: AppColors.deepBlue, fontSize: 14),
                 ),
                 const SizedBox(height: 16),
-                InkWell(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => const ShoppingContextScreen(),
-                    ),
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.storefront_outlined,
-                          color: AppColors.blue,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '${state.shoppingContext.fulfillmentLabel} · Coto ${state.shoppingContext.cotoStore}',
-                            style: const TextStyle(
-                              color: AppColors.deepBlue,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        const Icon(
-                          Icons.chevron_right,
-                          color: AppColors.textGray,
-                          size: 20,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
                 TextField(
                   controller: _controller,
                   focusNode: _focusNode,
@@ -386,6 +331,7 @@ class _StoreSelectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return Semantics(
       button: true,
       toggled: selected,
@@ -393,8 +339,12 @@ class _StoreSelectionCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 76,
+        child: AnimatedContainer(
+          duration: reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 170),
+          curve: Curves.easeOutCubic,
+          width: 88,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: AppColors.white,

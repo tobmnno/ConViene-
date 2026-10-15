@@ -105,11 +105,6 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
           Expanded(
             child: Column(
               children: [
-                if (state.promotionsWarning != null &&
-                    !state.isLoadingPromotions) ...[
-                  _DiscountsWarning(message: state.promotionsWarning!),
-                  const SizedBox(height: 10),
-                ],
                 Expanded(
                   child: state.isLoadingPromotions
                       ? const _DiscountsLoading()
@@ -237,6 +232,7 @@ class _DayPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return Semantics(
       button: true,
       selected: selected,
@@ -244,7 +240,11 @@ class _DayPill extends StatelessWidget {
       child: InkWell(
         onTap: () => state.setSelectedDate(date),
         borderRadius: BorderRadius.circular(10),
-        child: Container(
+        child: AnimatedContainer(
+          duration: reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 170),
+          curve: Curves.easeOutCubic,
           width: 48,
           height: 58,
           alignment: Alignment.center,
@@ -736,32 +736,6 @@ class _DiscountsError extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _DiscountsWarning extends StatelessWidget {
-  const _DiscountsWarning({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      color: const Color(0xFFFFF8E7),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.info_outline, color: Color(0xFF8A5A00)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Datos parciales: $message',
-              style: const TextStyle(color: AppColors.deepBlue, fontSize: 12),
-            ),
-          ),
-        ],
       ),
     );
   }

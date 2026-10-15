@@ -158,6 +158,47 @@ void main() {
     },
   );
 
+  test('labels barcode results resolved by product name', () async {
+    final repository = ApiRepository(
+      baseUrl: Uri.parse('http://127.0.0.1:8000'),
+      fallback: MockRepository(),
+      client: MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'results': [
+              {
+                'match_type': 'name_match',
+                'score': 92,
+                'product': {
+                  'store': 'carrefour',
+                  'name': 'Gaseosa Sprite Lima Limon 500 ml',
+                  'price': 2100,
+                  'available': true,
+                },
+              },
+            ],
+            'identified_product': {
+              'store': 'coto',
+              'name': 'Gaseosa Sprite 500 ml.',
+              'ean': '7790895000829',
+            },
+          }),
+          200,
+        ),
+      ),
+    );
+    final results = await repository.searchProducts(
+      query: '7790895000829',
+      storeIds: {'carrefour'},
+    );
+    expect(results, hasLength(1));
+    expect(results.single.matchType, 'name_match');
+    expect(results.single.isExactMatch, isFalse);
+    expect(repository.lastSearchNotice, contains('Sprite 500 ml'));
+    expect(repository.lastSearchNotice, isNot(contains('ml..')));
+    expect(repository.lastSearchNotice, contains('coincidencias sin EAN'));
+  });
+
   test(
     'all failed sources are errors, never an empty confirmed search',
     () async {
@@ -224,36 +265,6 @@ void main() {
     );
 
     expect(results, isEmpty);
-  });
-
-  test('uses the nearest configured Coto branch suggestion', () async {
-    final repository = ApiRepository(
-      baseUrl: Uri.parse('http://127.0.0.1:8000'),
-      fallback: MockRepository(),
-      client: MockClient((request) async {
-        expect(request.url.path, '/stores/nearby');
-        expect(request.url.queryParameters['latitude'], '-32.95');
-        expect(request.url.queryParameters['longitude'], '-60.65');
-        return http.Response(
-          jsonEncode({
-            'suggestions': [
-              {'id': '401', 'name': 'Coto Centro', 'distance_km': 1.2},
-            ],
-          }),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
-      }),
-    );
-
-    final suggestion = await repository.findNearbyCotoStore(
-      latitude: -32.95,
-      longitude: -60.65,
-    );
-
-    expect(suggestion?.storeId, '401');
-    expect(suggestion?.name, 'Coto Centro');
-    expect(suggestion?.distanceKm, 1.2);
   });
 
   test('does not reuse prices after the purchase context changes', () async {

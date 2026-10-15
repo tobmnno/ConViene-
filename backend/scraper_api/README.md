@@ -111,14 +111,18 @@ devolver HTTP 200 con `results` vacio y `partial: true`; los clientes deben
 consultar `store_status` antes de mostrar "sin resultados". Las respuestas
 parciales por error no se guardan en cache.
 
-Si `q` es un GTIN/EAN valido, la busqueda exige coincidencia exacta de codigo
-en cada tienda. Carrefour consulta su indice de EAN y La Gallega su
-autocompletado, ademas de la busqueda de Coto. Un codigo de 8 a 14 digitos con
-checksum invalido devuelve HTTP 422. `unavailable_products` enumera los
-productos identificados por ese codigo que no tienen oferta comprable en el
-canal consultado; no se incluyen en `results` ni en los calculos de precios.
-La ausencia de un EAN en un catalogo no demuestra que no exista en otras
-sucursales o canales.
+Si `q` es un GTIN/EAN valido, primero se consulta el codigo exacto en cada
+tienda. Carrefour usa su indice de EAN y La Gallega su autocompletado, ademas
+de la busqueda de Coto. Si alguna fuente identifica el producto, la respuesta
+incluye `identified_product` y el backend busca su nombre, presentacion y
+variante en las tiendas sin oferta por EAN. Esas coincidencias se marcan con
+`match_type: name_match`; un EAN comprobado conserva `match_type: exact`.
+No se hacen conjeturas por nombre si ninguna fuente identifica el codigo.
+Un codigo de 8 a 14 digitos con checksum invalido devuelve HTTP 422.
+`unavailable_products` enumera los productos identificados por el EAN que no
+tienen oferta comprable en el canal consultado; no se incluyen en `results` ni
+en los calculos de precios. La ausencia de un EAN en un catalogo no demuestra
+que no exista en otras sucursales o canales.
 
 ### `POST /search`
 

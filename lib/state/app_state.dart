@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 
 import '../models/cart_item.dart';
 import '../models/discount.dart';
-import '../models/nearby_store_suggestion.dart';
 import '../models/payment_method.dart';
 import '../models/price_quote.dart';
 import '../models/product.dart';
@@ -283,34 +282,6 @@ class AppState extends ChangeNotifier {
       query: searchQuery,
     );
     notifyListeners();
-  }
-
-  Future<void> updateShoppingContext(ShoppingContext context) async {
-    shoppingContext = context;
-    notifyListeners();
-    await searchProducts(searchQuery);
-    await refreshComparisons();
-  }
-
-  Future<NearbyStoreSuggestion?> updateDeviceLocation({
-    required double latitude,
-    required double longitude,
-    required double accuracyMeters,
-  }) async {
-    final suggestion = await _repository.findNearbyCotoStore(
-      latitude: latitude,
-      longitude: longitude,
-    );
-    shoppingContext = shoppingContext.copyWith(
-      latitude: latitude,
-      longitude: longitude,
-      locationAccuracyMeters: accuracyMeters,
-      cotoStore: suggestion?.storeId,
-    );
-    notifyListeners();
-    await searchProducts(searchQuery);
-    await refreshComparisons();
-    return suggestion;
   }
 
   Future<void> toggleStore(String storeId) async {

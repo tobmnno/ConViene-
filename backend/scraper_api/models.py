@@ -54,6 +54,7 @@ class SearchResponse(BaseModel):
     store_status: dict[str, str] = Field(default_factory=dict)
     partial: bool = False
     unavailable_products: list[Product] = Field(default_factory=list)
+    identified_product: Optional[Product] = None
 
 
 class ProductReference(BaseModel):

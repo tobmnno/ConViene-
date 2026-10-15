@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/discount.dart';
-import '../models/nearby_store_suggestion.dart';
 import '../models/payment_method.dart';
 import '../models/price_quote.dart';
 import '../models/product.dart';
@@ -71,56 +70,6 @@ class ApiRepository
       return cached;
     }
     return const [];
-  }
-
-  @override
-  Future<NearbyStoreSuggestion?> findNearbyCotoStore({
-    required double latitude,
-    required double longitude,
-  }) async {
-    try {
-      final response = await _client
-          .get(
-            baseUrl.replace(
-              path: '${_basePath()}/stores/nearby',
-              queryParameters: {
-                'latitude': latitude.toString(),
-                'longitude': longitude.toString(),
-              },
-            ),
-          )
-          .timeout(timeout);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return null;
-      }
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) {
-        return null;
-      }
-      final suggestions = decoded['suggestions'];
-      if (suggestions is! List ||
-          suggestions.isEmpty ||
-          suggestions.first is! Map) {
-        return null;
-      }
-      final first = Map<String, dynamic>.from(suggestions.first as Map);
-      final id = _asString(first['id']);
-      final name = _asString(first['name']);
-      final distance = _asDouble(first['distance_km']);
-      if (id.isEmpty || name.isEmpty || distance == null) {
-        return null;
-      }
-      return NearbyStoreSuggestion(
-        storeId: id,
-        name: name,
-        distanceKm: distance,
-      );
-    } on Object {
-      return fallback.findNearbyCotoStore(
-        latitude: latitude,
-        longitude: longitude,
-      );
-    }
   }
 
   @override
@@ -201,6 +150,24 @@ class ApiRepository
               'Los resultados de otros supermercados son parciales.';
         }
       }
+      final notices = <String>[];
+      final identified = decoded['identified_product'];
+      if (identified is Map<String, dynamic>) {
+        final name = _asString(
+          identified['name'],
+        ).replaceFirst(RegExp(r'[.!?]+$'), '');
+        if (name.isNotEmpty) {
+          notices.add('Codigo identificado: $name.');
+        }
+      }
+      if (rawResults.any(
+        (item) =>
+            item is Map<String, dynamic> && item['match_type'] == 'name_match',
+      )) {
+        notices.add(
+          'Las coincidencias sin EAN se buscaron por nombre, presentacion y variante.',
+        );
+      }
       final unavailable = decoded['unavailable_products'];
       if (unavailable is List<dynamic> && unavailable.isNotEmpty) {
         final products = unavailable.whereType<Map<String, dynamic>>().toList();
@@ -211,11 +178,13 @@ class ApiRepository
               .toSet()
               .join(', ');
           if (name.isNotEmpty && stores.isNotEmpty) {
-            _lastSearchNotice =
-                'Encontramos $name en $stores, pero figura sin stock o sin precio disponible.';
+            notices.add(
+              'En $stores, $name figura sin stock o sin precio disponible.',
+            );
           }
         }
       }
+      _lastSearchNotice = notices.isEmpty ? null : notices.join(' ');
       return _parseResults(rawResults);
     } on Object {
       _lastSearchWarning = null;

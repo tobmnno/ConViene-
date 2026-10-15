@@ -1,5 +1,4 @@
 import '../models/discount.dart';
-import '../models/nearby_store_suggestion.dart';
 import '../models/price_quote.dart';
 import '../models/product.dart';
 import '../models/supermarket.dart';
@@ -17,11 +16,6 @@ abstract class ConvieneRepository {
   });
 
   Future<List<ProductPrice>> getPricesForProduct(String productId);
-
-  Future<NearbyStoreSuggestion?> findNearbyCotoStore({
-    required double latitude,
-    required double longitude,
-  }) async => null;
 
   Future<List<Promotion>> getPromotions(DateTime date);
 }

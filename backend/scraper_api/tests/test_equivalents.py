@@ -302,6 +302,24 @@ class EquivalentsTests(unittest.IsolatedAsyncioTestCase):
     def request(self):
         return EquivalentsRequest(product={"name": "Leche La Serenisima liviana 1% 1L", "ean": "7790742363107"}, stores=["coto"])
 
+    async def test_name_lookup_accepts_another_ean_but_rejects_size_and_variant(self):
+        request = EquivalentsRequest(
+            product={"name": "Gaseosa Sprite Lima Limon 500 ml", "brand": "Sprite"},
+            stores=["carrefour"],
+        )
+        same = product("Gaseosa Sprite Lima Limon 500 ml", "4006381333931", brand="Sprite")
+        wrong_size = product("Gaseosa Sprite Lima Limon 1.5 L", brand="Sprite")
+        wrong_variant = product("Gaseosa Sprite Zero Lima Limon 500 ml", brand="Sprite")
+        for row, price in ((same, 2100), (wrong_size, 500), (wrong_variant, 600)):
+            row.store = "carrefour"
+            row.price = price
+        with patch("services.equivalents._search_one_direct_store", AsyncMock(return_value=[
+            wrong_size, wrong_variant, same,
+        ])):
+            response = await find_equivalents(request)
+        self.assertEqual(response.store_status, {"carrefour": "found"})
+        self.assertEqual([match.product.ean for match in response.results], ["4006381333931"])
+
     async def test_exact_gtin_stops_fallback_queries_and_is_cached(self):
         search = AsyncMock(return_value=[product("Leche La Serenisima 1% 1L", "7790742363107")])
         with patch("services.equivalents._search_one_direct_store", search):

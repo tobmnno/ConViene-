@@ -1,4 +1,5 @@
 import 'package:conviene/repositories/mock_repository.dart';
+import 'package:conviene/models/price_quote.dart';
 import 'package:conviene/screens/search_screen.dart';
 import 'package:conviene/state/app_scope.dart';
 import 'package:conviene/state/app_state.dart';
@@ -162,6 +163,35 @@ void main() {
       find.text('No hay ofertas disponibles para comprar en este momento.'),
       findsOneWidget,
     );
+    state.dispose();
+  });
+
+  testWidgets('distingue la coincidencia por nombre del EAN exacto', (
+    tester,
+  ) async {
+    final state = AppState(repository: MockRepository());
+    await tester.runAsync(() => state.initialize());
+    final original = state.searchResults.first;
+    state.searchResults = [
+      SearchResult(
+        product: original.product,
+        price: original.price,
+        supermarket: original.supermarket,
+        isExactMatch: false,
+        matchType: 'name_match',
+      ),
+    ];
+    state.searchNotice = 'Codigo identificado: Leche entera Ilolay 1 L.';
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: MaterialApp(
+          home: Scaffold(body: SearchScreen(onBack: () {})),
+        ),
+      ),
+    );
+    expect(find.text('Coincidencia por nombre'), findsOneWidget);
+    expect(find.textContaining('Codigo identificado'), findsOneWidget);
     state.dispose();
   });
 }

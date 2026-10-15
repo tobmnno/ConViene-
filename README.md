@@ -24,7 +24,8 @@ combinacion mas barata entre distintas tiendas.
 
 - Busqueda simultanea en Coto, Carrefour y La Gallega.
 - Precios, disponibilidad e imagenes obtenidos de fuentes publicas.
-- Matching por codigo de barras, marca, cantidad, presentacion, pack y variante.
+- El codigo de barras identifica el producto; si falta su EAN en otra tienda,
+  se busca por nombre y se verifica marca, cantidad, presentacion, pack y variante.
 - Alternativas sugeridas por separado, sin sumarlas como equivalencias confirmadas.
 - Changuito con comparacion por supermercado y productos faltantes.
 - Plan combinado con el mejor precio de cada producto.
@@ -119,22 +120,9 @@ directamente a Internet.
 
 ## Uso diario y despliegue
 
-En **Compra y ubicacion**, disponible desde el icono de ubicacion en Inicio,
-se configura codigo postal, retiro o envio y la sucursal de Coto. El boton
-**Usar mi ubicacion** solicita permiso del navegador y sugiere la sucursal mas
-cercana a partir de un directorio de sucursales verificado. La app envia ese
-contexto en cada busqueda y al recalcular el changuito; cada resultado aclara
-si el precio corresponde a la sucursal o al canal online seleccionado.
-
-Para habilitar sugerencias de sucursal en una instancia desplegada, configura
-coordenadas y IDs reales de Coto antes de iniciar la API:
-
-```powershell
-$env:CONVIENE_COTO_BRANCHES_JSON = '[{"id":"401","name":"Coto Centro","latitude":-32.95,"longitude":-60.65}]'
-```
-
-Carrefour usa su canal online y La Gallega se marca como catalogo general
-hasta que publique stock por sucursal.
+La app consulta precios de los catalogos disponibles y muestra una advertencia
+cuando la disponibilidad no esta confirmada. Los importes pueden variar segun
+la ubicacion, el canal de venta y el momento de la compra.
 
 Para desplegar el backend con Docker:
 

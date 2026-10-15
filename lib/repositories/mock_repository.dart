@@ -1,5 +1,4 @@
 import '../models/discount.dart';
-import '../models/nearby_store_suggestion.dart';
 import '../models/payment_method.dart';
 import '../models/price_quote.dart';
 import '../models/product.dart';
@@ -68,12 +67,6 @@ class MockRepository implements ConvieneRepository {
       logoAsset: '',
     ),
   ];
-
-  @override
-  Future<NearbyStoreSuggestion?> findNearbyCotoStore({
-    required double latitude,
-    required double longitude,
-  }) async => null;
 
   final List<Product> _products = const [
     Product(

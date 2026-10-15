@@ -54,6 +54,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final pages = [
       HomeScreen(
         onNavigateToSearch: () => setState(() => _index = 1),
@@ -72,26 +73,16 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                 onRetry: state.initialize,
               )
             : AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                reverseDuration: const Duration(milliseconds: 210),
+                duration: reduceMotion
+                    ? Duration.zero
+                    : const Duration(milliseconds: 170),
+                reverseDuration: reduceMotion
+                    ? Duration.zero
+                    : const Duration(milliseconds: 130),
                 switchInCurve: Curves.easeOutCubic,
                 switchOutCurve: Curves.easeInCubic,
-                transitionBuilder: (child, animation) {
-                  final offset =
-                      Tween<Offset>(
-                        begin: const Offset(0.018, 0),
-                        end: Offset.zero,
-                      ).animate(
-                        CurvedAnimation(
-                          parent: animation,
-                          curve: Curves.easeOutCubic,
-                        ),
-                      );
-                  return FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(position: offset, child: child),
-                  );
-                },
+                transitionBuilder: (child, animation) =>
+                    FadeTransition(opacity: animation, child: child),
                 child: KeyedSubtree(
                   key: ValueKey(_index),
                   child: pages[_index],
@@ -149,6 +140,7 @@ class _CartNavIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return SizedBox(
       width: 30,
       height: 26,
@@ -168,9 +160,11 @@ class _CartNavIcon extends StatelessWidget {
               right: -2,
               top: -4,
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 260),
+                duration: reduceMotion
+                    ? Duration.zero
+                    : const Duration(milliseconds: 160),
                 transitionBuilder: (child, animation) {
-                  return ScaleTransition(scale: animation, child: child);
+                  return FadeTransition(opacity: animation, child: child);
                 },
                 child: Container(
                   key: ValueKey(quantity),
@@ -218,7 +212,7 @@ class _BootstrappingViewState extends State<_BootstrappingView> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(milliseconds: 220), () {
+    _timer = Timer(const Duration(milliseconds: 140), () {
       if (mounted) {
         setState(() => _visible = true);
       }
@@ -233,9 +227,12 @@ class _BootstrappingViewState extends State<_BootstrappingView> {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 220),
-      opacity: _visible ? 1 : 0,
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 170),
+      opacity: reduceMotion || _visible ? 1 : 0,
       child: Center(
         child: widget.error == null
             ? const CircularProgressIndicator(color: AppColors.blue)

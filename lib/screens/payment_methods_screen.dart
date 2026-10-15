@@ -145,6 +145,7 @@ class _PaymentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return Semantics(
       button: true,
       toggled: method.active,
@@ -152,7 +153,9 @@ class _PaymentTile extends StatelessWidget {
       child: InkWell(
         onTap: () => unawaited(state.togglePaymentMethod(method.id)),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
+          duration: reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 170),
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
             color: method.active ? AppColors.softBlue : Colors.transparent,
@@ -173,11 +176,13 @@ class _PaymentTile extends StatelessWidget {
                   ),
                 ),
                 AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 260),
-                  switchInCurve: Curves.elasticOut,
+                  duration: reduceMotion
+                      ? Duration.zero
+                      : const Duration(milliseconds: 150),
+                  switchInCurve: Curves.easeOut,
                   switchOutCurve: Curves.easeIn,
                   transitionBuilder: (child, animation) {
-                    return ScaleTransition(scale: animation, child: child);
+                    return FadeTransition(opacity: animation, child: child);
                   },
                   child: Icon(
                     method.active

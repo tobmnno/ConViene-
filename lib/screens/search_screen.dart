@@ -312,33 +312,18 @@ class _SearchScreenState extends State<SearchScreen> {
             borderRadius: BorderRadius.circular(14),
           ),
           duration: const Duration(seconds: 3),
-          content: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.94, end: 1),
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeOutBack,
-            builder: (context, scale, child) {
-              return Transform.scale(
-                scale: scale,
-                alignment: Alignment.center,
-                child: child,
-              );
-            },
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const _AnimatedSuccessIcon(),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Text(
-                      '$productName agregado al changuito',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                ],
+          content: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle_outline, color: AppColors.white),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  '$productName agregado al changuito',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       );
@@ -436,60 +421,6 @@ class _SearchNotice extends StatelessWidget {
       ],
     ),
   );
-}
-
-class _AnimatedSuccessIcon extends StatefulWidget {
-  const _AnimatedSuccessIcon();
-
-  @override
-  State<_AnimatedSuccessIcon> createState() => _AnimatedSuccessIconState();
-}
-
-class _AnimatedSuccessIconState extends State<_AnimatedSuccessIcon>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scale;
-  late final Animation<double> _checkOpacity;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 420),
-    )..forward();
-    _scale = CurvedAnimation(parent: _controller, curve: Curves.easeOutBack);
-    _checkOpacity = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.18, 0.75, curve: Curves.easeOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scale,
-      child: FadeTransition(
-        opacity: _checkOpacity,
-        child: Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: AppColors.white.withValues(alpha: 0.18),
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.white, width: 1.5),
-          ),
-          child: const Icon(Icons.check, color: AppColors.white, size: 19),
-        ),
-      ),
-    );
-  }
 }
 
 class _SortTabs extends StatelessWidget {
@@ -674,6 +605,8 @@ class _ResultCardState extends State<_ResultCard> {
                                 ? 'Alternativa'
                                 : widget.result.matchType == 'review'
                                 ? 'Revisar coincidencia'
+                                : widget.result.matchType == 'name_match'
+                                ? 'Coincidencia por nombre'
                                 : 'Producto similar',
                             style: const TextStyle(
                               color: Color(0xFF8A5A00),
@@ -742,12 +675,14 @@ class _ResultCardState extends State<_ResultCard> {
                         foregroundColor: AppColors.white,
                       ),
                       icon: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 260),
-                        switchInCurve: Curves.easeOutBack,
+                        duration: MediaQuery.disableAnimationsOf(context)
+                            ? Duration.zero
+                            : const Duration(milliseconds: 160),
+                        switchInCurve: Curves.easeOut,
                         switchOutCurve: Curves.easeIn,
                         transitionBuilder: (child, animation) {
-                          return ScaleTransition(
-                            scale: animation,
+                          return FadeTransition(
+                            opacity: animation,
                             child: child,
                           );
                         },
@@ -798,13 +733,10 @@ class _ResultCardState extends State<_ResultCard> {
 
   String _availabilityLabel(ProductPrice price) {
     if (!price.stock) {
-      return 'Sin stock informado para la ubicacion elegida';
+      return 'Sin stock informado por el supermercado';
     }
     if (price.pricingScope == 'online_sales_channel') {
-      return 'Precio del canal online seleccionado';
-    }
-    if (price.branchId != null && price.branchId!.isNotEmpty) {
-      return 'Stock y precio para sucursal ${price.branchId}';
+      return 'Precio online; stock sujeto a disponibilidad';
     }
     return 'Stock sujeto a disponibilidad del supermercado';
   }

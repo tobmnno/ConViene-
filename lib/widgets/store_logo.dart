@@ -24,10 +24,8 @@ class StoreLogo extends StatelessWidget {
               fit: BoxFit.contain,
               semanticLabel: supermarket.name,
             );
-      final width = supermarket.id == 'carrefour' ? size : size * 1.7;
-
       return SizedBox(
-        width: width,
+        width: size * 1.7,
         height: size,
         child: Center(
           child: Padding(padding: EdgeInsets.all(size * 0.04), child: logo),
@@ -36,7 +34,7 @@ class StoreLogo extends StatelessWidget {
     }
 
     return Container(
-      width: size,
+      width: size * 1.7,
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
