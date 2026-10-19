@@ -13,17 +13,24 @@ import '../widgets/payment_method_logo.dart';
 import '../widgets/screen_frame.dart';
 import '../widgets/store_logo.dart';
 import 'payment_methods_screen.dart';
-import 'barcode_scanner_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.onNavigateToSearch,
     required this.onNavigateToCart,
+    this.darkMode = false,
+    this.onToggleDarkMode,
+    this.username = 'usuario',
+    this.onSignOut,
   });
 
   final VoidCallback onNavigateToSearch;
   final VoidCallback onNavigateToCart;
+  final bool darkMode;
+  final VoidCallback? onToggleDarkMode;
+  final String username;
+  final Future<void> Function()? onSignOut;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -78,10 +85,50 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const ConvieneLogo(compact: true),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const ConvieneLogo(compact: true),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: widget.darkMode
+                              ? 'Activar modo claro'
+                              : 'Activar modo oscuro',
+                          onPressed: widget.onToggleDarkMode,
+                          icon: Icon(
+                            widget.darkMode
+                                ? Icons.light_mode_outlined
+                                : Icons.dark_mode_outlined,
+                          ),
+                        ),
+                        if (widget.onSignOut != null)
+                          PopupMenuButton<String>(
+                            tooltip: 'Cuenta',
+                            icon: const Icon(Icons.account_circle_outlined),
+                            onSelected: (value) {
+                              if (value == 'logout')
+                                unawaited(widget.onSignOut!());
+                            },
+                            itemBuilder: (_) => [
+                              PopupMenuItem<String>(
+                                enabled: false,
+                                child: Text('@${widget.username}'),
+                              ),
+                              const PopupMenuItem<String>(
+                                value: 'logout',
+                                child: Text('Cerrar sesion'),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
-                const Text(
-                  'Hola, Lucio!',
+                Text(
+                  'Hola, ${widget.username}!',
                   style: TextStyle(
                     color: AppColors.deepBlue,
                     fontSize: 23,
@@ -89,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 5),
-                const Text(
+                Text(
                   'Que producto queres buscar hoy?',
                   style: TextStyle(color: AppColors.deepBlue, fontSize: 14),
                 ),
@@ -102,26 +149,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   decoration: InputDecoration(
                     hintText: 'Buscar producto...',
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: 'Escanear codigo de barras',
-                          onPressed: _scanBarcode,
-                          icon: const Icon(
-                            Icons.qr_code_scanner,
-                            color: AppColors.deepBlue,
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Buscar',
-                          onPressed: () => _submitSearch(_controller.text),
-                          icon: const Icon(
-                            Icons.arrow_forward,
-                            color: AppColors.blue,
-                          ),
-                        ),
-                      ],
+                    suffixIcon: IconButton(
+                      tooltip: 'Buscar',
+                      onPressed: () => _submitSearch(_controller.text),
+                      icon: Icon(
+                        Icons.arrow_forward,
+                        color: AppColors.accentBlue,
+                      ),
                     ),
                   ),
                 ),
@@ -129,12 +163,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Tus medios de pago',
-                      style: TextStyle(
-                        color: AppColors.deepBlue,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
+                    Expanded(
+                      child: Text(
+                        'Tus medios de pago',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.deepBlue,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                     TextButton(
@@ -170,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   'Supermercados',
                   style: TextStyle(
                     color: AppColors.deepBlue,
@@ -206,8 +244,8 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const SizedBox(height: 18),
                 AppCard(
-                  color: const Color(0xFFEAF8F0),
-                  borderColor: const Color(0xFFD5F3E1),
+                  color: AppColors.successSurface,
+                  borderColor: AppColors.successBorder,
                   child: Row(
                     children: [
                       Expanded(
@@ -229,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               savings > 0
                                   ? 'Menos que en la opcion completa mas cara.'
                                   : 'Compara el changuito para conocer tu ahorro.',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.deepBlue,
                                 fontSize: 12,
                               ),
@@ -263,7 +301,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const Icon(Icons.shopping_cart_outlined),
                       const SizedBox(width: 10),
-                      const Text('Ir a mi changuito'),
+                      const Flexible(
+                        child: Text(
+                          'Ir a mi changuito',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                       const SizedBox(width: 10),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -291,13 +335,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _scanBarcode() async {
-    final code = await scanBarcode(context);
-    if (!mounted || code == null) return;
-    _controller.text = code;
-    _submitSearch(code);
   }
 
   void _submitSearch(String value) {
@@ -347,10 +384,10 @@ class _StoreSelectionCard extends StatelessWidget {
           width: 88,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? AppColors.blue : AppColors.line,
+              color: selected ? AppColors.accentBlue : AppColors.line,
               width: selected ? 1.4 : 1,
             ),
           ),
@@ -362,7 +399,7 @@ class _StoreSelectionCard extends StatelessWidget {
                 supermarket.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.deepBlue,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
@@ -371,7 +408,7 @@ class _StoreSelectionCard extends StatelessWidget {
               const SizedBox(height: 6),
               Icon(
                 selected ? Icons.check_circle : Icons.radio_button_unchecked,
-                color: selected ? AppColors.blue : AppColors.textGray,
+                color: selected ? AppColors.accentBlue : AppColors.textGray,
                 size: 19,
               ),
             ],
@@ -406,7 +443,7 @@ class _PaymentMethodSelectionCard extends StatelessWidget {
         width: 86,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: accent, width: 1.4),
         ),
@@ -419,7 +456,7 @@ class _PaymentMethodSelectionCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.deepBlue,
                 fontSize: 10.5,
                 fontWeight: FontWeight.w800,
@@ -449,15 +486,15 @@ class _AddPaymentMethodHomeCard extends StatelessWidget {
         width: 86,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.line),
         ),
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.tune, color: AppColors.deepBlue),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
               'Ver todos',
               textAlign: TextAlign.center,

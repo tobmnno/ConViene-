@@ -32,7 +32,7 @@ class _NetworkProductArt extends StatelessWidget {
       height: size,
       padding: EdgeInsets.all(size * 0.08),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.line),
       ),
@@ -144,7 +144,7 @@ class _FallbackProductArt extends StatelessWidget {
         main: Color(0xFFFEC84B),
         accent: Color(0xFF16B364),
       ),
-      _ => const _ProductArtColors(
+      _ => _ProductArtColors(
         background: AppColors.softBlue,
         main: AppColors.blue,
         accent: AppColors.white,

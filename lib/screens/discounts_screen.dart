@@ -46,7 +46,7 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Center(
                   child: Text(
                     'Descuentos',
@@ -65,7 +65,7 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
                     builder: (context) => const PaymentMethodsScreen(),
                   ),
                 ),
-                icon: const Icon(Icons.credit_card, color: AppColors.deepBlue),
+                icon: Icon(Icons.credit_card, color: AppColors.deepBlue),
               ),
             ],
           ),
@@ -74,14 +74,14 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
           const SizedBox(height: 22),
           Text(
             longDate(state.selectedDate),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.deepBlue,
               fontWeight: FontWeight.w900,
               fontSize: 17,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Promos compatibles con los medios de pago que seleccionaste.',
             style: TextStyle(color: AppColors.deepBlue, fontSize: 13),
           ),
@@ -197,7 +197,7 @@ class _DaySelector extends StatelessWidget {
           onPressed: () => state.setSelectedDate(
             selectedDate.subtract(const Duration(days: 1)),
           ),
-          icon: const Icon(Icons.chevron_left, color: AppColors.deepBlue),
+          icon: Icon(Icons.chevron_left, color: AppColors.deepBlue),
         ),
         Expanded(
           child: Row(
@@ -212,7 +212,7 @@ class _DaySelector extends StatelessWidget {
           tooltip: 'Dias siguientes',
           onPressed: () =>
               state.setSelectedDate(selectedDate.add(const Duration(days: 1))),
-          icon: const Icon(Icons.chevron_right, color: AppColors.deepBlue),
+          icon: Icon(Icons.chevron_right, color: AppColors.deepBlue),
         ),
       ],
     );
@@ -384,10 +384,10 @@ class _StoreFilterChip extends StatelessWidget {
             height: 36,
             padding: const EdgeInsets.symmetric(horizontal: 11),
             decoration: BoxDecoration(
-              color: selected ? AppColors.deepBlue : AppColors.white,
+              color: selected ? AppColors.blue : AppColors.surface,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: selected ? AppColors.deepBlue : AppColors.line,
+                color: selected ? AppColors.blue : AppColors.line,
               ),
             ),
             child: Row(
@@ -438,7 +438,7 @@ class _FilterChip extends StatelessWidget {
               height: 36,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: selected ? AppColors.blue : AppColors.white,
+                color: selected ? AppColors.blue : AppColors.surface,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
                   color: selected ? AppColors.blue : AppColors.line,
@@ -480,8 +480,8 @@ class _PromotionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = compatible ? AppColors.green : AppColors.deepBlue;
-    final cardColor = compatible ? const Color(0xFFEAF8F0) : AppColors.white;
-    final borderColor = compatible ? const Color(0xFFB8EBCB) : AppColors.line;
+    final cardColor = compatible ? AppColors.successSurface : AppColors.surface;
+    final borderColor = compatible ? AppColors.successBorder : AppColors.line;
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => _showPromotionDetails(context),
@@ -501,7 +501,7 @@ class _PromotionCard extends StatelessWidget {
                     promotion.nombreVisible,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.deepBlue,
                       fontWeight: FontWeight.w900,
                     ),
@@ -530,19 +530,13 @@ class _PromotionCard extends StatelessWidget {
                   ),
                   Text(
                     _capText(promotion),
-                    style: const TextStyle(
-                      color: AppColors.deepBlue,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
                   ),
                   Text(
                     _daysText(promotion),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.deepBlue,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
                   ),
                 ],
               ),
@@ -566,7 +560,7 @@ class _PromotionCard extends StatelessWidget {
   void _showPromotionDetails(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
@@ -588,7 +582,7 @@ class _PromotionCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           promotion.nombreVisible,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.deepBlue,
                             fontSize: 18,
                             fontWeight: FontWeight.w900,
@@ -721,11 +715,11 @@ class _DiscountsError extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: AppCard(
-        color: const Color(0xFFFFF4ED),
+        color: AppColors.errorSurface,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_outlined, color: Color(0xFFB54708)),
+            Icon(Icons.cloud_off_outlined, color: AppColors.errorText),
             const SizedBox(height: 10),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 12),
@@ -752,13 +746,13 @@ class _MethodBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
-        color: highlighted ? const Color(0xFFD9F7E6) : AppColors.softBlue,
+        color: highlighted ? AppColors.successSurface : AppColors.softBlue,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: highlighted ? AppColors.green : AppColors.blue,
+          color: highlighted ? AppColors.greenText : AppColors.accentBlue,
           fontSize: 10,
           fontWeight: FontWeight.w800,
         ),
@@ -784,7 +778,7 @@ class _DetailLine extends StatelessWidget {
             width: 92,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textGray,
                 fontWeight: FontWeight.w700,
               ),
@@ -793,7 +787,7 @@ class _DetailLine extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.deepBlue,
                 fontWeight: FontWeight.w800,
               ),
@@ -818,7 +812,7 @@ class _NoDiscounts extends StatelessWidget {
             ? 'No hay promociones para tus medios seleccionados.'
             : 'Selecciona tus tarjetas, bancos o billeteras para ver promos.',
         textAlign: TextAlign.center,
-        style: const TextStyle(color: AppColors.textGray),
+        style: TextStyle(color: AppColors.textGray),
       ),
     );
   }

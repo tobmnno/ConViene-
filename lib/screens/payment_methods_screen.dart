@@ -28,7 +28,7 @@ class PaymentMethodsScreen extends StatelessWidget {
       body: ScreenFrame(
         child: ListView(
           children: [
-            const Text(
+            Text(
               'Con que medios de pago contas?',
               style: TextStyle(
                 color: AppColors.deepBlue,
@@ -38,7 +38,7 @@ class PaymentMethodsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'Selecciona las tarjetas, bancos o billeteras que usas para que podamos mostrarte descuentos disponibles.',
               style: TextStyle(
                 color: AppColors.deepBlue,
@@ -65,13 +65,17 @@ class PaymentMethodsScreen extends StatelessWidget {
               methods: state.paymentMethods,
             ),
             const SizedBox(height: 18),
-            const AppCard(
+            AppCard(
               color: AppColors.softBlue,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.lock_outline, color: AppColors.blue, size: 20),
-                  SizedBox(width: 10),
+                  const Icon(
+                    Icons.lock_outline,
+                    color: AppColors.blue,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Conviene no guarda numeros de tarjeta, CVV, claves ni datos bancarios sensibles.',
@@ -117,7 +121,7 @@ class _PaymentSection extends StatelessWidget {
           padding: const EdgeInsets.only(left: 2, bottom: 8),
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.deepBlue,
               fontSize: 13,
               fontWeight: FontWeight.w900,
@@ -169,7 +173,7 @@ class _PaymentTile extends StatelessWidget {
                 Expanded(
                   child: Text(
                     method.displayName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.deepBlue,
                       fontWeight: FontWeight.w800,
                     ),
@@ -189,7 +193,9 @@ class _PaymentTile extends StatelessWidget {
                         ? Icons.check_box
                         : Icons.check_box_outline_blank,
                     key: ValueKey(method.active),
-                    color: method.active ? AppColors.blue : AppColors.textGray,
+                    color: method.active
+                        ? AppColors.accentBlue
+                        : AppColors.textGray,
                   ),
                 ),
               ],

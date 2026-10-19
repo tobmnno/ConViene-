@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -24,6 +26,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   );
   final _manual = TextEditingController();
   String? _error;
+  String? _cameraMessage;
   bool _finished = false;
 
   @override
@@ -46,45 +49,164 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     Navigator.of(context).pop(code);
   }
 
+  Future<void> _toggleTorch() async {
+    try {
+      await _controller.toggleTorch();
+    } catch (_) {
+      if (mounted) setState(() => _cameraMessage = 'Linterna no disponible');
+    }
+  }
+
+  Future<void> _switchCamera() async {
+    try {
+      await _controller.switchCamera();
+    } catch (_) {
+      if (mounted)
+        setState(() => _cameraMessage = 'No se pudo cambiar la cámara');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Escanear codigo de barras')),
+      appBar: AppBar(title: const Text('Escanear producto')),
       body: ScreenFrame(
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text(
+              'Código de barras',
+              style: TextStyle(
+                color: AppColors.deepBlue,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'Apuntá la cámara al código del envase',
+              style: TextStyle(color: AppColors.textGray, fontSize: 13),
+            ),
+            const SizedBox(height: 18),
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: MobileScanner(
-                  controller: _controller,
-                  onDetect: (capture) {
-                    for (final barcode in capture.barcodes) {
-                      if (normalizedBarcode(barcode.rawValue) != null) {
-                        _submit(barcode.rawValue);
-                        return;
-                      }
-                    }
-                  },
-                  errorBuilder: (context, error) => Container(
-                    color: AppColors.softBlue,
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.all(20),
-                    child: const Text(
-                      'No se pudo abrir la camara. Podes ingresar el codigo manualmente.',
-                      textAlign: TextAlign.center,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    MobileScanner(
+                      controller: _controller,
+                      onDetect: (capture) {
+                        for (final barcode in capture.barcodes) {
+                          if (normalizedBarcode(barcode.rawValue) != null) {
+                            _submit(barcode.rawValue);
+                            return;
+                          }
+                        }
+                      },
+                      errorBuilder: (context, error) => Container(
+                        color: const Color(0xFF172233),
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.all(24),
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.no_photography_outlined,
+                              color: Colors.white70,
+                              size: 38,
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              'No se pudo abrir la cámara. Ingresá el código abajo.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                    Center(
+                      child: IgnorePointer(
+                        child: FractionallySizedBox(
+                          widthFactor: 0.82,
+                          heightFactor: 0.42,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.white, width: 2),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x66000000),
+                                  blurRadius: 18,
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Container(
+                                height: 2,
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                color: AppColors.green,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 16,
+                      left: 0,
+                      right: 0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ValueListenableBuilder<MobileScannerState>(
+                            valueListenable: _controller,
+                            builder: (context, camera, child) =>
+                                IconButton.filledTonal(
+                                  tooltip: camera.torchState == TorchState.on
+                                      ? 'Apagar linterna'
+                                      : 'Encender linterna',
+                                  onPressed:
+                                      camera.torchState ==
+                                          TorchState.unavailable
+                                      ? null
+                                      : () => unawaited(_toggleTorch()),
+                                  icon: Icon(
+                                    camera.torchState == TorchState.on
+                                        ? Icons.flash_on
+                                        : Icons.flash_off,
+                                  ),
+                                ),
+                          ),
+                          const SizedBox(width: 14),
+                          IconButton.filledTonal(
+                            tooltip: 'Cambiar cámara',
+                            onPressed: () => unawaited(_switchCamera()),
+                            icon: const Icon(Icons.cameraswitch_outlined),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_cameraMessage != null)
+                      Positioned(
+                        top: 14,
+                        left: 14,
+                        right: 14,
+                        child: Text(
+                          _cameraMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 18),
-            const Text(
-              'Coloca el codigo de barras dentro del recuadro.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 22),
             TextField(
               controller: _manual,
               keyboardType: TextInputType.number,
@@ -95,12 +217,12 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               textInputAction: TextInputAction.search,
               onSubmitted: _submit,
               decoration: InputDecoration(
-                labelText: 'O ingresa el codigo',
+                labelText: 'Ingresar código manualmente',
                 errorText: _error,
                 prefixIcon: const Icon(Icons.numbers),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             FilledButton.icon(
               onPressed: () => _submit(_manual.text),
               icon: const Icon(Icons.search),

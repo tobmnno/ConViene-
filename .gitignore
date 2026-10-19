@@ -18,4 +18,6 @@ backend/scraper_api/output.json
 .env
 .env.*
 !.env.example
+supabase.local.json
+supabase/.temp/
 *.tmp

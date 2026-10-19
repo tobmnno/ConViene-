@@ -9,6 +9,7 @@ import '../models/store_comparison.dart';
 import '../models/supermarket.dart';
 import '../models/shopping_context.dart';
 import '../repositories/conviene_repository.dart';
+import '../repositories/community_price_repository.dart';
 import '../repositories/promotion_status_repository.dart';
 import '../repositories/search_status_repository.dart';
 import '../services/cart_service.dart';
@@ -103,6 +104,52 @@ class AppState extends ChangeNotifier {
   ];
 
   bool isFavorite(String productId) => favoriteProductIds.contains(productId);
+
+  bool get canContribute => _repository is CommunityPriceRepository;
+
+  String? get currentUserId {
+    final repository = _repository;
+    return repository is CommunityPriceRepository
+        ? repository.currentUserId
+        : null;
+  }
+
+  Future<void> saveContribution({
+    String? id,
+    required String supermarketId,
+    required String name,
+    required String brand,
+    required String presentation,
+    required String unit,
+    required String category,
+    required String ean,
+    required String imageUrl,
+    required String sourceUrl,
+    required double price,
+    required double unitPrice,
+    required bool inStock,
+  }) async {
+    final repository = _repository;
+    if (repository is! CommunityPriceRepository) {
+      throw StateError('Los aportes requieren una sesion iniciada.');
+    }
+    await repository.saveContribution(
+      id: id,
+      supermarketId: supermarketId,
+      name: name,
+      brand: brand,
+      presentation: presentation,
+      unit: unit,
+      category: category,
+      ean: ean,
+      imageUrl: imageUrl,
+      sourceUrl: sourceUrl,
+      price: price,
+      unitPrice: unitPrice,
+      inStock: inStock,
+    );
+    await searchProducts(searchQuery);
+  }
 
   void toggleFavorite(Product product) {
     favoriteProductIds = {...favoriteProductIds};
@@ -257,6 +304,7 @@ class AppState extends ChangeNotifier {
       final retainedIds = {...cartProductIds, ...favoriteProductIds};
       products = {
         for (final product in loadedProducts) product.id: product,
+        for (final result in results) result.product.id: result.product,
         for (final product in products)
           if (retainedIds.contains(product.id)) product.id: product,
       }.values.toList();

@@ -34,7 +34,7 @@ class PriceBlock extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          const Text(
+          Text(
             'Sin descuento',
             style: TextStyle(color: AppColors.textGray, fontSize: 12),
           ),
@@ -47,7 +47,7 @@ class PriceBlock extends StatelessWidget {
       children: [
         Text(
           formatMoney(discount.precioOriginal),
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textGray,
             decoration: TextDecoration.lineThrough,
             decorationColor: AppColors.textGray,

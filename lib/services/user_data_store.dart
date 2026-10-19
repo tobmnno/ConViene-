@@ -36,10 +36,13 @@ class SharedPreferencesStringStore implements StringPreferences {
 }
 
 class LocalUserDataStore implements UserDataStore {
-  LocalUserDataStore({StringPreferences? preferences})
-    : _preferences = preferences ?? SharedPreferencesStringStore();
+  LocalUserDataStore({StringPreferences? preferences, String? userId})
+    : _preferences = preferences ?? SharedPreferencesStringStore(),
+      _storageKey = userId == null
+          ? 'conviene.user_data.v1'
+          : 'conviene.user_data.v1.$userId';
 
-  static const _storageKey = 'conviene.user_data.v1';
+  final String _storageKey;
   final StringPreferences _preferences;
 
   @override

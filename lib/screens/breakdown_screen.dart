@@ -29,7 +29,7 @@ class BreakdownScreen extends StatelessWidget {
             const Text('Desglose de precios'),
             Text(
               '${comparison.supermarket.name} es tu mejor opcion',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.deepBlue,
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
@@ -49,15 +49,15 @@ class BreakdownScreen extends StatelessWidget {
         child: ListView(
           children: [
             AppCard(
-              color: const Color(0xFFEAF8F0),
-              borderColor: const Color(0xFFC7EFD8),
+              color: AppColors.successSurface,
+              borderColor: AppColors.successBorder,
               child: Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Total con descuentos',
                           style: TextStyle(
                             color: AppColors.deepBlue,
@@ -130,7 +130,7 @@ class BreakdownScreen extends StatelessWidget {
                     value: '- ${formatMoney(comparison.totalDiscount)}',
                     green: true,
                   ),
-                  const Divider(color: AppColors.line),
+                  Divider(color: AppColors.line),
                   _TotalRow(
                     label: 'Total con descuentos',
                     value: formatMoney(
@@ -144,7 +144,7 @@ class BreakdownScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               'Los descuentos se aplican segun tus medios de pago seleccionados.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
@@ -171,9 +171,9 @@ class MixedBreakdownScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).maybePop(),
           icon: const Icon(Icons.chevron_left),
         ),
-        title: const Column(
+        title: Column(
           children: [
-            Text('Mejor por producto'),
+            const Text('Mejor por producto'),
             Text(
               'Compra cada item donde conviene',
               style: TextStyle(
@@ -196,15 +196,15 @@ class MixedBreakdownScreen extends StatelessWidget {
         child: ListView(
           children: [
             AppCard(
-              color: const Color(0xFFEAF8F0),
-              borderColor: const Color(0xFFC7EFD8),
+              color: AppColors.successSurface,
+              borderColor: AppColors.successBorder,
               child: Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Total combinando supers',
                           style: TextStyle(
                             color: AppColors.deepBlue,
@@ -255,12 +255,12 @@ class MixedBreakdownScreen extends StatelessWidget {
             ],
             if (plan.missingProducts.isNotEmpty) ...[
               AppCard(
-                color: const Color(0xFFFFF8E6),
-                borderColor: const Color(0xFFFFE7B3),
+                color: AppColors.warningSurface,
+                borderColor: AppColors.warningBorder,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Productos sin precio',
                       style: TextStyle(
                         color: AppColors.deepBlue,
@@ -273,7 +273,7 @@ class MixedBreakdownScreen extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 6),
                         child: Text(
                           product.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.textGray,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -298,7 +298,7 @@ class MixedBreakdownScreen extends StatelessWidget {
                     value: '- ${formatMoney(plan.totalDiscount)}',
                     green: true,
                   ),
-                  const Divider(color: AppColors.line),
+                  Divider(color: AppColors.line),
                   _TotalRow(
                     label: 'Total combinado',
                     value: formatMoney(plan.totalFinal, compactCents: false),
@@ -337,7 +337,7 @@ class _MixedBreakdownLine extends StatelessWidget {
                   item.product.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.deepBlue,
                     fontWeight: FontWeight.w900,
                     fontSize: 12,
@@ -353,7 +353,7 @@ class _MixedBreakdownLine extends StatelessWidget {
                         item.supermarket.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.deepBlue,
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
@@ -365,10 +365,7 @@ class _MixedBreakdownLine extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${item.product.presentation} x ${item.quantity}',
-                  style: const TextStyle(
-                    color: AppColors.textGray,
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: AppColors.textGray, fontSize: 11),
                 ),
               ],
             ),
@@ -397,14 +394,14 @@ class _MissingProductsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      color: const Color(0xFFFFF8E6),
-      borderColor: const Color(0xFFFFE7B3),
+      color: AppColors.warningSurface,
+      borderColor: AppColors.warningBorder,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Sin verificar en ${comparison.supermarket.name}',
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.deepBlue,
               fontWeight: FontWeight.w900,
             ),
@@ -416,7 +413,7 @@ class _MissingProductsCard extends StatelessWidget {
               child: Text(
                 '${product.name}: ${comparison.missingLabel(product)}'
                 '${comparison.alternativesByProduct[product.id] == null ? '' : '\nAlternativa sugerida: ${comparison.alternativesByProduct[product.id]!.product.name} (no incluida en el total)'}',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textGray,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -432,7 +429,7 @@ class _MissingProductsCard extends StatelessWidget {
 class _HeaderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       children: [
         Expanded(
           flex: 3,
@@ -486,7 +483,7 @@ class _BreakdownLine extends StatelessWidget {
                   item.product.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.deepBlue,
                     fontWeight: FontWeight.w900,
                     fontSize: 12,
@@ -494,17 +491,11 @@ class _BreakdownLine extends StatelessWidget {
                 ),
                 Text(
                   '${item.product.presentation} x ${item.quantity}',
-                  style: const TextStyle(
-                    color: AppColors.deepBlue,
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: AppColors.deepBlue, fontSize: 11),
                 ),
                 Text(
                   formatMoney(discount.precioOriginal),
-                  style: const TextStyle(
-                    color: AppColors.textGray,
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: AppColors.textGray, fontSize: 11),
                 ),
               ],
             ),

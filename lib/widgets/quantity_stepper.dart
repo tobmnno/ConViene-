@@ -32,7 +32,7 @@ class QuantityStepper extends StatelessWidget {
             child: Center(
               child: Text(
                 '$quantity',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.deepBlue,
                   fontWeight: FontWeight.w900,
                 ),

@@ -33,7 +33,13 @@ class PaymentMethodLogo extends StatelessWidget {
         width: size * 1.45,
         height: size,
         child: Center(
-          child: Padding(padding: EdgeInsets.all(size * 0.05), child: logo),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.isDark ? AppColors.white : Colors.transparent,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Padding(padding: EdgeInsets.all(size * 0.08), child: logo),
+          ),
         ),
       );
     }

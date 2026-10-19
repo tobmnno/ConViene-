@@ -35,6 +35,10 @@ class SearchResult {
     this.relevanceScore = 0,
     this.isExactMatch = true,
     this.matchType = 'exact',
+    this.communityPriceId,
+    this.contributorId,
+    this.contributorName,
+    this.contributedAt,
   });
 
   final Product product;
@@ -43,4 +47,10 @@ class SearchResult {
   final double relevanceScore;
   final bool isExactMatch;
   final String matchType;
+  final String? communityPriceId;
+  final String? contributorId;
+  final String? contributorName;
+  final DateTime? contributedAt;
+
+  bool get isCommunityPrice => communityPriceId != null;
 }

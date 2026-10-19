@@ -14,8 +14,8 @@ import '../widgets/price_block.dart';
 import '../widgets/product_art.dart';
 import '../widgets/screen_frame.dart';
 import '../widgets/store_logo.dart';
-import 'barcode_scanner_screen.dart';
 import 'favorites_screen.dart';
+import 'contribution_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key, required this.onBack});
@@ -74,12 +74,12 @@ class _SearchScreenState extends State<SearchScreen> {
               IconButton(
                 tooltip: 'Volver',
                 onPressed: widget.onBack,
-                icon: const Icon(Icons.chevron_left, color: AppColors.deepBlue),
+                icon: Icon(Icons.chevron_left, color: AppColors.deepBlue),
               ),
               Expanded(
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       'Resultados',
                       style: TextStyle(
                         color: AppColors.deepBlue,
@@ -89,10 +89,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     Text(
                       state.searchQuery,
-                      style: const TextStyle(
-                        color: AppColors.deepBlue,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
                     ),
                   ],
                 ),
@@ -104,15 +101,12 @@ class _SearchScreenState extends State<SearchScreen> {
                     builder: (context) => const FavoritesScreen(),
                   ),
                 ),
-                icon: const Icon(
-                  Icons.favorite_border,
-                  color: AppColors.deepBlue,
-                ),
+                icon: Icon(Icons.favorite_border, color: AppColors.deepBlue),
               ),
               IconButton(
                 tooltip: 'Filtros',
                 onPressed: () => _showStoreFilters(state),
-                icon: const Icon(Icons.tune, color: AppColors.deepBlue),
+                icon: Icon(Icons.tune, color: AppColors.deepBlue),
               ),
             ],
           ),
@@ -125,26 +119,10 @@ class _SearchScreenState extends State<SearchScreen> {
             decoration: InputDecoration(
               hintText: 'Buscar producto...',
               prefixIcon: const Icon(Icons.search),
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'Escanear codigo de barras',
-                    onPressed: _scanBarcode,
-                    icon: const Icon(
-                      Icons.qr_code_scanner,
-                      color: AppColors.deepBlue,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Buscar',
-                    onPressed: () => _submitSearch(_controller.text),
-                    icon: const Icon(
-                      Icons.arrow_forward,
-                      color: AppColors.blue,
-                    ),
-                  ),
-                ],
+              suffixIcon: IconButton(
+                tooltip: 'Buscar',
+                onPressed: () => _submitSearch(_controller.text),
+                icon: Icon(Icons.arrow_forward, color: AppColors.accentBlue),
               ),
             ),
           ),
@@ -179,16 +157,33 @@ class _SearchScreenState extends State<SearchScreen> {
               child: state.lastError != null
                   ? const SizedBox.shrink()
                   : state.searchResults.isEmpty
-                  ? _EmptyResults(
-                      partial: state.searchWarning != null,
-                      barcode: normalizedBarcode(state.searchQuery) != null,
-                      identified: state.searchNotice != null,
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _EmptyResults(
+                          partial: state.searchWarning != null,
+                          barcode: normalizedBarcode(state.searchQuery) != null,
+                          identified: state.searchNotice != null,
+                        ),
+                        if (state.canContribute) ...[
+                          const SizedBox(height: 20),
+                          _contributionButton(state),
+                        ],
+                      ],
                     )
                   : ListView.separated(
-                      itemCount: state.searchResults.length,
+                      itemCount:
+                          state.searchResults.length +
+                          (state.canContribute ? 1 : 0),
                       separatorBuilder: (context, index) =>
                           const SizedBox(height: 12),
                       itemBuilder: (context, index) {
+                        if (index == state.searchResults.length) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 4, bottom: 20),
+                            child: _contributionButton(state),
+                          );
+                        }
                         final result = state.searchResults[index];
                         final discount = state.discountForResult(result);
                         final isBest =
@@ -198,6 +193,11 @@ class _SearchScreenState extends State<SearchScreen> {
                           result: result,
                           isBest: isBest,
                           isFavorite: state.isFavorite(result.product.id),
+                          canEdit:
+                              result.contributorId == state.currentUserId &&
+                              result.isCommunityPrice,
+                          onEdit: () =>
+                              _openContribution(state, existing: result),
                           onToggleFavorite: () =>
                               state.toggleFavorite(result.product),
                           onAdd: () => _addProductToCart(
@@ -223,10 +223,35 @@ class _SearchScreenState extends State<SearchScreen> {
     unawaited(AppScope.of(context).searchProducts(query));
   }
 
-  Future<void> _scanBarcode() async {
-    final code = await scanBarcode(context);
-    if (!mounted || code == null) return;
-    _submitSearch(code);
+  Widget _contributionButton(AppState state) => OutlinedButton.icon(
+    onPressed: () => _openContribution(state),
+    icon: const Icon(Icons.add_circle_outline),
+    label: const Text('Ayuda a agregar productos'),
+  );
+
+  Future<void> _openContribution(
+    AppState state, {
+    SearchResult? existing,
+  }) async {
+    final presentStores = state.searchResults
+        .map((result) => result.supermarket.id)
+        .toSet();
+    final missingStores = state.selectedStoreIds.difference(presentStores);
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AppScope(
+          notifier: state,
+          child: ContributionScreen(
+            stores: state.enabledSupermarkets,
+            initialQuery: state.searchQuery,
+            initialStoreId: missingStores.length == 1
+                ? missingStores.first
+                : null,
+            existing: existing,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _showStoreFilters(AppState state) async {
@@ -341,24 +366,24 @@ class _SearchError extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF4ED),
-        border: Border.all(color: const Color(0xFFFBC7A5)),
+        color: AppColors.errorSurface,
+        border: Border.all(color: AppColors.warningBorder),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: Color(0xFFB54708)),
+          Icon(Icons.error_outline, color: AppColors.errorText),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: AppColors.deepBlue, fontSize: 12),
+              style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
             ),
           ),
           IconButton(
             tooltip: 'Reintentar',
             onPressed: onRetry,
-            icon: const Icon(Icons.refresh, color: AppColors.deepBlue),
+            icon: Icon(Icons.refresh, color: AppColors.deepBlue),
           ),
         ],
       ),
@@ -376,18 +401,18 @@ class _SearchWarning extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF8E6),
-        border: Border.all(color: const Color(0xFFE8C86B)),
+        color: AppColors.warningSurface,
+        border: Border.all(color: AppColors.warningBorder),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, color: Color(0xFF986400)),
+          Icon(Icons.info_outline, color: AppColors.warningText),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: AppColors.deepBlue, fontSize: 12),
+              style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
             ),
           ),
         ],
@@ -415,7 +440,7 @@ class _SearchNotice extends StatelessWidget {
         Expanded(
           child: Text(
             message,
-            style: const TextStyle(color: AppColors.deepBlue, fontSize: 12),
+            style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
           ),
         ),
       ],
@@ -480,7 +505,7 @@ class _SortChip extends StatelessWidget {
             height: 42,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: selected ? AppColors.blue : AppColors.white,
+              color: selected ? AppColors.blue : AppColors.surface,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: selected ? AppColors.blue : AppColors.line,
@@ -508,6 +533,8 @@ class _ResultCard extends StatefulWidget {
     required this.result,
     required this.isBest,
     required this.isFavorite,
+    required this.canEdit,
+    required this.onEdit,
     required this.onToggleFavorite,
     required this.onAdd,
   });
@@ -515,6 +542,8 @@ class _ResultCard extends StatefulWidget {
   final SearchResult result;
   final bool isBest;
   final bool isFavorite;
+  final bool canEdit;
+  final VoidCallback onEdit;
   final VoidCallback onToggleFavorite;
   final VoidCallback onAdd;
 
@@ -543,7 +572,7 @@ class _ResultCardState extends State<_ResultCard> {
     final discount = state.discountForResult(widget.result);
     return AppCard(
       padding: EdgeInsets.zero,
-      borderColor: widget.isBest ? const Color(0xFFC7EFD8) : AppColors.line,
+      borderColor: widget.isBest ? AppColors.successBorder : AppColors.line,
       child: Stack(
         children: [
           Padding(
@@ -569,7 +598,7 @@ class _ResultCardState extends State<_ResultCard> {
                               widget.result.supermarket.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.deepBlue,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
@@ -583,7 +612,7 @@ class _ResultCardState extends State<_ResultCard> {
                         widget.result.product.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.deepBlue,
                           fontWeight: FontWeight.w900,
                           fontSize: 15,
@@ -597,7 +626,7 @@ class _ResultCardState extends State<_ResultCard> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFF4D6),
+                            color: AppColors.warningSurface,
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -608,8 +637,8 @@ class _ResultCardState extends State<_ResultCard> {
                                 : widget.result.matchType == 'name_match'
                                 ? 'Coincidencia por nombre'
                                 : 'Producto similar',
-                            style: const TextStyle(
-                              color: Color(0xFF8A5A00),
+                            style: TextStyle(
+                              color: AppColors.warningText,
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
                             ),
@@ -619,17 +648,45 @@ class _ResultCardState extends State<_ResultCard> {
                       const SizedBox(height: 3),
                       Text(
                         widget.result.product.presentation,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.deepBlue,
                           fontSize: 13,
                         ),
                       ),
+                      if (widget.result.isCommunityPrice) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          'Aporte de la comunidad',
+                          style: TextStyle(
+                            color: AppColors.warningText,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 10),
                       PriceBlock(discount: discount),
+                      if (widget.result.isCommunityPrice) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Agregado o editado por ${widget.result.contributorName ?? 'usuario'}'
+                          ' · ${_dateLabel(widget.result.contributedAt)}',
+                          style: TextStyle(
+                            color: AppColors.textGray,
+                            fontSize: 10,
+                          ),
+                        ),
+                        if (widget.canEdit)
+                          TextButton.icon(
+                            onPressed: widget.onEdit,
+                            icon: const Icon(Icons.edit_outlined, size: 15),
+                            label: const Text('Editar mi aporte'),
+                          ),
+                      ],
                       const SizedBox(height: 4),
                       Text(
                         'Precio por ${widget.result.product.unit}: ${formatMoney(widget.result.price.priceUnitario)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textGray,
                           fontSize: 12,
                         ),
@@ -642,7 +699,7 @@ class _ResultCardState extends State<_ResultCard> {
                         style: TextStyle(
                           color: widget.result.price.stock
                               ? AppColors.textGray
-                              : const Color(0xFFB54708),
+                              : AppColors.errorText,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
@@ -663,7 +720,7 @@ class _ResultCardState extends State<_ResultCard> {
                             ? Icons.favorite
                             : Icons.favorite_border,
                       ),
-                      color: AppColors.blue,
+                      color: AppColors.accentBlue,
                     ),
                     IconButton.filled(
                       tooltip: 'Agregar al changuito',
@@ -694,7 +751,6 @@ class _ResultCardState extends State<_ResultCard> {
                         ),
                       ),
                     ),
-                    const Icon(Icons.chevron_right, color: AppColors.deepBlue),
                   ],
                 ),
               ],
@@ -732,6 +788,11 @@ class _ResultCardState extends State<_ResultCard> {
   }
 
   String _availabilityLabel(ProductPrice price) {
+    if (price.pricingScope == 'community') {
+      return price.stock
+          ? 'Disponibilidad informada por un usuario'
+          : 'Sin stock informado por un usuario';
+    }
     if (!price.stock) {
       return 'Sin stock informado por el supermercado';
     }
@@ -740,6 +801,12 @@ class _ResultCardState extends State<_ResultCard> {
     }
     return 'Stock sujeto a disponibilidad del supermercado';
   }
+
+  String _dateLabel(DateTime? date) {
+    if (date == null) return '';
+    final local = date.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year}';
+  }
 }
 
 class _NoPaymentMethodsHint extends StatelessWidget {
@@ -747,14 +814,14 @@ class _NoPaymentMethodsHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 12),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
       child: AppCard(
         color: AppColors.softBlue,
         child: Row(
           children: [
-            Icon(Icons.info_outline, color: AppColors.blue),
-            SizedBox(width: 10),
+            const Icon(Icons.info_outline, color: AppColors.blue),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 'Selecciona tus medios de pago en Descuentos para ver precios finales con promociones.',
@@ -791,7 +858,7 @@ class _EmptyResults extends StatelessWidget {
             ? 'Codigo valido, pero sin precio publicado en los supermercados seleccionados.'
             : 'No encontramos ese producto en los supermercados seleccionados.',
         textAlign: TextAlign.center,
-        style: const TextStyle(color: AppColors.textGray),
+        style: TextStyle(color: AppColors.textGray),
       ),
     );
   }

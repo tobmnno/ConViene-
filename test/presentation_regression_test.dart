@@ -3,6 +3,7 @@ import 'package:conviene/models/product.dart';
 import 'package:conviene/models/store_comparison.dart';
 import 'package:conviene/repositories/mock_repository.dart';
 import 'package:conviene/screens/cart_screen.dart';
+import 'package:conviene/screens/app_shell.dart';
 import 'package:conviene/screens/discounts_screen.dart';
 import 'package:conviene/screens/home_screen.dart';
 import 'package:conviene/state/app_scope.dart';
@@ -102,6 +103,72 @@ void main() {
 
     expect(find.textContaining('Datos parciales'), findsNothing);
     expect(find.text('Descuentos'), findsOneWidget);
+    state.dispose();
+  });
+
+  testWidgets('el escaner es el acceso central y no esta en la busqueda', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final state = AppState(repository: MockRepository())
+      ..isBootstrapping = false;
+    state.supermarkets = await MockRepository().getSupermarkets();
+
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: MaterialApp(
+          home: AppShell(darkMode: false, onToggleDarkMode: () {}),
+        ),
+      ),
+    );
+
+    expect(find.byTooltip('Escanear codigo de barras'), findsOneWidget);
+    expect(find.byType(BottomAppBar), findsOneWidget);
+    await tester.tap(find.text('Buscar').last);
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Escanear codigo de barras'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    state.dispose();
+  });
+
+  testWidgets('el changuito conserva la posicion al recalcular', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final state = AppState(repository: MockRepository())
+      ..products = const [_product]
+      ..cartItems = const [CartItem(productId: 'test-product', quantity: 1)];
+
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: const MaterialApp(home: Scaffold(body: CartScreen())),
+      ),
+    );
+
+    final product = find.text('Producto de prueba');
+    await tester.ensureVisible(product);
+    await tester.pumpAndSettle();
+    final initialTop = tester.getTopLeft(product).dy;
+
+    state.isComparing = true;
+    state.notifyListeners();
+    await tester.pump();
+    expect(tester.getTopLeft(product).dy, closeTo(initialTop, 0.1));
+
+    state.isComparing = false;
+    state.notifyListeners();
+    await tester.pump();
+    expect(tester.getTopLeft(product).dy, closeTo(initialTop, 0.1));
+
+    await tester.tap(find.byTooltip('Sumar'));
+    await tester.tap(find.byTooltip('Sumar'));
+    await tester.pumpAndSettle();
+    expect(state.cartQuantity, 3);
+    expect(tester.getTopLeft(product).dy, closeTo(initialTop, 0.1));
     state.dispose();
   });
 }

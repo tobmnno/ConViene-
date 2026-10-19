@@ -84,9 +84,7 @@ class _CartShareScreenState extends State<CartShareScreen> {
           width: MediaQuery.sizeOf(context).width < 420
               ? MediaQuery.sizeOf(context).width - 32
               : 400,
-          backgroundColor: success
-              ? AppColors.deepBlue
-              : const Color(0xFF9B2C2C),
+          backgroundColor: success ? AppColors.navy : const Color(0xFF9B2C2C),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           duration: const Duration(seconds: 3),
           content: Row(
@@ -141,7 +139,7 @@ class _CartShareScreenState extends State<CartShareScreen> {
                       key: _imageKey,
                       child: Container(
                         width: width,
-                        color: Colors.white,
+                        color: AppColors.surface,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -153,7 +151,7 @@ class _CartShareScreenState extends State<CartShareScreen> {
                                 22,
                                 16,
                               ),
-                              color: AppColors.deepBlue,
+                              color: AppColors.navy,
                               child: Row(
                                 children: [
                                   Container(
@@ -209,7 +207,7 @@ class _CartShareScreenState extends State<CartShareScreen> {
                                 children: [
                                   Text(
                                     '${state.cartItems.length} ${state.cartItems.length == 1 ? 'producto' : 'productos'}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: AppColors.textGray,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w800,
@@ -228,10 +226,7 @@ class _CartShareScreenState extends State<CartShareScreen> {
                                     ),
                                     const SizedBox(height: 10),
                                   ],
-                                  const Divider(
-                                    height: 24,
-                                    color: AppColors.line,
-                                  ),
+                                  Divider(height: 24, color: AppColors.line),
                                   Row(
                                     children: [
                                       Expanded(
@@ -239,7 +234,7 @@ class _CartShareScreenState extends State<CartShareScreen> {
                                           allPriced
                                               ? 'Total verificado'
                                               : 'Subtotal verificado',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             color: AppColors.deepBlue,
                                             fontWeight: FontWeight.w900,
                                           ),
@@ -262,8 +257,8 @@ class _CartShareScreenState extends State<CartShareScreen> {
                                     ],
                                   ),
                                   if (!allPriced)
-                                    const Padding(
-                                      padding: EdgeInsets.only(top: 6),
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 6),
                                       child: Text(
                                         'Faltan precios por verificar. No es un total comparable.',
                                         style: TextStyle(
@@ -273,7 +268,7 @@ class _CartShareScreenState extends State<CartShareScreen> {
                                       ),
                                     ),
                                   const SizedBox(height: 18),
-                                  const Text(
+                                  Text(
                                     'Precios sujetos a sucursal, stock y momento de consulta.',
                                     style: TextStyle(
                                       color: AppColors.textGray,
@@ -366,7 +361,7 @@ class _ShareLine extends StatelessWidget {
               Text(
                 product?.name ?? 'Producto',
                 maxLines: 3,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.deepBlue,
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
@@ -377,7 +372,7 @@ class _ShareLine extends StatelessWidget {
                 priced == null
                     ? '${selectedStoreName ?? 'Super no seleccionado'} · x${item.quantity} · precio no verificado'
                     : '${priced!.supermarket.name} · x${item.quantity}',
-                style: const TextStyle(color: AppColors.textGray, fontSize: 11),
+                style: TextStyle(color: AppColors.textGray, fontSize: 11),
               ),
             ],
           ),
@@ -385,7 +380,7 @@ class _ShareLine extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           priced == null ? '—' : formatMoney(priced!.discount.precioFinal),
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.deepBlue,
             fontSize: 12,
             fontWeight: FontWeight.w900,

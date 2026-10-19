@@ -90,6 +90,8 @@ void main() {
     expect(find.text('No se pudo consultar Carrefour.'), findsOneWidget);
     expect(state.searchResults, isNotEmpty);
     expect(find.byTooltip('Agregar al changuito'), findsWidgets);
+    expect(find.byIcon(Icons.chevron_right), findsNothing);
+    expect(find.byTooltip('Escanear codigo de barras'), findsNothing);
     state.dispose();
   });
 

@@ -32,9 +32,9 @@ class _StoreComparisonScreenState extends State<StoreComparisonScreen> {
           onPressed: () => Navigator.of(context).maybePop(),
           icon: const Icon(Icons.chevron_left),
         ),
-        title: const Column(
+        title: Column(
           children: [
-            Text('Elegi donde comprar'),
+            const Text('Elegi donde comprar'),
             Text(
               'Compara en todos los supermercados',
               style: TextStyle(
@@ -92,12 +92,12 @@ class _StoreComparisonScreenState extends State<StoreComparisonScreen> {
                       index == state.cartComparisons.length + 1) {
                     return _BestPerProductOptionCard(plan: bestPerProduct);
                   }
-                  return const AppCard(
+                  return AppCard(
                     color: AppColors.softBlue,
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, color: AppColors.blue),
-                        SizedBox(width: 10),
+                        const Icon(Icons.info_outline, color: AppColors.blue),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             'Los totales incluyen los descuentos segun tus medios de pago seleccionados.',
@@ -134,8 +134,8 @@ class _BestPerProductOptionCardState extends State<_BestPerProductOptionCard> {
   Widget build(BuildContext context) {
     final plan = widget.plan;
     return AppCard(
-      color: const Color(0xFFEAF8F0),
-      borderColor: const Color(0xFFC7EFD8),
+      color: AppColors.successSurface,
+      borderColor: AppColors.successBorder,
       child: Column(
         children: [
           InkWell(
@@ -152,7 +152,7 @@ class _BestPerProductOptionCardState extends State<_BestPerProductOptionCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Por producto',
                         style: TextStyle(
                           color: AppColors.deepBlue,
@@ -186,7 +186,7 @@ class _BestPerProductOptionCardState extends State<_BestPerProductOptionCard> {
                             : plan.storeCount == 1
                             ? 'Todo queda en 1 supermercado'
                             : 'Reparte la compra en ${plan.storeCount} supermercados',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.deepBlue,
                           fontSize: 12,
                         ),
@@ -206,7 +206,7 @@ class _BestPerProductOptionCardState extends State<_BestPerProductOptionCard> {
                       ),
                     ),
                     if (!plan.hasAllProducts)
-                      const Text(
+                      Text(
                         'Subtotal',
                         style: TextStyle(
                           color: AppColors.textGray,
@@ -238,7 +238,7 @@ class _BestPerProductOptionCardState extends State<_BestPerProductOptionCard> {
                         '${item.supermarket.name}: ${item.product.name} x ${item.quantity}',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.deepBlue,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -261,10 +261,7 @@ class _BestPerProductOptionCardState extends State<_BestPerProductOptionCard> {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Text(
                   '${product.name}: sin precio verificado',
-                  style: const TextStyle(
-                    color: AppColors.textGray,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: AppColors.textGray, fontSize: 12),
                 ),
               ),
           ],
@@ -297,8 +294,8 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
     final comparison = widget.comparison;
     final expanded = _expanded || widget.expandedByParent;
     return AppCard(
-      color: widget.best ? const Color(0xFFEAF8F0) : AppColors.white,
-      borderColor: widget.best ? const Color(0xFFC7EFD8) : AppColors.line,
+      color: widget.best ? AppColors.successSurface : AppColors.surface,
+      borderColor: widget.best ? AppColors.successBorder : AppColors.line,
       child: Column(
         children: [
           InkWell(
@@ -317,7 +314,7 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                             comparison.supermarket.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.deepBlue,
                               fontWeight: FontWeight.w900,
                             ),
@@ -327,7 +324,7 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                             comparison.hasAllProducts
                                 ? 'Todos los productos comparados'
                                 : 'Comparados ${comparison.foundProductsCount} de ${comparison.totalProductsCount}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.textGray,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -374,7 +371,7 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                         comparison.hasAllProducts
                             ? 'Total con descuentos'
                             : 'Subtotal disponible',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textGray,
                           fontSize: 11,
                         ),
@@ -430,7 +427,7 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                       '${comparison.items.length > 1 ? ' y ${comparison.items.length - 1} mas' : ''}',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.deepBlue,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -445,9 +442,9 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF8E6),
+                color: AppColors.warningSurface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFFFE7B3)),
+                border: Border.all(color: AppColors.warningBorder),
               ),
               child: Text(
                 comparison.missingProducts
@@ -461,7 +458,7 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                           '${suggestion == null ? '' : '\n$label: ${suggestion.product.name} (${formatMoney(suggestion.price.priceOriginal)}). No incluida en el total.'}';
                     })
                     .join('\n'),
-                style: const TextStyle(color: AppColors.deepBlue, fontSize: 12),
+                style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
               ),
             ),
           ],
@@ -475,7 +472,7 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                     Expanded(
                       child: Text(
                         '${item.product.name} x ${item.quantity}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.deepBlue,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -500,7 +497,7 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                     Expanded(
                       child: Text(
                         product.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textGray,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -509,7 +506,7 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                     ),
                     Text(
                       comparison.missingLabel(product),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textGray,
                         fontWeight: FontWeight.w900,
                         fontSize: 12,
@@ -530,14 +527,14 @@ class _NoStoreOptions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: AppCard(
-        color: Color(0xFFFFF8E6),
-        borderColor: Color(0xFFFFE7B3),
+        color: AppColors.warningSurface,
+        borderColor: AppColors.warningBorder,
         child: Row(
           children: [
             Icon(Icons.info_outline, color: AppColors.deepBlue),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 'No encontramos ningun supermercado con precios disponibles para este changuito.',

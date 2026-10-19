@@ -19,11 +19,122 @@ import 'breakdown_screen.dart';
 import 'store_comparison_screen.dart';
 import 'cart_share_screen.dart';
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
 
   @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  final _scrollController = ScrollController();
+  final _lineKeys = <String, GlobalKey>{};
+  String? _anchoredLine;
+  double? _anchoredTop;
+  bool _adjustmentQueued = false;
+  int _quantityGeneration = 0;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  String _lineId(CartItem item) =>
+      '${item.productId}|${item.selectedStoreId ?? ''}';
+
+  GlobalKey _lineKey(CartItem item) =>
+      _lineKeys.putIfAbsent(_lineId(item), GlobalKey.new);
+
+  void _restoreLinePosition() {
+    final id = _anchoredLine;
+    final top = _anchoredTop;
+    if (!mounted ||
+        id == null ||
+        top == null ||
+        !_scrollController.hasClients) {
+      return;
+    }
+    final box = _lineKeys[id]?.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final delta = box.localToGlobal(Offset.zero).dy - top;
+    if (delta.abs() < 0.5) return;
+    final position = _scrollController.position;
+    final target = (_scrollController.offset + delta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if ((target - _scrollController.offset).abs() > 0.5) {
+      _scrollController.jumpTo(target);
+    }
+  }
+
+  void _queueLineAdjustment() {
+    if (_anchoredLine == null || _adjustmentQueued) return;
+    _adjustmentQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _adjustmentQueued = false;
+      _restoreLinePosition();
+    });
+  }
+
+  void _updateQuantity(AppState state, CartItem item, int quantity) {
+    final generation = ++_quantityGeneration;
+    final currentQuantity = state.cartItems
+        .where(
+          (current) =>
+              current.productId == item.productId &&
+              current.selectedStoreId == item.selectedStoreId,
+        )
+        .map((current) => current.quantity)
+        .firstOrNull;
+    if (currentQuantity == null) return;
+    final nextQuantity = currentQuantity + (quantity - item.quantity);
+    final id = _lineId(item);
+    final box = _lineKeys[id]?.currentContext?.findRenderObject();
+    if (box is RenderBox && box.hasSize) {
+      _anchoredLine = id;
+      _anchoredTop = box.localToGlobal(Offset.zero).dy;
+    } else {
+      _anchoredLine = null;
+      _anchoredTop = null;
+    }
+    unawaited(
+      state
+          .updateCartQuantity(
+            item.productId,
+            nextQuantity,
+            selectedStoreId: item.selectedStoreId,
+          )
+          .whenComplete(() {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (generation != _quantityGeneration) return;
+              _restoreLinePosition();
+              _anchoredLine = null;
+              _anchoredTop = null;
+            });
+          }),
+    );
+  }
+
+  Widget _buildCartLine(
+    AppState state,
+    CartItem item, {
+    PricedCartItem? pricedLine,
+    Product? missingProduct,
+  }) => KeyedSubtree(
+    key: _lineKey(item),
+    child: _CartLine(
+      cartItem: item,
+      pricedLine: pricedLine,
+      missingProduct: missingProduct,
+      onQuantityChanged: (quantity) => _updateQuantity(state, item, quantity),
+    ),
+  );
+
+  @override
   Widget build(BuildContext context) {
+    _queueLineAdjustment();
     final state = AppScope.of(context);
     final selectedPlan = state.selectedStoresPlan;
     final bestSingleStore = state.bestCompleteComparison;
@@ -46,7 +157,7 @@ class CartScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Mi changuito',
                       style: TextStyle(
                         color: AppColors.deepBlue,
@@ -76,43 +187,87 @@ class CartScreen extends StatelessWidget {
                           builder: (context) => const CartShareScreen(),
                         ),
                       ),
-                icon: const Icon(
-                  Icons.ios_share_outlined,
-                  color: AppColors.deepBlue,
-                ),
+                icon: Icon(Icons.ios_share_outlined, color: AppColors.deepBlue),
               ),
               IconButton(
                 tooltip: 'Actualizar precios',
                 onPressed: state.cartItems.isEmpty || state.isComparing
                     ? null
                     : () => unawaited(state.refreshComparisons()),
-                icon: const Icon(Icons.refresh, color: AppColors.deepBlue),
+                icon: Icon(Icons.refresh, color: AppColors.deepBlue),
               ),
               IconButton(
                 tooltip: 'Vaciar',
                 onPressed: state.cartItems.isEmpty
                     ? null
                     : () => _confirmClearCart(context, state),
-                icon: const Icon(
-                  Icons.delete_outline,
-                  color: AppColors.deepBlue,
-                ),
+                icon: Icon(Icons.delete_outline, color: AppColors.deepBlue),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          if (state.isComparing) ...[
-            const LinearProgressIndicator(
-              semanticsLabel: 'Comparando precios reales',
-            ),
-            const SizedBox(height: 8),
-          ],
+          SizedBox(
+            height: 12,
+            child: state.isComparing
+                ? const LinearProgressIndicator(
+                    semanticsLabel: 'Comparando precios reales',
+                  )
+                : null,
+          ),
           if (state.cartItems.isEmpty)
             const Expanded(child: _EmptyCart())
           else ...[
             Expanded(
               child: ListView(
+                controller: _scrollController,
                 children: [
+                  Text(
+                    'Productos elegidos',
+                    style: TextStyle(
+                      color: AppColors.deepBlue,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (selectedPlan != null) ...[
+                    for (final item in selectedPlan.items) ...[
+                      _buildCartLine(
+                        state,
+                        state.cartItems.firstWhere(
+                          (cartItem) =>
+                              cartItem.productId ==
+                                  (item.cartProductId ?? item.product.id) &&
+                              cartItem.selectedStoreId == item.supermarket.id,
+                          orElse: () => CartItem(
+                            productId: item.cartProductId ?? item.product.id,
+                            quantity: item.quantity,
+                            selectedStoreId: item.supermarket.id,
+                          ),
+                        ),
+                        pricedLine: item,
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    for (final product in selectedPlan.missingProducts) ...[
+                      _buildCartLine(
+                        state,
+                        state.cartItems.firstWhere(
+                          (item) => item.productId == product.id,
+                          orElse: () =>
+                              CartItem(productId: product.id, quantity: 1),
+                        ),
+                        missingProduct: product,
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ] else ...[
+                    for (final item in state.cartItems) ...[
+                      _buildCartLine(state, item),
+                      const SizedBox(height: 10),
+                    ],
+                  ],
+                  const SizedBox(height: 8),
                   if (selectedPlan != null) ...[
                     _SelectedPlanCard(plan: selectedPlan),
                     const SizedBox(height: 12),
@@ -151,44 +306,6 @@ class CartScreen extends StatelessWidget {
                   if (state.cartComparisons.isNotEmpty) ...[
                     _ComparisonCoverageCard(comparisons: state.cartComparisons),
                     const SizedBox(height: 18),
-                  ],
-                  const Text(
-                    'Productos elegidos',
-                    style: const TextStyle(
-                      color: AppColors.deepBlue,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  if (selectedPlan != null) ...[
-                    for (final item in selectedPlan.items) ...[
-                      _CartLine(
-                        cartItem: CartItem(
-                          productId: item.cartProductId ?? item.product.id,
-                          quantity: item.quantity,
-                          selectedStoreId: item.supermarket.id,
-                        ),
-                        pricedLine: item,
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                    for (final product in selectedPlan.missingProducts) ...[
-                      _CartLine(
-                        cartItem: state.cartItems.firstWhere(
-                          (item) => item.productId == product.id,
-                          orElse: () =>
-                              CartItem(productId: product.id, quantity: 1),
-                        ),
-                        missingProduct: product,
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                  ] else ...[
-                    for (final item in state.cartItems) ...[
-                      _CartLine(cartItem: item),
-                      const SizedBox(height: 10),
-                    ],
                   ],
                 ],
               ),
@@ -266,7 +383,7 @@ class _SelectedPlanCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Tu seleccion',
                   style: TextStyle(
                     color: AppColors.deepBlue,
@@ -278,7 +395,7 @@ class _SelectedPlanCard extends StatelessWidget {
                   plan.storeCount == 1
                       ? 'Elegiste productos de 1 supermercado'
                       : 'Elegiste productos de ${plan.storeCount} supermercados',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textGray,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -292,14 +409,14 @@ class _SelectedPlanCard extends StatelessWidget {
             children: [
               Text(
                 formatMoney(plan.totalFinal, compactCents: false),
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.deepBlue,
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
                 ),
               ),
               if (!plan.hasAllProducts)
-                const Text(
+                Text(
                   'Subtotal',
                   style: TextStyle(color: AppColors.textGray, fontSize: 10),
                 ),
@@ -332,8 +449,8 @@ class _BestStoreCard extends StatelessWidget {
         ),
       ),
       child: AppCard(
-        color: const Color(0xFFEAF8F0),
-        borderColor: const Color(0xFFC7EFD8),
+        color: AppColors.successSurface,
+        borderColor: AppColors.successBorder,
         child: Row(
           children: [
             StoreLogo(supermarket: comparison.supermarket, size: 48),
@@ -355,7 +472,7 @@ class _BestStoreCard extends StatelessWidget {
                     hasAlternative && comparisonSaving > 0.01
                         ? 'En ${comparison.supermarket.name} gastas menos'
                         : 'Todos los productos verificados en ${comparison.supermarket.name}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.deepBlue,
                       fontWeight: FontWeight.w900,
                     ),
@@ -396,7 +513,7 @@ class _BestStoreCard extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: AppColors.deepBlue),
+                Icon(Icons.chevron_right, color: AppColors.deepBlue),
               ],
             ),
           ],
@@ -425,8 +542,8 @@ class _BestPerProductCard extends StatelessWidget {
         ),
       ),
       child: AppCard(
-        color: const Color(0xFFEAF8F0),
-        borderColor: const Color(0xFFC7EFD8),
+        color: AppColors.successSurface,
+        borderColor: AppColors.successBorder,
         child: Row(
           children: [
             const Icon(Icons.route_outlined, color: AppColors.green, size: 40),
@@ -452,7 +569,7 @@ class _BestPerProductCard extends StatelessWidget {
                         : plan.storeCount == 1
                         ? 'Todo conviene en el mismo super'
                         : 'Conviene repartir en ${plan.storeCount} supers',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.deepBlue,
                       fontWeight: FontWeight.w900,
                     ),
@@ -494,11 +611,11 @@ class _BestPerProductCard extends StatelessWidget {
                   ),
                 ),
                 if (!plan.hasAllProducts)
-                  const Text(
+                  Text(
                     'Subtotal',
                     style: TextStyle(color: AppColors.textGray, fontSize: 10),
                   ),
-                const Icon(Icons.chevron_right, color: AppColors.deepBlue),
+                Icon(Icons.chevron_right, color: AppColors.deepBlue),
               ],
             ),
           ],
@@ -526,10 +643,10 @@ class _ComparisonCoverageCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.storefront_outlined, color: AppColors.blue),
-                SizedBox(width: 8),
+                const Icon(Icons.storefront_outlined, color: AppColors.blue),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Comparacion por supermercado',
@@ -573,7 +690,7 @@ class _ComparisonCoverageRow extends StatelessWidget {
             children: [
               Text(
                 comparison.supermarket.name,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.deepBlue,
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
@@ -603,14 +720,14 @@ class _ComparisonCoverageRow extends StatelessWidget {
             children: [
               Text(
                 formatMoney(comparison.totalFinal, compactCents: false),
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.deepBlue,
                   fontWeight: FontWeight.w900,
                 ),
               ),
               Text(
                 comparison.hasAllProducts ? 'total' : 'subtotal',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textGray,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -628,11 +745,13 @@ class _CartLine extends StatelessWidget {
     required this.cartItem,
     this.pricedLine,
     this.missingProduct,
+    this.onQuantityChanged,
   });
 
   final CartItem cartItem;
   final PricedCartItem? pricedLine;
   final Product? missingProduct;
+  final ValueChanged<int>? onQuantityChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -669,7 +788,7 @@ class _CartLine extends StatelessWidget {
                       product.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.deepBlue,
                         fontWeight: FontWeight.w900,
                       ),
@@ -677,10 +796,7 @@ class _CartLine extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       product.presentation,
-                      style: const TextStyle(
-                        color: AppColors.deepBlue,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
                     ),
                     if (selectedStoreName != null) ...[
                       const SizedBox(height: 4),
@@ -688,7 +804,7 @@ class _CartLine extends StatelessWidget {
                         selectedStoreName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textGray,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -716,13 +832,15 @@ class _CartLine extends StatelessWidget {
             children: [
               QuantityStepper(
                 quantity: cartItem.quantity,
-                onChanged: (value) => unawaited(
-                  state.updateCartQuantity(
-                    cartItem.productId,
-                    value,
-                    selectedStoreId: cartItem.selectedStoreId,
-                  ),
-                ),
+                onChanged:
+                    onQuantityChanged ??
+                    (value) => unawaited(
+                      state.updateCartQuantity(
+                        cartItem.productId,
+                        value,
+                        selectedStoreId: cartItem.selectedStoreId,
+                      ),
+                    ),
               ),
               const SizedBox(width: 8),
               if (line != null)
@@ -741,7 +859,7 @@ class _CartLine extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.end,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textGray,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -761,7 +879,7 @@ class _EmptyCart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Text(
         'Agrega productos desde Buscar para comparar tu compra completa.',
         textAlign: TextAlign.center,
@@ -783,11 +901,11 @@ class _NoComparisonHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      color: const Color(0xFFFFF8E6),
-      borderColor: const Color(0xFFFFE7B3),
+      color: AppColors.warningSurface,
+      borderColor: AppColors.warningBorder,
       child: Row(
         children: [
-          const Icon(Icons.info_outline, color: AppColors.deepBlue),
+          Icon(Icons.info_outline, color: AppColors.deepBlue),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -796,7 +914,7 @@ class _NoComparisonHint extends StatelessWidget {
                   : hasMixedPrices
                   ? 'Ningun supermercado tiene el changuito completo verificado. Mira la combinacion por producto.'
                   : 'Todavia no encontramos precios disponibles para estos productos en los supermercados seleccionados.',
-              style: const TextStyle(color: AppColors.deepBlue, fontSize: 12),
+              style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
             ),
           ),
         ],

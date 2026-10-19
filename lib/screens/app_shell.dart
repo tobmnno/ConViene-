@@ -4,13 +4,25 @@ import 'package:flutter/material.dart';
 
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
+import 'barcode_scanner_screen.dart';
 import 'cart_screen.dart';
 import 'discounts_screen.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  const AppShell({
+    super.key,
+    required this.darkMode,
+    required this.onToggleDarkMode,
+    this.username = 'usuario',
+    this.onSignOut,
+  });
+
+  final bool darkMode;
+  final VoidCallback onToggleDarkMode;
+  final String username;
+  final Future<void> Function()? onSignOut;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -51,6 +63,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     });
   }
 
+  Future<void> _openScanner() async {
+    final code = await scanBarcode(context);
+    if (!mounted || code == null) return;
+    setState(() => _index = 1);
+    unawaited(AppScope.of(context).searchProducts(code));
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
@@ -59,6 +78,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       HomeScreen(
         onNavigateToSearch: () => setState(() => _index = 1),
         onNavigateToCart: () => setState(() => _index = 3),
+        darkMode: widget.darkMode,
+        onToggleDarkMode: widget.onToggleDarkMode,
+        username: widget.username,
+        onSignOut: widget.onSignOut,
       ),
       SearchScreen(onBack: () => setState(() => _index = 0)),
       const DiscountsScreen(),
@@ -89,107 +112,173 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                 ),
               ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: state.isBootstrapping
+          ? null
+          : SizedBox(
+              width: 68,
+              height: 68,
+              child: FloatingActionButton(
+                heroTag: 'scan-barcode',
+                tooltip: 'Escanear codigo de barras',
+                onPressed: _openScanner,
+                backgroundColor: AppColors.blue,
+                foregroundColor: Colors.white,
+                elevation: 2,
+                shape: const CircleBorder(),
+                child: const Icon(Icons.qr_code_scanner, size: 31),
+              ),
+            ),
       bottomNavigationBar: state.isBootstrapping
           ? null
-          : BottomNavigationBar(
-              currentIndex: _index,
-              onTap: (index) {
-                if (index == 2) {
-                  unawaited(state.refreshPromotionsForTodayIfNeeded());
-                }
-                setState(() => _index = index);
-              },
-              items: [
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.home_outlined),
-                  activeIcon: Icon(Icons.home),
-                  label: 'Inicio',
-                ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.search),
-                  activeIcon: Icon(Icons.manage_search),
-                  label: 'Buscar',
-                ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.local_offer_outlined),
-                  activeIcon: Icon(Icons.local_offer),
-                  label: 'Descuentos',
-                ),
-                BottomNavigationBarItem(
-                  icon: _CartNavIcon(
-                    active: false,
-                    quantity: state.cartQuantity,
+          : BottomAppBar(
+              color: AppColors.surface,
+              elevation: 3,
+              shape: const CircularNotchedRectangle(),
+              notchMargin: 7,
+              padding: EdgeInsets.zero,
+              child: SafeArea(
+                top: false,
+                child: SizedBox(
+                  height: 68,
+                  child: Row(
+                    children: [
+                      _NavItem(
+                        label: 'Inicio',
+                        icon: Icons.home_outlined,
+                        activeIcon: Icons.home,
+                        selected: _index == 0,
+                        onTap: () => setState(() => _index = 0),
+                      ),
+                      _NavItem(
+                        label: 'Buscar',
+                        icon: Icons.search,
+                        activeIcon: Icons.manage_search,
+                        selected: _index == 1,
+                        onTap: () => setState(() => _index = 1),
+                      ),
+                      const SizedBox(width: 76),
+                      _NavItem(
+                        label: 'Descuentos',
+                        icon: Icons.local_offer_outlined,
+                        activeIcon: Icons.local_offer,
+                        selected: _index == 2,
+                        onTap: () {
+                          unawaited(state.refreshPromotionsForTodayIfNeeded());
+                          setState(() => _index = 2);
+                        },
+                      ),
+                      _NavItem(
+                        label: 'Changuito',
+                        icon: Icons.shopping_cart_outlined,
+                        activeIcon: Icons.shopping_cart,
+                        selected: _index == 3,
+                        badge: state.cartQuantity,
+                        onTap: () => setState(() => _index = 3),
+                      ),
+                    ],
                   ),
-                  activeIcon: _CartNavIcon(
-                    active: true,
-                    quantity: state.cartQuantity,
-                  ),
-                  label: 'Changuito',
                 ),
-              ],
+              ),
             ),
     );
   }
 }
 
-class _CartNavIcon extends StatelessWidget {
-  const _CartNavIcon({required this.active, required this.quantity});
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.label,
+    required this.icon,
+    required this.activeIcon,
+    required this.selected,
+    required this.onTap,
+    this.badge = 0,
+  });
 
-  final bool active;
-  final int quantity;
+  final String label;
+  final IconData icon;
+  final IconData activeIcon;
+  final bool selected;
+  final VoidCallback onTap;
+  final int badge;
 
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    return SizedBox(
-      width: 30,
-      height: 26,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            left: 2,
-            bottom: 0,
-            child: Icon(
-              active ? Icons.shopping_cart : Icons.shopping_cart_outlined,
-              color: active ? AppColors.blue : AppColors.deepBlue,
-            ),
-          ),
-          if (quantity > 0)
-            Positioned(
-              right: -2,
-              top: -4,
-              child: AnimatedSwitcher(
-                duration: reduceMotion
-                    ? Duration.zero
-                    : const Duration(milliseconds: 160),
-                transitionBuilder: (child, animation) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
-                child: Container(
-                  key: ValueKey(quantity),
-                  constraints: const BoxConstraints(
-                    minWidth: 17,
-                    minHeight: 17,
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: AppColors.green,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    quantity > 9 ? '9+' : '$quantity',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                    ),
+    final color = selected ? AppColors.accentBlue : AppColors.textGray;
+    return Expanded(
+      child: Tooltip(
+        message: label,
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox.expand(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 32,
+                  height: 28,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Center(
+                        child: Icon(
+                          selected ? activeIcon : icon,
+                          color: color,
+                          size: 24,
+                        ),
+                      ),
+                      if (badge > 0)
+                        Positioned(
+                          top: -3,
+                          right: -4,
+                          child: AnimatedSwitcher(
+                            duration: reduceMotion
+                                ? Duration.zero
+                                : const Duration(milliseconds: 160),
+                            child: Container(
+                              key: ValueKey(badge),
+                              constraints: const BoxConstraints(
+                                minWidth: 16,
+                                minHeight: 16,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 3,
+                              ),
+                              alignment: Alignment.center,
+                              decoration: const BoxDecoration(
+                                color: AppColors.green,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                badge > 9 ? '9+' : '$badge',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-              ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 10,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
@@ -241,7 +330,7 @@ class _BootstrappingViewState extends State<_BootstrappingView> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.cloud_off_outlined,
                       color: AppColors.deepBlue,
                       size: 38,
@@ -250,7 +339,7 @@ class _BootstrappingViewState extends State<_BootstrappingView> {
                     Text(
                       widget.error!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.deepBlue),
+                      style: TextStyle(color: AppColors.deepBlue),
                     ),
                     const SizedBox(height: 16),
                     FilledButton.icon(

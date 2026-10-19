@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  Flutter · FastAPI · Coto · Carrefour · La Gallega
+  Flutter · FastAPI · Firebase Auth · Supabase · Coto · Carrefour · La Gallega
 </p>
 
 Conviene unifica precios y promociones publicas de supermercados argentinos en
@@ -32,6 +32,8 @@ combinacion mas barata entre distintas tiendas.
 - Descuentos compatibles con las tarjetas, bancos y billeteras del usuario.
 - Errores de consulta diferenciados de productos no encontrados, sin precios simulados.
 - Resultados parciales visibles con aviso cuando falla alguna tienda.
+- Tema claro u oscuro desde Inicio, con preferencia guardada en el dispositivo.
+- Cuentas personales y aportes de precios compartidos, identificados por autor y fecha.
 
 ## Como funciona
 
@@ -40,9 +42,9 @@ Usuario
   |
   v
 Flutter app  --->  FastAPI  --->  Coto / Carrefour / La Gallega
-  ^                  |
-  |                  v
-  +---- precios, imagenes, promociones y productos normalizados
+     |
+     +--------> Firebase Auth (cuentas y correo)
+     +--------> Supabase Postgres (aportes de usuarios)
 ```
 
 El backend consulta las tiendas en paralelo, normaliza los resultados y aplica
@@ -73,7 +75,15 @@ Inicia el backend:
 .\backend\scraper_api\INICIAR_BACKEND.bat
 ```
 
-En otra terminal, inicia Flutter Web:
+En otra terminal, prepara la configuracion publica de Supabase. El proyecto
+`Conviene` ya esta creado; `supabase.local.json` contiene su URL y su clave
+publicable y esta excluido de Git. La configuracion publica de Firebase para
+Web y Android esta en `lib/firebase_config.dart`. Para un clon nuevo, copia
+`supabase.local.example.json` a `supabase.local.json` y completa ambos valores
+desde **Supabase > Connect**. Nunca uses una clave `service_role` o `sb_secret_`
+en Flutter.
+
+Inicia Flutter Web:
 
 ```powershell
 .\INICIAR_APP_WEB.bat
@@ -100,11 +110,13 @@ $env:CONVIENE_ENV = 'development'
 
 ## Configuracion
 
-Flutter usa `CONVIENE_API_BASE_URL` para localizar el backend:
+Flutter usa `CONVIENE_API_BASE_URL` para localizar el backend y requiere
+`SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY` para iniciar sesion:
 
 ```powershell
 flutter run -d chrome `
-  --dart-define=CONVIENE_API_BASE_URL=http://127.0.0.1:8000
+  --dart-define=CONVIENE_API_BASE_URL=http://127.0.0.1:8000 `
+  --dart-define-from-file=supabase.local.json
 ```
 
 | Entorno | URL del backend |
@@ -134,9 +146,14 @@ La API queda en el puerto `8000`. Para una publicacion real, sirve Flutter Web
 detras de HTTPS y define la URL publica de la API durante el build:
 
 ```powershell
-flutter build web --release `
-  --dart-define=CONVIENE_API_BASE_URL=https://api.tu-dominio.com
+flutter build web --release -O1 --no-web-resources-cdn `
+  --dart-define=CONVIENE_API_BASE_URL=https://api.tu-dominio.com `
+  --dart-define-from-file=supabase.local.json
 ```
+
+El nivel `-O1` evita un fallo de arranque observado con la optimizacion web
+predeterminada en la version de FlutterFire fijada por este proyecto. Verifica
+el build servido por HTTP antes de publicarlo; no basta con que compile.
 
 Docker Compose publica la API solo en `127.0.0.1:8000`. Para acceso publico,
 usalo detras de un proxy HTTPS y configura `.env` a partir de `.env.example`:
@@ -184,6 +201,35 @@ los beneficios compatibles con los medios de pago activos.
 Los registros cuyos legales estan vencidos se omiten, aunque la fuente todavia
 los marque como activos. Conviene prefiere no mostrar una promocion antes que
 inventar una fecha o un porcentaje.
+
+## Cuentas y aportes
+
+El primer acceso pide nombre de usuario publico, correo y contrasena. Firebase
+Authentication gestiona registro, inicio de sesion, verificacion del correo y
+recuperacion de contrasena; Supabase solo guarda perfiles publicos y aportes.
+La app no guarda contrasenas en la base de datos ni en el repositorio. El
+correo debe estar verificado antes de entrar o publicar precios. Firebase
+envia los correos con sus plantillas predeterminadas, sin requerir un dominio
+propio. Consulta las [cuotas de envio](https://firebase.google.com/docs/auth/limits)
+antes de ampliar el servicio.
+
+Al final de los resultados, **Ayuda a agregar productos** permite publicar
+un precio que falta en Coto, Carrefour o La Gallega. El formulario incluye
+producto, marca, presentacion, codigo de barras opcional, precio, disponibilidad
+y enlaces de imagen/fuente. El aporte aparece en futuras busquedas de otros
+usuarios, con su autor y fecha; solo su autor puede editarlo. Estos precios
+son aportes comunitarios, no cotizaciones verificadas por el supermercado.
+
+Las migraciones en `supabase/migrations/` crean los perfiles, los precios y las
+politicas de seguridad a nivel de fila (RLS). Para otra instancia, aplica las
+migraciones en orden y conecta su proyecto Firebase en **Supabase >
+Authentication > Third-Party Auth**. Las politicas exigen el ID de proyecto,
+emisor y correo verificado; la clave publicable por si sola no permite leer
+los aportes. Actualiza esos identificadores en la migracion si usas otro
+proyecto. Configura los dominios autorizados de Firebase Auth para tu dominio
+publico y sirve la app y la API por HTTPS. Las cuentas creadas antes con
+Supabase Auth no se migran automaticamente a Firebase Auth; sus datos de base
+permanecen intactos. No publiques contrasenas de base ni claves secretas.
 
 ## API
 
@@ -236,6 +282,7 @@ backend/scraper_api/tests/   Pruebas del backend
 - El matching reduce errores, pero no reemplaza un catalogo maestro basado en EAN.
 - Sin el backend, la interfaz conserva datos locales, pero las busquedas,
   cotizaciones y promociones reales muestran error en vez de precios de muestra.
+- Sin Supabase configurado no se puede iniciar sesion ni ver los aportes.
 
 Fuentes: [Coto](https://www.coto.com.ar/),
 [Carrefour Argentina](https://www.carrefour.com.ar/) y
