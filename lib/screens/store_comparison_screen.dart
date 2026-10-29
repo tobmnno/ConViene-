@@ -100,7 +100,7 @@ class _StoreComparisonScreenState extends State<StoreComparisonScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Los totales incluyen los descuentos segun tus medios de pago seleccionados.',
+                            'Los totales con promociones son estimados; verificá exclusiones y topes antes de pagar.',
                             style: TextStyle(
                               color: AppColors.deepBlue,
                               fontSize: 12,
@@ -133,6 +133,66 @@ class _BestPerProductOptionCardState extends State<_BestPerProductOptionCard> {
   @override
   Widget build(BuildContext context) {
     final plan = widget.plan;
+    final summary = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Por producto',
+          style: TextStyle(
+            color: AppColors.deepBlue,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.green.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            plan.hasAllProducts ? 'MEJOR MIX' : 'PARCIAL',
+            style: const TextStyle(
+              color: AppColors.green,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          !plan.hasAllProducts
+              ? 'Faltan ${plan.missingProducts.length} productos por verificar'
+              : plan.storeCount == 1
+              ? 'Todo queda en 1 supermercado'
+              : 'Reparte la compra en ${plan.storeCount} supermercados',
+          style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
+        ),
+      ],
+    );
+    final amount = Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          formatMoney(plan.totalFinal, compactCents: false),
+          style: const TextStyle(
+            color: AppColors.green,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        if (!plan.hasAllProducts)
+          Text(
+            'Subtotal',
+            style: TextStyle(color: AppColors.textGray, fontSize: 10),
+          ),
+      ],
+    );
+    final arrow = Icon(
+      _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+      color: AppColors.deepBlue,
+    );
     return AppCard(
       color: AppColors.successSurface,
       borderColor: AppColors.successBorder,
@@ -140,88 +200,40 @@ class _BestPerProductOptionCardState extends State<_BestPerProductOptionCard> {
         children: [
           InkWell(
             onTap: () => setState(() => _expanded = !_expanded),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.route_outlined,
-                  color: AppColors.green,
-                  size: 42,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Por producto',
-                        style: TextStyle(
-                          color: AppColors.deepBlue,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.green.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          plan.hasAllProducts ? 'MEJOR MIX' : 'PARCIAL',
-                          style: const TextStyle(
-                            color: AppColors.green,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        !plan.hasAllProducts
-                            ? 'Faltan ${plan.missingProducts.length} productos por verificar'
-                            : plan.storeCount == 1
-                            ? 'Todo queda en 1 supermercado'
-                            : 'Reparte la compra en ${plan.storeCount} supermercados',
-                        style: TextStyle(
-                          color: AppColors.deepBlue,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 350;
+                final heading = Row(
                   children: [
-                    Text(
-                      formatMoney(plan.totalFinal, compactCents: false),
-                      style: const TextStyle(
-                        color: AppColors.green,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    const Icon(
+                      Icons.route_outlined,
+                      color: AppColors.green,
+                      size: 42,
                     ),
-                    if (!plan.hasAllProducts)
-                      Text(
-                        'Subtotal',
-                        style: TextStyle(
-                          color: AppColors.textGray,
-                          fontSize: 10,
-                        ),
-                      ),
-                    Icon(
-                      _expanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      color: AppColors.deepBlue,
+                    const SizedBox(width: 12),
+                    Expanded(child: summary),
+                    if (compact) arrow,
+                  ],
+                );
+                if (compact) {
+                  return Column(
+                    children: [
+                      heading,
+                      const SizedBox(height: 8),
+                      Align(alignment: Alignment.centerRight, child: amount),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: heading),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [amount, arrow],
                     ),
                   ],
-                ),
-              ],
+                );
+              },
             ),
           ),
           if (_expanded) ...[
@@ -310,19 +322,47 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            comparison.supermarket.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: AppColors.deepBlue,
-                              fontWeight: FontWeight.w900,
-                            ),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                comparison.supermarket.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: AppColors.deepBlue,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              if (widget.best)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.green.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'MEJOR OPCION',
+                                    style: TextStyle(
+                                      color: AppColors.green,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                           const SizedBox(height: 3),
                           Text(
                             comparison.hasAllProducts
-                                ? 'Todos los productos comparados'
+                                ? 'Compra completa'
                                 : 'Comparados ${comparison.foundProductsCount} de ${comparison.totalProductsCount}',
                             style: TextStyle(
                               color: AppColors.textGray,
@@ -333,25 +373,6 @@ class _StoreOptionCardState extends State<_StoreOptionCard> {
                         ],
                       ),
                     ),
-                    if (widget.best)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.green.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'MEJOR OPCION',
-                          style: TextStyle(
-                            color: AppColors.green,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
                     const SizedBox(width: 4),
                     Icon(
                       expanded

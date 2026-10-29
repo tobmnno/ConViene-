@@ -13,6 +13,9 @@ aplicacion Flutter.
 - Puntuar resultados por relevancia.
 - Comparar productos equivalentes entre comercios.
 - Obtener promociones y validar su vigencia.
+- Extraer ofertas por cantidad ligadas a EAN y sucursal del catalogo de Coto;
+  usar el precio de lista para una unidad cuando el precio de la oferta exige
+  comprar varias.
 - Servir imagenes mediante un proxy con cache.
 - Mantener una cache corta de busquedas y descuentos.
 - Actualizar y auditar el feed de promociones de La Gallega.
@@ -211,6 +214,57 @@ Invoke-RestMethod `
 La respuesta contiene promociones normalizadas y un arreglo `warnings`. Las
 advertencias explican fuentes inaccesibles, contratos inesperados o registros
 oficiales con vigencias contradictorias.
+
+Cada registro informa `source_type`, `verification_status`,
+`calculation_status`, `source_url` y `scraped_at`. `source_reported` significa
+que la fuente respondio, no que todas las exclusiones fueron verificadas.
+`estimate` habilita un calculo orientativo; `not_calculable` impide descontar
+del changuito. Los archivos estaticos son `unverified` y nunca se convierten en
+datos actuales por su fecha de modificacion. Una promocion sin vigencia propia
+en el JSON solo cubre el mes de captura, no se repite indefinidamente.
+
+Fuentes comprobadas el 20/10/2026:
+
+| Supermercado | Fuente | Resultado y limite |
+| --- | --- | --- |
+| Coto | Endpoint estructurado del sitio oficial | Respondio con listas de promociones digitales y de sucursal; algunos registros omiten vigencia explicita y remiten a legales/exclusiones. |
+| Carrefour | GraphQL de Master Data usado por el sitio oficial | Respondio con documentos; es un endpoint interno, no una API publica estable. Se contrasta la vigencia de los legales y se omiten contradicciones. |
+| La Gallega | `Beneficios.asp` y feed estructurado de Blink | La pagina oficial fue accesible pero no publico porcentajes anonimos. Blink respondio; es un tercero, no una confirmacion en caja. |
+| Respaldo local | `promociones-otros-supermercados.json` | Mezcla registros con y sin fechas explicitas. Se conserva solo como referencia no calculable. |
+
+Se revisaron tambien [los legales de Coto](https://www.coto.com.ar/legales/index.html)
+y [una promocion de MODO en Coto](https://www.modo.com.ar/promos/coto-oct26).
+Las exclusiones por producto, bancos participantes, canal presencial y posibles
+limites de campana varian entre legales. No se incorpora un adaptador generico
+de MODO ni se presume acumulacion solo por detectar un porcentaje.
+
+Para comprobar de nuevo las estructuras reales (requiere red y puede fallar si
+el comercio restringe el acceso):
+
+```powershell
+$env:RUN_LIVE_PROMO_TESTS = '1'
+python -m pytest backend/scraper_api/tests/test_live_discount_sources.py -q
+```
+
+La API consulta Coto y Carrefour a demanda con cache de cinco minutos. Blink
+se actualiza al iniciar y cada seis horas; `GET /operations` registra fallas y
+conteos por fuente. Entre consultas del mismo dia registra cambios en el
+contenido normalizado del catalogo. Coto publica reglas por EAN y sucursal.
+Carrefour expone avisos por SKU, pero solo se aceptan si la simulacion oficial
+del carrito para 1, N y N+1 unidades confirma la mecanica, el canal y el precio
+individual. El resultado es estimado y caduca a los 30 minutos. El 22/10/2026,
+un aviso "2x1" de chocolates Nestle ya reducia el precio con una unidad: no
+debe descontarse de nuevo. Los `productClusters` historicos no se muestran
+como promociones vigentes.
+
+Las paginas oficiales de La Gallega `Articulos.asp`, `productosnl.asp`,
+`productosdet.asp` y `Beneficios.asp` consultadas no ofrecieron una regla
+2x1/3x2 por EAN, cantidad, canal y vigencia. No hay carga manual ni ofertas
+por cantidad deducidas del nombre o de precios tachados. Si aparece una fuente
+oficial verificable, se podra crear un adaptador automatico y sus pruebas;
+hasta entonces solo se muestran los precios individuales publicados. No se
+conoce el saldo ya consumido de reintegros bancarios ni se garantiza el total
+final de caja.
 
 ### `GET /image`
 

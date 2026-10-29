@@ -1,17 +1,221 @@
 import 'package:conviene/models/cart_item.dart';
 import 'package:conviene/models/discount.dart';
+import 'package:conviene/models/payment_method.dart';
 import 'package:conviene/models/price_quote.dart';
 import 'package:conviene/models/product.dart';
 import 'package:conviene/models/supermarket.dart';
 import 'package:conviene/models/shopping_context.dart';
 import 'package:conviene/repositories/conviene_repository.dart';
 import 'package:conviene/repositories/mock_repository.dart';
+import 'package:conviene/repositories/product_equivalence_repository.dart';
 import 'package:conviene/services/discount_engine.dart';
 import 'package:conviene/services/payment_method_service.dart';
 import 'package:conviene/services/price_comparison_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('quantity changes reuse a recent verified equivalent quote', () async {
+    final repository = _CountingEquivalenceRepository();
+    final service = PriceComparisonService(repository, const DiscountEngine());
+    final products = await repository.getProducts();
+    for (final quantity in [1, 2, 3]) {
+      final result = await service.compareCartOptions(
+        cartItems: [
+          CartItem(
+            productId: products.first.id,
+            quantity: quantity,
+            selectedStoreId: 'coto',
+          ),
+        ],
+        productCatalog: products,
+        fecha: DateTime.now(),
+        mediosPagoUsuario: const [],
+        promociones: const [],
+        storeIds: const {'coto'},
+      );
+      expect(result.selectedStoresPlan?.items.single.quantity, quantity);
+    }
+    expect(repository.calls, 1);
+  });
+
+  test(
+    'quote cache respects context, expiry, retry and source errors',
+    () async {
+      final repository = _CountingEquivalenceRepository();
+      var now = DateTime(2026, 10, 27, 12);
+      final service = PriceComparisonService(
+        repository,
+        const DiscountEngine(),
+        clock: () => now,
+      );
+      final products = await repository.getProducts();
+
+      Future<void> compare({
+        ShoppingContext context = const ShoppingContext(),
+        bool force = false,
+      }) async {
+        await service.compareCartOptions(
+          cartItems: [
+            CartItem(
+              productId: products.first.id,
+              quantity: 1,
+              selectedStoreId: 'coto',
+            ),
+          ],
+          productCatalog: products,
+          fecha: now,
+          mediosPagoUsuario: const [],
+          promociones: const [],
+          storeIds: const {'coto'},
+          context: context,
+          forceRefreshPrices: force,
+        );
+      }
+
+      await compare();
+      await compare();
+      expect(repository.calls, 1);
+      await compare(context: const ShoppingContext(cotoStore: '401'));
+      expect(repository.calls, 2);
+      await compare(context: const ShoppingContext(carrefourSalesChannel: '2'));
+      expect(repository.calls, 3);
+      await compare(force: true);
+      expect(repository.calls, 4);
+      now = now.add(const Duration(minutes: 2));
+      await compare();
+      expect(repository.calls, 5);
+      repository.fail = true;
+      await compare(context: const ShoppingContext(cotoStore: '402'));
+      await compare(context: const ShoppingContext(cotoStore: '402'));
+      expect(repository.calls, 7);
+    },
+  );
+
+  test(
+    'tope mensual restante se comparte entre productos del changuito',
+    () async {
+      final date = DateTime(2026, 8, 20);
+      final promotion = Promotion(
+        id: 'monthly-cap',
+        storeId: 'coto',
+        tipoMedioPago: PaymentMethodType.card,
+        entidad: 'Visa',
+        porcentajeDescuento: 20,
+        topeReintegro: 100,
+        diasSemana: const {DateTime.thursday},
+        fechaInicio: DateTime(2026),
+        fechaFin: DateTime(2026, 12, 31),
+        condiciones: '',
+        categorias: const ['todos'],
+        capFrequency: 'monthly',
+      );
+      const visa = PaymentMethod(
+        id: 'visa',
+        type: PaymentMethodType.card,
+        entity: 'Visa',
+        displayName: 'Visa',
+        active: true,
+      );
+      final service = PriceComparisonService(
+        MockRepository(),
+        const DiscountEngine(),
+        usedRefundCaps: {promotion.capUsageKey(date)!: 60},
+      );
+      final result = await service.compareCartOptions(
+        cartItems: const [
+          CartItem(productId: 'leche_ilolay', quantity: 1),
+          CartItem(productId: 'cafe_virginia', quantity: 1),
+        ],
+        fecha: date,
+        mediosPagoUsuario: const [visa],
+        promociones: [promotion],
+        storeIds: const {'coto'},
+      );
+      expect(
+        result.singleStoreComparisons.single.totalDiscount,
+        closeTo(40, 0.001),
+      );
+    },
+  );
+
+  test('un reintegro sin tope conserva su descuento en el total', () async {
+    final service = PriceComparisonService(
+      MockRepository(),
+      const DiscountEngine(),
+    );
+    final date = DateTime(2026, 8, 20);
+    final promotion = Promotion(
+      id: 'coto_sin_tope',
+      storeId: 'coto',
+      tipoMedioPago: PaymentMethodType.card,
+      entidad: 'Visa',
+      porcentajeDescuento: 10,
+      topeReintegro: 0,
+      diasSemana: const {DateTime.thursday},
+      fechaInicio: DateTime(2026, 1, 1),
+      fechaFin: DateTime(2026, 12, 31),
+      condiciones: 'Sin tope',
+      categorias: const ['todos'],
+    );
+    const visa = PaymentMethod(
+      id: 'visa',
+      type: PaymentMethodType.card,
+      entity: 'Visa',
+      displayName: 'Visa',
+      active: true,
+    );
+    final result = await service.compareCartOptions(
+      cartItems: const [CartItem(productId: 'leche_ilolay', quantity: 2)],
+      fecha: date,
+      mediosPagoUsuario: const [visa],
+      promociones: [promotion],
+      storeIds: const {'coto'},
+    );
+    final coto = result.singleStoreComparisons.single;
+    expect(coto.totalOriginal, 2378);
+    expect(coto.totalDiscount, closeTo(237.8, 0.001));
+  });
+
+  test('compra minima considera el changuito completo en una tienda', () async {
+    final service = PriceComparisonService(
+      MockRepository(),
+      const DiscountEngine(),
+    );
+    final promotion = Promotion(
+      id: 'coto_minimo',
+      storeId: 'coto',
+      tipoMedioPago: PaymentMethodType.card,
+      entidad: 'Visa',
+      porcentajeDescuento: 10,
+      topeReintegro: 0,
+      compraMinima: 4000,
+      diasSemana: const {DateTime.thursday},
+      fechaInicio: DateTime(2026, 1, 1),
+      fechaFin: DateTime(2026, 12, 31),
+      condiciones: '',
+      categorias: const ['todos'],
+    );
+    const visa = PaymentMethod(
+      id: 'visa',
+      type: PaymentMethodType.card,
+      entity: 'Visa',
+      displayName: 'Visa',
+      active: true,
+    );
+    final result = await service.compareCartOptions(
+      cartItems: const [
+        CartItem(productId: 'leche_ilolay', quantity: 1),
+        CartItem(productId: 'cafe_virginia', quantity: 1),
+      ],
+      fecha: DateTime(2026, 8, 20),
+      mediosPagoUsuario: const [visa],
+      promociones: [promotion],
+      storeIds: const {'coto'},
+    );
+    final coto = result.singleStoreComparisons.single;
+    expect(coto.totalOriginal, 4879);
+    expect(coto.totalDiscount, closeTo(487.9, 0.001));
+  });
   test('ordena supermercados por total final ascendente', () async {
     final repository = MockRepository();
     final service = PriceComparisonService(repository, const DiscountEngine());
@@ -184,6 +388,48 @@ void main() {
       );
     },
   );
+}
+
+class _CountingEquivalenceRepository extends MockRepository
+    implements ProductEquivalenceRepository {
+  int calls = 0;
+  bool fail = false;
+
+  @override
+  Future<EquivalentProductsResult> findEquivalentProducts({
+    required Product product,
+    required Set<String> storeIds,
+    required ShoppingContext context,
+  }) async {
+    calls++;
+    if (fail) {
+      return const EquivalentProductsResult(
+        results: [],
+        storeStatus: {'coto': 'error'},
+      );
+    }
+    final store = (await getSupermarkets()).firstWhere(
+      (item) => item.id == 'coto',
+    );
+    return EquivalentProductsResult(
+      results: [
+        SearchResult(
+          product: product,
+          supermarket: store,
+          price: ProductPrice(
+            storeId: 'coto',
+            productId: product.id,
+            priceOriginal: 1500,
+            priceUnitario: 1500,
+            stock: true,
+            url: 'https://www.coto.com.ar/productos/test',
+            fechaActualizacion: DateTime.now(),
+          ),
+        ),
+      ],
+      storeStatus: const {'coto': 'found'},
+    );
+  }
 }
 
 class _ComparableGalletitasRepository implements ConvieneRepository {

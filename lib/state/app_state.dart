@@ -18,6 +18,7 @@ import '../services/discount_service.dart';
 import '../services/payment_method_service.dart';
 import '../services/price_comparison_service.dart';
 import '../services/product_search_service.dart';
+import '../services/product_comparison_service.dart';
 import '../services/supermarket_service.dart';
 import '../services/user_data_store.dart';
 import '../utils/barcode.dart';
@@ -37,9 +38,11 @@ class AppState extends ChangeNotifier {
        _paymentMethodService = const PaymentMethodService(),
        _cartService = const CartService() {
     _discountService = DiscountService(_repository, _discountEngine);
+    productComparison = ProductComparisonService(_repository);
     _priceComparisonService = PriceComparisonService(
       _repository,
       _discountEngine,
+      usedRefundCaps: usedRefundCaps,
     );
     paymentMethods = _paymentMethodService.initialMethods();
   }
@@ -53,15 +56,19 @@ class AppState extends ChangeNotifier {
   final CartService _cartService;
   late final DiscountService _discountService;
   late final PriceComparisonService _priceComparisonService;
+  late final ProductComparisonService productComparison;
 
   List<Supermarket> supermarkets = [];
   Set<String> selectedStoreIds = {};
   List<Product> products = [];
   List<Promotion> promotions = [];
+  final Map<String, double> usedRefundCaps = {};
   List<PaymentMethod> paymentMethods = [];
   List<CartItem> cartItems = const [];
+  final Set<String> dismissedQuantitySuggestions = {};
   Set<String> favoriteProductIds = {};
   List<SearchResult> searchResults = [];
+  Set<String> searchPendingStoreIds = {};
   List<StoreComparison> cartComparisons = [];
   MultiStoreComparison? selectedStoresPlan;
   MultiStoreComparison? bestPerProductPlan;
@@ -148,6 +155,8 @@ class AppState extends ChangeNotifier {
       unitPrice: unitPrice,
       inStock: inStock,
     );
+    _priceComparisonService.invalidateQuotes();
+    productComparison.invalidateCache();
     await searchProducts(searchQuery);
   }
 
@@ -203,6 +212,9 @@ class AppState extends ChangeNotifier {
           store.id,
       };
       if (savedData != null) {
+        usedRefundCaps
+          ..clear()
+          ..addAll(savedData.usedRefundCaps);
         final cartProductIds = savedData.cartItems
             .map((item) => item.productId)
             .toSet();
@@ -266,14 +278,20 @@ class AppState extends ChangeNotifier {
 
   Future<void> searchProducts(String query) async {
     final generation = ++_searchGeneration;
+    final previousQuery = searchQuery;
     searchQuery = query.trim().isEmpty ? 'leche entera' : query.trim();
-    searchResults = [];
+    if (searchQuery != previousQuery) searchResults = [];
+    searchResults = searchResults
+        .where((row) => selectedStoreIds.contains(row.supermarket.id))
+        .toList();
     lastError = null;
     searchWarning = null;
     searchNotice = null;
+    searchPendingStoreIds = Set<String>.of(selectedStoreIds);
     if (RegExp(r'^\d{8,14}$').hasMatch(searchQuery) &&
         normalizedBarcode(searchQuery) == null) {
       isSearching = false;
+      searchPendingStoreIds = {};
       lastError = 'El codigo de barras no es valido. Revisa los digitos.';
       notifyListeners();
       return;
@@ -286,6 +304,22 @@ class AppState extends ChangeNotifier {
         storeIds: selectedStoreIds,
         sort: searchSort,
         context: shoppingContext,
+        onProgress: (partial, pending) {
+          if (generation != _searchGeneration) return;
+          searchResults = _productSearchService.sortResults(
+            partial,
+            searchSort,
+            query: searchQuery,
+            effectivePrice: (result) => discountForResult(result).precioFinal,
+          );
+          final known = {for (final product in products) product.id: product};
+          for (final result in partial) {
+            known[result.product.id] = result.product;
+          }
+          products = known.values.toList();
+          searchPendingStoreIds = pending;
+          notifyListeners();
+        },
       );
       final warning = _repository is SearchStatusRepository
           ? (_repository as SearchStatusRepository).lastSearchWarning
@@ -297,7 +331,12 @@ class AppState extends ChangeNotifier {
       if (generation != _searchGeneration) {
         return;
       }
-      searchResults = results;
+      searchResults = _productSearchService.sortResults(
+        results,
+        searchSort,
+        query: searchQuery,
+        effectivePrice: (result) => discountForResult(result).precioFinal,
+      );
       searchWarning = warning;
       searchNotice = notice;
       final cartProductIds = cartItems.map((item) => item.productId).toSet();
@@ -308,15 +347,25 @@ class AppState extends ChangeNotifier {
         for (final product in products)
           if (retainedIds.contains(product.id)) product.id: product,
       }.values.toList();
-    } catch (_) {
+    } catch (error, stackTrace) {
       if (generation == _searchGeneration) {
-        searchResults = [];
+        assert(() {
+          debugPrint('Product search failed: $error\n$stackTrace');
+          return true;
+        }());
+        if (searchResults.isNotEmpty) {
+          searchWarning =
+              'No se pudo completar la busqueda. Los precios visibles son parciales.';
+        } else {
+          searchResults = [];
+        }
         lastError =
             'No pudimos actualizar los resultados. Revisa tu conexion e intenta otra vez.';
       }
     } finally {
       if (generation == _searchGeneration) {
         isSearching = false;
+        searchPendingStoreIds = {};
         notifyListeners();
       }
     }
@@ -328,6 +377,7 @@ class AppState extends ChangeNotifier {
       searchResults,
       sort,
       query: searchQuery,
+      effectivePrice: (result) => discountForResult(result).precioFinal,
     );
     notifyListeners();
   }
@@ -358,13 +408,14 @@ class AppState extends ChangeNotifier {
 
   Future<void> setSelectedDate(DateTime date) async {
     final generation = ++_promotionsGeneration;
+    final previousDate = selectedDate;
     selectedDate = DateTime(date.year, date.month, date.day);
     final today = DateTime.now();
     _followToday =
         selectedDate.year == today.year &&
         selectedDate.month == today.month &&
         selectedDate.day == today.day;
-    promotions = [];
+    if (selectedDate != previousDate) promotions = [];
     promotionsError = null;
     promotionsWarning = null;
     isLoadingPromotions = true;
@@ -408,6 +459,35 @@ class AppState extends ChangeNotifier {
       return;
     }
     await setSelectedDate(now);
+  }
+
+  Future<void> addOfferToCart(SearchResult result, {int quantity = 1}) async {
+    if (quantity < 1 || quantity > 99 || !result.price.stock) return;
+    products = [
+      ...products.where((p) => p.id != result.product.id),
+      result.product,
+    ];
+    var previous = 0;
+    for (final item in cartItems) {
+      if (item.productId == result.product.id &&
+          item.selectedStoreId == result.supermarket.id) {
+        previous = item.quantity;
+      }
+    }
+    cartItems = _cartService.addProduct(
+      cartItems,
+      result.product.id,
+      selectedStoreId: result.supermarket.id,
+    );
+    cartItems = _cartService.updateQuantity(
+      cartItems,
+      result.product.id,
+      previous + quantity,
+      result.supermarket.id,
+    );
+    _persistUserData();
+    notifyListeners();
+    await refreshComparisons();
   }
 
   Future<void> addProductToCart(
@@ -455,10 +535,12 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> clearCart() async {
+    ++_comparisonGeneration;
     cartItems = [];
     cartComparisons = [];
     selectedStoresPlan = null;
     bestPerProductPlan = null;
+    isComparing = false;
     _persistUserData();
     notifyListeners();
   }
@@ -508,6 +590,7 @@ class AppState extends ChangeNotifier {
       customPaymentMethods: List.unmodifiable(
         paymentMethods.where((method) => method.id.startsWith('custom_')),
       ),
+      usedRefundCaps: Map.unmodifiable(usedRefundCaps),
     );
     _persistenceQueue = _persistenceQueue.then(
       (_) async {
@@ -533,14 +616,70 @@ class AppState extends ChangeNotifier {
     await refreshComparisons();
   }
 
-  DiscountQuote discountForResult(SearchResult result) {
+  double? usedRefundCapFor(Promotion promotion) {
+    final key = promotion.capUsageKey(selectedDate);
+    return key == null ? null : usedRefundCaps[key];
+  }
+
+  Future<void> setUsedRefundCap(Promotion promotion, double amount) async {
+    final key = promotion.capUsageKey(selectedDate);
+    if (key == null ||
+        !amount.isFinite ||
+        amount < 0 ||
+        amount > promotion.topeReintegro) {
+      throw ArgumentError('Importe de tope utilizado invalido');
+    }
+    usedRefundCaps[key] = amount;
+    _persistUserData();
+    notifyListeners();
+    await refreshComparisons();
+  }
+
+  DiscountQuote previewCartLine(PricedCartItem target, int quantity) {
+    final targetId = target.cartProductId ?? target.product.id;
+    final lines = selectedStoresPlan?.items ?? [target];
+    final preview = _priceComparisonService.repriceKnownLines(
+      [
+        for (final line in lines)
+          PricedCartItem(
+            product: line.product,
+            supermarket: line.supermarket,
+            quantity:
+                (line.cartProductId ?? line.product.id) == targetId &&
+                    line.supermarket.id == target.supermarket.id
+                ? quantity
+                : line.quantity,
+            price: line.price,
+            discount: line.discount,
+            cartProductId: line.cartProductId,
+          ),
+      ],
+      date: selectedDate,
+      paymentMethods: activePaymentMethods,
+      promotions: promotions,
+    );
+    return preview.items
+        .firstWhere(
+          (line) =>
+              (line.cartProductId ?? line.product.id) == targetId &&
+              line.supermarket.id == target.supermarket.id,
+        )
+        .discount;
+  }
+
+  DiscountQuote discountForResult(SearchResult result, {int quantity = 1}) {
     return _discountEngine.calcularPrecioFinal(
       product: result.product,
       supermercado: result.supermarket.id,
-      precioOriginal: result.price.priceOriginal,
+      precioOriginal: result.price.priceOriginal * quantity,
+      quantity: quantity,
+      purchaseTotal: result.price.priceOriginal * quantity,
+      branchId: result.price.branchId,
+      hasStoreOffer: result.price.hasStoreOffer,
       fecha: selectedDate,
       mediosPagoUsuario: activePaymentMethods,
-      promociones: promotions,
+      promociones: [...promotions, ...result.price.quantityOffers],
+      usedRefundCaps: usedRefundCaps,
     );
   }
 
@@ -553,7 +692,7 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
-  Future<void> refreshComparisons() async {
+  Future<void> refreshComparisons({bool forceRefreshPrices = false}) async {
     final generation = ++_comparisonGeneration;
     isComparing = true;
     notifyListeners();
@@ -566,6 +705,7 @@ class AppState extends ChangeNotifier {
         promociones: promotions,
         storeIds: selectedStoreIds,
         context: shoppingContext,
+        forceRefreshPrices: forceRefreshPrices,
       );
       if (generation != _comparisonGeneration) {
         return;

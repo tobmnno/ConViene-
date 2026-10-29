@@ -14,9 +14,10 @@ except Exception:
 
 import requests
 
-from models import Product
+from models import Product, QuantityOffer
 from services.catalog import valid_gtin
 from .base import BaseScraper, parse_price
+from .carrefour_offers import has_quantity_teaser, verified_quantity_offers
 from .lagallega_catalog import read_catalog_page
 
 
@@ -118,6 +119,8 @@ def _carrefour_api_search(query: str, limit: int, context: dict | None = None):
         return None
 
     rows = []
+    candidates = []
+    channel = str(params["sc"])
     for raw_product in response.json()[:limit]:
         item, offer = _offer_for_vtex_product(raw_product, barcode)
         if not offer:
@@ -132,25 +135,41 @@ def _carrefour_api_search(query: str, limit: int, context: dict | None = None):
             list_price = float(list_price) if list_price is not None else None
         except (TypeError, ValueError):
             list_price = None
-        rows.append(
-            Product(
+        captured_at = datetime.now(timezone.utc).isoformat()
+        product = Product(
                 store="carrefour",
                 name=str(raw_product.get("productName") or raw_product.get("productTitle") or "").strip(),
                 ean=str((item or {}).get("ean") or "") or None,
                 brand=raw_product.get("brand"),
                 price=price,
                 regular_price=list_price if list_price and list_price > price else None,
-                promo_text="; ".join((raw_product.get("productClusters") or {}).values())[:500] or None,
+                # productClusters also contains historical campaigns.
+                promo_text=None,
                 unit=(item or {}).get("measurementUnit") if item else None,
                 url=raw_product.get("link"),
                 image=_image_for_vtex_item(item),
                 available=offer.get("IsAvailable", True) is not False,
-                branch_id=f"sales-channel-{(context or {}).get('carrefour_sales_channel', '1')}",
+                branch_id=f"sales-channel-{channel}",
                 pricing_scope="online_sales_channel",
                 delivery_available=offer.get("IsAvailable", True) is not False if (context or {}).get("fulfillment") == "delivery" else None,
-                scraped_at=datetime.now(timezone.utc).isoformat(),
+                scraped_at=captured_at,
             )
-        )
+        rows.append(product)
+        seller = next((seller for seller in (item or {}).get("sellers") or []
+                       if seller.get("commertialOffer") is offer), None)
+        if seller and has_quantity_teaser(offer) and len(candidates) < 8:
+            candidates.append((product, item, seller, captured_at))
+
+    if candidates:
+        with ThreadPoolExecutor(max_workers=min(4, len(candidates))) as executor:
+            offers = list(executor.map(
+                lambda candidate: verified_quantity_offers(
+                    candidate[1], candidate[2], channel, candidate[0].url or "",
+                    candidate[3], candidate[0].price,
+                ), candidates,
+            ))
+        for (product, _, _, _), verified in zip(candidates, offers):
+            product.quantity_offers = verified
     return [row for row in rows if row.name]
 
 
@@ -170,17 +189,55 @@ def _coto_query_candidates(query: str):
     return deduped
 
 
-def _coto_price(data: dict, store_id: str):
+def _coto_quantity_offers(data: dict, store_id: str, product_url: str, captured_at: str):
+    if not valid_gtin(str(data.get("product_main_ean") or "")):
+        return []
+    offers = []
+    for discount in data.get("discounts") or []:
+        taking = re.fullmatch(r"Llevando\s+(\d+)", str(discount.get("takingText") or "").strip(), re.I)
+        label = str(discount.get("discountText") or "").strip()
+        if not taking:
+            continue
+        required = int(taking.group(1))
+        bundle = re.fullmatch(r"(\d+)\s*x\s*(\d+)", label, re.I)
+        second = re.fullmatch(r"(\d{1,3})\s*%\s*(?:2da|segunda)", label, re.I)
+        if bundle and required == int(bundle.group(1)) and 0 <= int(bundle.group(2)) < required:
+            mechanic, charged, percentage = "buy_n_pay_m", int(bundle.group(2)), 0
+        elif second and required == 2 and 0 < int(second.group(1)) <= 100:
+            mechanic, charged, percentage = "second_unit_discount", 1, float(second.group(1))
+        else:
+            continue
+        offers.append(QuantityOffer(
+            id=f"coto-{store_id}-{data['product_main_ean']}-{discount.get('id')}",
+            mechanic=mechanic,
+            required_quantity=required,
+            charged_quantity=charged,
+            second_unit_discount=percentage,
+            source_url=product_url,
+            captured_at=captured_at,
+            branch_id=store_id,
+        ))
+    return offers
+
+
+def _coto_price(data: dict, store_id: str, has_quantity_offer: bool = False):
+    prices = data.get("price") or []
+    preferred = next((item for item in prices if str(item.get("store")) == store_id), None)
+    if prices and preferred is None:
+        return None, None
+    if has_quantity_offer:
+        # Coto's discountPrice is an effective multi-unit price, not the single-unit shelf price.
+        base = (preferred or {}).get("listPrice", data.get("product_list_price"))
+        try:
+            return float(base), None
+        except (TypeError, ValueError):
+            return None, None
     discounts = data.get("discounts") or []
     for discount in discounts:
         price = parse_price(discount.get("discountPrice"))
         if price is not None:
             return price, parse_price(discount.get("regularPriceText"))
 
-    prices = data.get("price") or []
-    preferred = next((item for item in prices if str(item.get("store")) == store_id), None)
-    if prices and preferred is None:
-        return None, None
     price_row = preferred or {}
     price = price_row.get("listPrice", data.get("product_list_price"))
     try:
@@ -214,10 +271,13 @@ def _coto_api_search(query: str, limit: int, context: dict | None = None):
         rows = []
         for result in (response.json().get("response") or {}).get("results") or []:
             data = result.get("data") or {}
-            price, regular_price = _coto_price(data, store_id)
+            product_url = data.get("url")
+            source_url = f"https://www.coto.com.ar/productos{product_url}" if product_url else "https://www.coto.com.ar/"
+            captured_at = datetime.now(timezone.utc).isoformat()
+            quantity_offers = _coto_quantity_offers(data, store_id, source_url, captured_at)
+            price, regular_price = _coto_price(data, store_id, bool(quantity_offers))
             if price is None:
                 continue
-            product_url = data.get("url")
             rows.append(
                 Product(
                     store="coto",
@@ -226,6 +286,7 @@ def _coto_api_search(query: str, limit: int, context: dict | None = None):
                     brand=data.get("product_brand"),
                     price=price,
                     regular_price=regular_price,
+                    quantity_offers=quantity_offers,
                     promo_text=", ".join(
                         discount.get("discountText", "")
                         for discount in data.get("discounts") or []
@@ -233,13 +294,13 @@ def _coto_api_search(query: str, limit: int, context: dict | None = None):
                     )
                     or None,
                     unit=data.get("product_unit_of_measure"),
-                    url=f"https://www.coto.com.ar/productos{product_url}" if product_url else "https://www.coto.com.ar/",
-                    image=data.get("image_url") or data.get("product_large_image_url") or data.get("product_medium_image_url"),
+                    url=source_url,
+                    image=data.get("product_large_image_url") or data.get("image_url") or data.get("product_medium_image_url"),
                     available=store_id in [str(store) for store in data.get("store_availability") or [store_id]],
                     branch_id=store_id,
                     pricing_scope="selected_store",
                     delivery_available=None,
-                    scraped_at=datetime.now(timezone.utc).isoformat(),
+                    scraped_at=captured_at,
                 )
             )
         if rows:

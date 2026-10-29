@@ -84,6 +84,7 @@ class LocalUserDataStore implements UserDataStore {
       final activeIds = decoded['activePaymentMethodIds'];
       final favoriteIds = decoded['favoriteProductIds'];
       final customJson = decoded['customPaymentMethods'];
+      final capUsageJson = decoded['usedRefundCaps'];
       return SavedUserData(
         cartItems: cart,
         productSnapshots: productSnapshots,
@@ -99,6 +100,16 @@ class LocalUserDataStore implements UserDataStore {
                   .whereType<PaymentMethod>()
                   .toList()
             : const [],
+        usedRefundCaps: capUsageJson is Map
+            ? {
+                for (final entry in capUsageJson.entries)
+                  if (entry.key is String &&
+                      entry.value is num &&
+                      (entry.value as num).isFinite &&
+                      (entry.value as num) >= 0)
+                    entry.key as String: (entry.value as num).toDouble(),
+              }
+            : const {},
       );
     } on FormatException {
       return null;
@@ -145,6 +156,7 @@ class LocalUserDataStore implements UserDataStore {
             'active': method.active,
           },
       ],
+      'usedRefundCaps': data.usedRefundCaps,
     };
     await _preferences.setString(_storageKey, jsonEncode(payload));
   }
@@ -205,6 +217,7 @@ class SavedUserData {
     this.favoriteProductIds = const {},
     required this.activePaymentMethodIds,
     required this.customPaymentMethods,
+    this.usedRefundCaps = const {},
   });
 
   final List<CartItem> cartItems;
@@ -212,4 +225,5 @@ class SavedUserData {
   final Set<String> favoriteProductIds;
   final Set<String> activePaymentMethodIds;
   final List<PaymentMethod> customPaymentMethods;
+  final Map<String, double> usedRefundCaps;
 }

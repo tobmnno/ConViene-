@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -14,6 +15,8 @@ class SearchCacheTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         scraper._search_cache.clear()
         scraper._search_inflight.clear()
+        scraper._direct_cache.clear()
+        scraper._direct_inflight.clear()
 
     async def test_concurrent_requests_share_work_and_reuse_cache(self):
         started = asyncio.Event()
@@ -76,3 +79,65 @@ class SearchCacheTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.rows, ["coto product"])
         self.assertEqual(result.source_status, {"coto": "ok", "carrefour": "error"})
         self.assertFalse(scraper._search_cache)
+
+    async def test_direct_search_shares_inflight_and_returns_independent_rows(self):
+        started = asyncio.Event()
+        release = asyncio.Event()
+        calls = 0
+
+        async def direct(_query, _limit, *, context):
+            nonlocal calls
+            calls += 1
+            started.set()
+            await release.wait()
+            return [{"name": "leche", "prices": [100]}]
+
+        with patch.dict(scraper.SCRAPERS, {"coto": SimpleNamespace(search_direct=direct)}):
+            first = asyncio.create_task(scraper._search_one_direct_store("coto", "leche", 10, {"branch": "A"}))
+            await started.wait()
+            second = asyncio.create_task(scraper._search_one_direct_store("coto", "leche", 10, {"branch": "A"}))
+            await asyncio.sleep(0)
+            release.set()
+            a, b = await asyncio.gather(first, second)
+            a[0]["prices"].append(200)
+            self.assertEqual(b[0]["prices"], [100])
+            cached = await scraper._search_one_direct_store("coto", " LEcHe ", 5, {"branch": "A"})
+            self.assertEqual(cached[0]["prices"], [100])
+        self.assertEqual(calls, 1)
+        self.assertFalse(scraper._direct_inflight)
+
+    async def test_direct_cache_separates_branch_and_query_mode(self):
+        calls = []
+
+        async def direct(query, limit, *, context):
+            calls.append((query, limit, context))
+            return [{"name": context["branch"]}]
+
+        with patch.dict(scraper.SCRAPERS, {"coto": SimpleNamespace(search_direct=direct)}):
+            for context in (
+                {"branch": "A", "equivalence_search": True},
+                {"branch": "B", "equivalence_search": True},
+                {"branch": "A", "equivalence_search": False},
+            ):
+                await scraper._search_one_direct_store("coto", "leche", 10, context)
+            await scraper._search_one_direct_store(
+                "coto", "leche", 5, {"branch": "A", "equivalence_search": True, "latitude": -32.9}
+            )
+        self.assertEqual(len(calls), 3)
+
+    async def test_direct_failures_retry_and_small_result_does_not_replace_large(self):
+        calls = 0
+
+        async def direct(_query, limit, *, context):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return None
+            return [{"index": i} for i in range(limit)]
+
+        with patch.dict(scraper.SCRAPERS, {"coto": SimpleNamespace(search_direct=direct)}):
+            self.assertIsNone(await scraper._search_one_direct_store("coto", "arroz", 10, {}))
+            self.assertEqual(len(await scraper._search_one_direct_store("coto", "arroz", 10, {})), 10)
+            self.assertEqual(len(await scraper._search_one_direct_store("coto", "arroz", 5, {})), 5)
+            self.assertEqual(len(await scraper._search_one_direct_store("coto", "arroz", 10, {})), 10)
+        self.assertEqual(calls, 2)

@@ -347,9 +347,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openPaymentMethods(BuildContext context) {
+    final state = AppScope.of(context);
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => const PaymentMethodsScreen(),
+        builder: (_) =>
+            AppScope(notifier: state, child: const PaymentMethodsScreen()),
       ),
     );
   }

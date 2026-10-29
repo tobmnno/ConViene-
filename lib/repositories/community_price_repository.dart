@@ -7,6 +7,7 @@ import '../models/shopping_context.dart';
 import '../models/supermarket.dart';
 import 'conviene_repository.dart';
 import 'product_equivalence_repository.dart';
+import 'progressive_search_repository.dart';
 import 'promotion_status_repository.dart';
 import 'search_status_repository.dart';
 
@@ -14,6 +15,7 @@ class CommunityPriceRepository
     implements
         ConvieneRepository,
         ProductEquivalenceRepository,
+        ProgressiveSearchRepository,
         PromotionStatusRepository,
         SearchStatusRepository {
   CommunityPriceRepository(this._source, this._client, {this.userId});
@@ -120,6 +122,60 @@ class CommunityPriceRepository
           'No pudimos consultar los catálogos oficiales. '
           'Se muestran solo precios aportados por usuarios.';
     }
+    return [...official, ...community];
+  }
+
+  @override
+  Future<List<SearchResult>> searchProductsProgressively({
+    required String query,
+    required Set<String> storeIds,
+    required SearchProgress onProgress,
+    ShoppingContext context = const ShoppingContext(),
+  }) async {
+    _communityWarning = null;
+    _officialWarning = null;
+    var official = <SearchResult>[];
+    var community = <SearchResult>[];
+    var pending = Set<String>.of(storeIds);
+    final communityFuture = _searchCommunity(query, storeIds).then((rows) {
+      community = rows;
+      onProgress([...official, ...community], Set<String>.of(pending));
+    });
+    final Future<List<SearchResult>> officialFuture;
+    if (_source case final ProgressiveSearchRepository source) {
+      officialFuture = source.searchProductsProgressively(
+        query: query,
+        storeIds: storeIds,
+        context: context,
+        onProgress: (rows, remaining) {
+          official = rows;
+          pending = remaining;
+          onProgress([...official, ...community], Set<String>.of(pending));
+        },
+      );
+    } else {
+      officialFuture = _source.searchProducts(
+        query: query,
+        storeIds: storeIds,
+        context: context,
+      );
+    }
+    Object? officialError;
+    try {
+      official = await officialFuture;
+    } catch (error) {
+      officialError = error;
+    }
+    pending = {};
+    onProgress([...official, ...community], const {});
+    await communityFuture;
+    if (officialError != null) {
+      if (community.isEmpty) throw officialError;
+      _officialWarning =
+          'No pudimos consultar los catálogos oficiales. '
+          'Se muestran solo precios aportados por usuarios.';
+    }
+    onProgress([...official, ...community], const {});
     return [...official, ...community];
   }
 
@@ -244,25 +300,32 @@ class CommunityPriceRepository
     required ShoppingContext context,
   }) async {
     final source = _source;
-    EquivalentProductsResult official;
-    try {
-      official = source is ProductEquivalenceRepository
-          ? await (source as ProductEquivalenceRepository)
-                .findEquivalentProducts(
-                  product: product,
-                  storeIds: storeIds,
-                  context: context,
-                )
-          : const EquivalentProductsResult(results: [], storeStatus: {});
-    } catch (_) {
-      official = EquivalentProductsResult(
-        results: const [],
-        storeStatus: {for (final id in storeIds) id: 'error'},
-      );
-    }
-    final community = await _searchCommunity(product.name, storeIds);
+    final officialFuture = () async {
+      try {
+        return source is ProductEquivalenceRepository
+            ? await (source as ProductEquivalenceRepository)
+                  .findEquivalentProducts(
+                    product: product,
+                    storeIds: storeIds,
+                    context: context,
+                  )
+            : const EquivalentProductsResult(results: [], storeStatus: {});
+      } catch (_) {
+        return EquivalentProductsResult(
+          results: const [],
+          storeStatus: {for (final id in storeIds) id: 'error'},
+        );
+      }
+    }();
+    final communityFutures = <Future<List<SearchResult>>>[
+      _searchCommunity(product.name, storeIds),
+      if (product.ean.isNotEmpty) _searchCommunity(product.ean, storeIds),
+    ];
+    final official = await officialFuture;
+    final communityRows = await Future.wait(communityFutures);
+    final community = communityRows.first;
     if (product.ean.isNotEmpty) {
-      final byEan = await _searchCommunity(product.ean, storeIds);
+      final byEan = communityRows[1];
       final seen = {for (final result in community) result.communityPriceId};
       community.addAll(
         byEan.where((result) => seen.add(result.communityPriceId)),

@@ -1,6 +1,17 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
+
+class QuantityOffer(BaseModel):
+    id: str
+    mechanic: Literal["buy_n_pay_m", "second_unit_discount"]
+    required_quantity: int = Field(ge=2)
+    charged_quantity: int = Field(default=1, ge=0)
+    second_unit_discount: float = Field(default=0, ge=0, le=100)
+    source_url: str
+    captured_at: str
+    branch_id: str
+
 
 class Product(BaseModel):
     store: str
@@ -10,6 +21,7 @@ class Product(BaseModel):
     price: Optional[float] = None
     regular_price: Optional[float] = None
     promo_text: Optional[str] = None
+    quantity_offers: list[QuantityOffer] = Field(default_factory=list)
     unit: Optional[str] = None
     url: Optional[str] = None
     image: Optional[str] = None
@@ -136,6 +148,19 @@ class DiscountPromotion(BaseModel):
     compatible_payment_types: list[str] = Field(default_factory=list)
     any_entity: bool = False
     scraped_at: str
+    promotion_kind: Literal["payment", "store_product"] = "payment"
+    mechanic: Literal["percentage", "buy_n_pay_m", "second_unit_discount", "fixed_bundle_price"] = "percentage"
+    product_eans: list[str] = Field(default_factory=list)
+    branch_ids: list[str] = Field(default_factory=list)
+    required_quantity: int = Field(default=1, ge=1)
+    charged_quantity: int = Field(default=1, ge=0)
+    second_unit_discount: float = Field(default=0, ge=0, le=100)
+    bundle_price: float = Field(default=0, ge=0)
+    allows_stacking: bool = False
+    cap_frequency: str = ""
+    source_type: Literal["official_api", "official_page", "third_party_feed", "static_fallback"] = "static_fallback"
+    verification_status: Literal["source_reported", "unverified"] = "unverified"
+    calculation_status: Literal["exact", "estimate", "not_calculable"] = "not_calculable"
 
 
 class DiscountsResponse(BaseModel):

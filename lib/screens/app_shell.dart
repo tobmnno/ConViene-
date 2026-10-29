@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../widgets/conviene_loader.dart';
 
 import 'package:flutter/material.dart';
 
@@ -112,30 +113,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                 ),
               ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: state.isBootstrapping
-          ? null
-          : SizedBox(
-              width: 68,
-              height: 68,
-              child: FloatingActionButton(
-                heroTag: 'scan-barcode',
-                tooltip: 'Escanear codigo de barras',
-                onPressed: _openScanner,
-                backgroundColor: AppColors.blue,
-                foregroundColor: Colors.white,
-                elevation: 2,
-                shape: const CircleBorder(),
-                child: const Icon(Icons.qr_code_scanner, size: 31),
-              ),
-            ),
       bottomNavigationBar: state.isBootstrapping
           ? null
           : BottomAppBar(
               color: AppColors.surface,
               elevation: 3,
-              shape: const CircularNotchedRectangle(),
-              notchMargin: 7,
               padding: EdgeInsets.zero,
               child: SafeArea(
                 top: false,
@@ -157,7 +139,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                         selected: _index == 1,
                         onTap: () => setState(() => _index = 1),
                       ),
-                      const SizedBox(width: 76),
+                      _ScanNavItem(onTap: _openScanner),
                       _NavItem(
                         label: 'Descuentos',
                         icon: Icons.local_offer_outlined,
@@ -183,6 +165,52 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             ),
     );
   }
+}
+
+class _ScanNavItem extends StatelessWidget {
+  const _ScanNavItem({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Tooltip(
+      message: 'Escanear codigo de barras',
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              key: const Key('scan-action-circle'),
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: AppColors.blue,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.qr_code_scanner,
+                color: Colors.white,
+                size: 23,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Escanear',
+              maxLines: 1,
+              style: TextStyle(
+                color: AppColors.accentBlue,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _NavItem extends StatelessWidget {
@@ -324,7 +352,7 @@ class _BootstrappingViewState extends State<_BootstrappingView> {
       opacity: reduceMotion || _visible ? 1 : 0,
       child: Center(
         child: widget.error == null
-            ? const CircularProgressIndicator(color: AppColors.blue)
+            ? const ConvieneLoader(message: 'Preparando ConViene')
             : Padding(
                 padding: const EdgeInsets.all(28),
                 child: Column(

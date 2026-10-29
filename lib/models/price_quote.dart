@@ -1,3 +1,4 @@
+import 'discount.dart';
 import 'product.dart';
 import 'supermarket.dart';
 
@@ -13,6 +14,8 @@ class ProductPrice {
     this.branchId,
     this.pricingScope,
     this.deliveryAvailable,
+    this.hasStoreOffer = false,
+    this.quantityOffers = const [],
   });
 
   final String storeId;
@@ -25,6 +28,8 @@ class ProductPrice {
   final String? branchId;
   final String? pricingScope;
   final bool? deliveryAvailable;
+  final bool hasStoreOffer;
+  final List<Promotion> quantityOffers;
 }
 
 class SearchResult {

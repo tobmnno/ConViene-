@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../widgets/conviene_loader.dart';
 
 import '../models/discount.dart';
 import '../models/payment_method.dart';
@@ -30,8 +31,21 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final activeMethods = state.activePaymentMethods;
+    final visibleOffers = <String, Promotion>{
+      for (final promotion in state.promotions) promotion.id: promotion,
+      for (final result in state.searchResults)
+        for (final promotion in result.price.quantityOffers)
+          if (promotion.canCalculate && promotion.appliesOn(state.selectedDate))
+            promotion.id: promotion,
+      for (final comparison in state.cartComparisons)
+        for (final line in comparison.items)
+          for (final promotion in line.price.quantityOffers)
+            if (promotion.canCalculate &&
+                promotion.appliesOn(state.selectedDate))
+              promotion.id: promotion,
+    };
     final filteredPromotions =
-        state.promotions
+        visibleOffers.values
             .where(_matchesFilter)
             .where((promotion) => _selectedStoreIds.contains(promotion.storeId))
             .where((promotion) => _isCompatible(promotion, activeMethods))
@@ -105,8 +119,14 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
           Expanded(
             child: Column(
               children: [
+                if (filteredPromotions.isNotEmpty)
+                  ConvieneLoader(
+                    compact: true,
+                    active: state.isLoadingPromotions,
+                    message: 'Actualizando beneficios',
+                  ),
                 Expanded(
-                  child: state.isLoadingPromotions
+                  child: state.isLoadingPromotions && filteredPromotions.isEmpty
                       ? const _DiscountsLoading()
                       : state.promotionsError != null
                       ? _DiscountsError(
@@ -479,9 +499,10 @@ class _PromotionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = compatible ? AppColors.green : AppColors.deepBlue;
-    final cardColor = compatible ? AppColors.successSurface : AppColors.surface;
-    final borderColor = compatible ? AppColors.successBorder : AppColors.line;
+    final calculable = compatible && promotion.canCalculate;
+    final accent = calculable ? AppColors.green : AppColors.deepBlue;
+    final cardColor = calculable ? AppColors.successSurface : AppColors.surface;
+    final borderColor = calculable ? AppColors.successBorder : AppColors.line;
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => _showPromotionDetails(context),
@@ -512,12 +533,16 @@ class _PromotionCard extends StatelessWidget {
                     runSpacing: 4,
                     children: [
                       _MethodBadge(label: supermarketName),
-                      _MethodBadge(label: promotion.entidad),
-                      _MethodBadge(label: promotion.tipoMedioPago.label),
+                      if (promotion.promotionKind == 'payment') ...[
+                        _MethodBadge(label: promotion.entidad),
+                        _MethodBadge(label: promotion.tipoMedioPago.label),
+                      ] else
+                        const _MethodBadge(label: 'Oferta del super'),
                       _MethodBadge(
                         label: compatible ? 'Compatible' : 'No esta en perfil',
-                        highlighted: compatible,
+                        highlighted: calculable,
                       ),
+                      _MethodBadge(label: _statusText(promotion)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -538,6 +563,11 @@ class _PromotionCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
                   ),
+                  if (promotion.capturedAt != null)
+                    Text(
+                      'Fuente consultada: ${_shortDate(promotion.capturedAt!.toLocal())}',
+                      style: TextStyle(color: AppColors.textGray, fontSize: 11),
+                    ),
                 ],
               ),
             ),
@@ -558,6 +588,8 @@ class _PromotionCard extends StatelessWidget {
   }
 
   void _showPromotionDetails(BuildContext context) {
+    final state = AppScope.of(context);
+    final usageKey = promotion.capUsageKey(state.selectedDate);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.surface,
@@ -598,10 +630,40 @@ class _PromotionCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   _DetailLine('Super', supermarketName),
-                  _DetailLine('Medio', promotion.tipoMedioPago.label),
-                  _DetailLine('Entidad', promotion.entidad),
+                  if (promotion.promotionKind == 'payment') ...[
+                    _DetailLine('Medio', promotion.tipoMedioPago.label),
+                    _DetailLine('Entidad', promotion.entidad),
+                  ],
                   _DetailLine('Beneficio', _benefitText(promotion)),
+                  _DetailLine('Estado', _statusText(promotion)),
+                  _DetailLine('Origen', _sourceTypeText(promotion)),
+                  if (promotion.capturedAt != null)
+                    _DetailLine(
+                      'Consultado',
+                      _shortDate(promotion.capturedAt!.toLocal()),
+                    ),
                   _DetailLine('Tope', _capValue(promotion)),
+                  if (usageKey != null) ...[
+                    _DetailLine(
+                      'Tope ya utilizado',
+                      state.usedRefundCapFor(promotion) == null
+                          ? 'No informado; el ahorro es un maximo estimado'
+                          : formatMoney(state.usedRefundCapFor(promotion)!),
+                    ),
+                    TextButton.icon(
+                      onPressed: () async {
+                        final amount = await _askUsedCap(
+                          context,
+                          state.usedRefundCapFor(promotion),
+                        );
+                        if (amount == null) return;
+                        await state.setUsedRefundCap(promotion, amount);
+                        if (context.mounted) Navigator.of(context).pop();
+                      },
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Registrar tope utilizado'),
+                    ),
+                  ],
                   if (promotion.compraMinima > 0)
                     _DetailLine(
                       'Compra minima',
@@ -611,8 +673,25 @@ class _PromotionCard extends StatelessWidget {
                   _DetailLine('Vigencia', _dateRange(promotion)),
                   if (promotion.canal.isNotEmpty)
                     _DetailLine('Canal', promotion.canal),
+                  if (promotion.branchIds.isNotEmpty)
+                    _DetailLine('Sucursales', promotion.branchIds.join(', ')),
                   _DetailLine('Categorias', promotion.categorias.join(', ')),
+                  if (promotion.productEans.isNotEmpty)
+                    _DetailLine('EAN', promotion.productEans.join(', ')),
                   _DetailLine('Condicion', promotion.condiciones),
+                  if (promotion.capFrequency.isNotEmpty &&
+                      promotion.capFrequency != 'unknown')
+                    _DetailLine(
+                      'Frecuencia del tope',
+                      _capFrequencyText(promotion.capFrequency),
+                    ),
+                  if (promotion.topeReintegro > 0 &&
+                      (promotion.capFrequency.isEmpty ||
+                          promotion.capFrequency == 'unknown'))
+                    const _DetailLine(
+                      'Frecuencia del tope',
+                      'No informada; el ahorro es solo orientativo',
+                    ),
                   if (promotion.fuenteUrl.isNotEmpty)
                     _DetailLine('Fuente', promotion.fuenteUrl),
                 ],
@@ -624,14 +703,92 @@ class _PromotionCard extends StatelessWidget {
     );
   }
 
+  Future<double?> _askUsedCap(BuildContext context, double? current) async {
+    var entered = current == null ? '' : current.toStringAsFixed(2);
+    final formKey = GlobalKey<FormState>();
+    return showDialog<double>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        scrollable: true,
+        title: const Text('Tope ya utilizado'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Ingresá el tope consumido en compras anteriores de este período, aunque el reintegro siga pendiente. Poné 0 si no lo usaste.',
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                initialValue: entered,
+                onChanged: (value) => entered = value,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Importe utilizado',
+                  prefixText: r'$ ',
+                ),
+                validator: (value) {
+                  final amount = double.tryParse(
+                    (value ?? '').replaceAll(',', '.'),
+                  );
+                  if (amount == null ||
+                      !amount.isFinite ||
+                      amount < 0 ||
+                      amount > promotion.topeReintegro) {
+                    return 'Ingresá un importe entre 0 y ${formatMoney(promotion.topeReintegro)}';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() != true) return;
+              Navigator.of(
+                dialogContext,
+              ).pop(double.parse(entered.replaceAll(',', '.')));
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _benefitText(Promotion promotion) {
     if (promotion.beneficio.isNotEmpty) {
       return promotion.beneficio;
+    }
+    if (promotion.mechanic == 'buy_n_pay_m') {
+      return '${promotion.requiredQuantity}x${promotion.chargedQuantity}';
+    }
+    if (promotion.mechanic == 'second_unit_discount') {
+      return '${formatPercent(promotion.secondUnitDiscount)} en la segunda unidad';
+    }
+    if (promotion.mechanic == 'fixed_bundle_price') {
+      return '${promotion.requiredQuantity} por ${formatMoney(promotion.bundlePrice)}';
     }
     return '${formatPercent(promotion.porcentajeDescuento)} de descuento';
   }
 
   String _benefitBadge(Promotion promotion) {
+    if (promotion.promotionKind == 'store_product') {
+      return promotion.mechanic == 'second_unit_discount'
+          ? '${formatPercent(promotion.secondUnitDiscount)} 2a'
+          : promotion.mechanic == 'buy_n_pay_m'
+          ? '${promotion.requiredQuantity}x${promotion.chargedQuantity}'
+          : '${promotion.requiredQuantity} u';
+    }
     if (promotion.beneficio.isNotEmpty) {
       return promotion.beneficio.replaceAll(' OFF', '');
     }
@@ -639,6 +796,9 @@ class _PromotionCard extends StatelessWidget {
   }
 
   String _capText(Promotion promotion) {
+    if (promotion.promotionKind == 'store_product') {
+      return 'Solo en los productos alcanzados';
+    }
     final cap = _capValue(promotion);
     return promotion.esBeneficioDePrecio
         ? 'Tope de reintegro: $cap'
@@ -650,10 +810,41 @@ class _PromotionCard extends StatelessWidget {
       return 'No aplica';
     }
     if (promotion.topeReintegro <= 0) {
-      return 'Sin tope';
+      final conditions = promotion.condiciones.toLowerCase();
+      return conditions.contains('sin tope') ||
+              conditions.contains('sin limite de reintegro') ||
+              conditions.contains('sin límite de reintegro')
+          ? 'Sin tope declarado'
+          : 'No informado';
     }
     return formatMoney(promotion.topeReintegro);
   }
+
+  String _capFrequencyText(String value) => switch (value) {
+    'transaction' => 'Por compra',
+    'weekly' => 'Semanal',
+    'monthly' => 'Mensual',
+    'account' => 'Por cuenta',
+    _ => value,
+  };
+
+  String _statusText(Promotion promotion) {
+    if (promotion.verificationStatus == 'unverified' ||
+        !promotion.canCalculate) {
+      return 'Referencia sin verificar';
+    }
+    return promotion.calculationStatus == 'estimate'
+        ? 'Ahorro estimado'
+        : 'Fuente consultada';
+  }
+
+  String _sourceTypeText(Promotion promotion) => switch (promotion.sourceType) {
+    'official_api' => 'Catalogo del supermercado',
+    'official_page' => 'Pagina oficial',
+    'third_party_feed' => 'Feed externo',
+    'static_fallback' => 'Catalogo local de respaldo',
+    _ => 'Origen no especificado',
+  };
 
   String _daysText(Promotion promotion) {
     const dayNames = {
@@ -696,11 +887,7 @@ class _DiscountsLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: SizedBox(
-        width: 28,
-        height: 28,
-        child: CircularProgressIndicator(strokeWidth: 3),
-      ),
+      child: ConvieneLoader(message: 'Consultando beneficios'),
     );
   }
 }

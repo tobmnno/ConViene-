@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:conviene/models/cart_item.dart';
 import 'package:conviene/models/discount.dart';
 import 'package:conviene/models/price_quote.dart';
 import 'package:conviene/models/shopping_context.dart';
@@ -113,6 +116,46 @@ void main() {
       reloadedState.dispose();
     },
   );
+
+  test('clearing cart wins over an older in-flight comparison', () async {
+    final repository = _DelayedPricesRepository();
+    final state = AppState(
+      repository: repository,
+      userDataStore: _MemoryUserDataStore(),
+    );
+    await state.initialize();
+    state.cartItems = [
+      CartItem(
+        productId: state.products.first.id,
+        quantity: 1,
+        selectedStoreId: 'coto',
+      ),
+    ];
+    final comparison = state.refreshComparisons();
+    await repository.started.future.timeout(const Duration(seconds: 2));
+    await state.clearCart();
+    repository.release.complete();
+    await comparison;
+
+    expect(state.cartItems, isEmpty);
+    expect(state.cartComparisons, isEmpty);
+    expect(state.selectedStoresPlan, isNull);
+    expect(state.bestPerProductPlan, isNull);
+    expect(state.isComparing, isFalse);
+    state.dispose();
+  });
+}
+
+class _DelayedPricesRepository extends MockRepository {
+  final started = Completer<void>();
+  final release = Completer<void>();
+
+  @override
+  Future<List<ProductPrice>> getPricesForProduct(String productId) async {
+    if (!started.isCompleted) started.complete();
+    await release.future;
+    return super.getPricesForProduct(productId);
+  }
 }
 
 class _MemoryUserDataStore implements UserDataStore {

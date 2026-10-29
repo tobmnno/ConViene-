@@ -71,6 +71,36 @@ void main() {
     expect(sorted.first.isExactMatch, isTrue);
   });
 
+  test('mejor precio usa el importe final personalizado entre equivalentes', () {
+    final service = ProductSearchService(MockRepository());
+    final coto = _store('coto', 'Coto');
+    final gallega = _store('la_gallega', 'La Gallega');
+    final discounted = _result(
+      supermarket: coto,
+      productId: 'coto-milk',
+      name: 'Leche Ilolay entera 1 L',
+      presentation: '1 L',
+      price: 2799,
+    );
+    final regular = _result(
+      supermarket: gallega,
+      productId: 'gallega-milk',
+      name: 'Leche Ilolay entera 1 L',
+      presentation: '1 L',
+      price: 2281,
+    );
+
+    final sorted = service.sortResults(
+      [regular, discounted],
+      SearchSort.bestPrice,
+      query: 'leche ilolay entera 1 l',
+      effectivePrice: (result) =>
+          result.supermarket.id == 'coto' ? 2099.25 : 2281,
+    );
+
+    expect(sorted.first.supermarket.id, 'coto');
+  });
+
   test('busqueda especifica muestra solo el producto pedido', () async {
     final store = _store('coto', 'Coto');
     final exact = _result(

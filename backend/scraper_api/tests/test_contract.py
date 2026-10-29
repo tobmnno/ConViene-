@@ -17,17 +17,49 @@ from services.catalog import (
     sort_results_for_output,
 )
 from services.discounts import (
+    _carrefour_calculation_status,
     _carrefour_payment_requirements,
     _coto_from_api,
     _entities_from_text,
     _lagallega_promotions_from_html,
     _static_promotions,
+    _validated_promotions,
+    _lagallega_blink_promotions,
 )
 from services.locations import nearby_coto_branches
 from services.scraper import resolve_stores
 
 
 class ContractTest(unittest.TestCase):
+    def test_rejects_contradictory_promotion_without_hiding_valid_rows(self):
+        common = dict(
+            id="valid", store="coto", title="Visa 20%", percentage=20,
+            weekdays=[2], start_date="2026-10-01", end_date="2026-10-31",
+            source_url="https://www.coto.com.ar/descuentos",
+            scraped_at="2026-10-20T00:00:00+00:00",
+        )
+        valid = DiscountPromotion(**common)
+        invalid = DiscountPromotion(**(common | {"id": "invalid", "percentage": 120}))
+        warnings = []
+        self.assertEqual(_validated_promotions([invalid, valid], warnings), [valid])
+        self.assertEqual(len(warnings), 1)
+
+    def test_stale_external_feed_is_reference_only(self):
+        catalog = {
+            "checked_at": "2026-01-01T00:00:00+00:00",
+            "source_url": "https://www.blinkapp.com.ar/comercios/la-gallega",
+            "benefits": [{
+                "id": "sample", "bankName": "Banco Santa Fe",
+                "rewardRate": "20%", "cuando": "todos los dias",
+                "validUntil": "2026-12-31", "condicion": "Valido hasta 31/12/2026",
+            }],
+        }
+        rows = _lagallega_blink_promotions(
+            catalog, __import__("datetime").date(2026, 10, 20)
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].calculation_status, "not_calculable")
+
     def test_barcode_search_returns_only_matching_gtin(self):
         common = {"store": "coto", "price": 1200, "scraped_at": "2026-10-09T00:00:00+00:00"}
         matched = Product(name="Leche entera La Serenisima", ean="7790742448309", **common)
@@ -266,6 +298,16 @@ class ContractTest(unittest.TestCase):
         self.assertIn("Banco Comafi", row.compatible_entities)
         self.assertEqual(row.required_entity_groups, [["Visa"], ["Banco Comafi"]])
 
+    def test_undated_coto_offer_is_not_projected_to_another_month(self):
+        raw = {
+            "id": "sample", "textoDescuento": "20% DE DESCUENTO",
+            "descripcion": "Con Visa", "dias": [{"id": 3}],
+        }
+        self.assertIsNone(_coto_from_api(
+            raw, "Digital", __import__("datetime").date(2026, 9, 8),
+            "2026-10-20T00:00:00+00:00",
+        ))
+
     def test_coto_modo_and_bank_require_both_entities(self):
         row = _coto_from_api(
             {
@@ -345,6 +387,32 @@ class ContractTest(unittest.TestCase):
             [["MODO"], ["Visa", "Mastercard"], ["Banco Nacion"]],
         )
 
+    def test_carrefour_bank_card_offer_requires_both(self):
+        entities, groups = _carrefour_payment_requirements(
+            "35% de descuento con tarjeta Visa del Banco Patagonia",
+            "Exclusivo para clientes con plan sueldo singular.",
+            ["Visa", "Banco Patagonia"],
+        )
+
+        self.assertEqual(entities, ["Visa", "Banco Patagonia"])
+        self.assertEqual(groups, [["Visa"], ["Banco Patagonia"]])
+
+    def test_carrefour_singular_tier_is_not_calculable(self):
+        self.assertEqual(
+            _carrefour_calculation_status(
+                "35% con Visa del Banco Patagonia para clientes con plan sueldo singular",
+                "",
+                35,
+            ),
+            "not_calculable",
+        )
+        self.assertEqual(
+            _carrefour_calculation_status(
+                "20% con Visa del Banco Patagonia", "", 20
+            ),
+            "estimate",
+        )
+
     def test_static_promotions_keep_weekday_and_minimum_purchase(self):
         covered, rows = _static_promotions(
             "carrefour",
@@ -353,8 +421,10 @@ class ContractTest(unittest.TestCase):
 
         self.assertTrue(covered)
         self.assertTrue(rows)
-        self.assertTrue(any(row.start_date == "2026-01-01" for row in rows))
-        self.assertTrue(any(row.end_date == "2026-12-31" for row in rows))
+        self.assertTrue(all(row.start_date >= "2026-09-01" for row in rows))
+        self.assertTrue(all(row.end_date <= "2026-09-30" for row in rows))
+        self.assertTrue(all(row.source_type == "static_fallback" for row in rows))
+        self.assertTrue(all(row.calculation_status == "not_calculable" for row in rows))
         monthly_campaigns = [row for row in rows if row.start_date == "2026-09-01"]
         self.assertTrue(monthly_campaigns)
         self.assertTrue(all(row.end_date == "2026-09-30" for row in monthly_campaigns))
@@ -363,6 +433,11 @@ class ContractTest(unittest.TestCase):
         self.assertEqual(mercado_pago.entity, "Mercado Pago")
         self.assertIn("wallet", mercado_pago.compatible_payment_types)
         self.assertIn("card", mercado_pago.compatible_payment_types)
+
+        _, october_rows = _static_promotions(
+            "carrefour", __import__("datetime").date(2026, 10, 20)
+        )
+        self.assertEqual(october_rows, [])
 
     def test_static_lagallega_catalog_uses_current_explicit_validity(self):
         expired_covered, expired_rows = _static_promotions(
@@ -377,6 +452,7 @@ class ContractTest(unittest.TestCase):
         self.assertTrue(expired_covered)
         self.assertEqual(expired_rows, [])
         self.assertEqual(len(rows), 3)
+        self.assertTrue(all(row.verification_status == "unverified" for row in rows))
         cuenta_dni = next(row for row in rows if row.entity == "Cuenta DNI" and row.percentage == 30)
         self.assertEqual(cuenta_dni.weekdays, [4, 5])
         self.assertEqual(cuenta_dni.end_date, "2027-01-01")

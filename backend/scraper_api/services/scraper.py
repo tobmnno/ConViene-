@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from copy import deepcopy
 import re
 import time
 from contextlib import asynccontextmanager
@@ -21,6 +22,11 @@ STORE_ALIASES = {
 _SEARCH_CACHE_TTL_SECONDS = 120
 _DIRECT_STORE_TIMEOUT_SECONDS = 14
 _BROWSER_STORE_TIMEOUT_SECONDS = 38
+_DIRECT_CACHE_TTL_SECONDS = 120
+_DIRECT_EMPTY_TTL_SECONDS = 30
+_DIRECT_CACHE_MAX_ENTRIES = 512
+
+
 @dataclass
 class SearchQueryResult:
     rows: list
@@ -29,6 +35,8 @@ class SearchQueryResult:
 
 _search_cache: dict[tuple, tuple[float, SearchQueryResult]] = {}
 _search_inflight: dict[tuple, asyncio.Task] = {}
+_direct_cache: dict[tuple, tuple[float, int, list]] = {}
+_direct_inflight: dict[tuple, asyncio.Task] = {}
 _SEARCH_CACHE_MAX_ENTRIES = 200
 
 
@@ -113,21 +121,64 @@ async def scrape_query_with_browser(browser, query: str, stores: list[str], limi
 
 
 async def _search_one_direct_store(store_name: str, query: str, limit: int, context: dict | None):
-    direct_search = getattr(SCRAPERS[store_name], "search_direct", None)
-    if direct_search is None:
-        return None
-    finish = timed_check(f"products.{store_name}")
-    try:
-        rows = await asyncio.wait_for(
-            direct_search(query, limit, context=context),
-            timeout=_DIRECT_STORE_TIMEOUT_SECONDS,
+    cache_context = {
+        key: value
+        for key, value in (context or {}).items()
+        if key not in {"latitude", "longitude", "location_accuracy_meters"}
+        and (store_name == "coto" or key != "equivalence_search")
+    }
+    base_key = (store_name, query.strip().casefold(), tuple(sorted(cache_context.items())))
+    now = time.monotonic()
+    cached = _direct_cache.get(base_key)
+    if cached is not None:
+        created, cached_limit, rows = cached
+        ttl = _DIRECT_CACHE_TTL_SECONDS if rows else _DIRECT_EMPTY_TTL_SECONDS
+        if cached_limit >= limit and now - created < ttl:
+            return deepcopy(rows[:limit])
+
+    task_key = (base_key, limit)
+    task = _direct_inflight.get(task_key)
+    if task is None:
+        task = asyncio.create_task(
+            _fetch_direct_store(task_key, base_key, store_name, query, limit, context)
         )
-        finish(success=rows is not None, count=len(rows or []), detail="direct")
-        return rows
-    except Exception as exc:
-        finish(success=False, detail=f"{type(exc).__name__}: {exc}")
-        print(f"{store_name}: DIRECT ERROR {type(exc).__name__}", flush=True)
-        return None
+        _direct_inflight[task_key] = task
+    rows = await asyncio.shield(task)
+    return deepcopy(rows) if rows is not None else None
+
+
+async def _fetch_direct_store(task_key, base_key, store_name, query, limit, context):
+    direct_search = getattr(SCRAPERS[store_name], "search_direct", None)
+    try:
+        if direct_search is None:
+            return None
+        finish = timed_check(f"products.{store_name}")
+        try:
+            rows = await asyncio.wait_for(
+                direct_search(query, limit, context=context),
+                timeout=_DIRECT_STORE_TIMEOUT_SECONDS,
+            )
+            finish(success=rows is not None, count=len(rows or []), detail="direct")
+            if rows is not None:
+                now = time.monotonic()
+                previous = _direct_cache.get(base_key)
+                if previous is None or previous[1] <= limit or now - previous[0] >= (
+                    _DIRECT_CACHE_TTL_SECONDS if previous[2] else _DIRECT_EMPTY_TTL_SECONDS
+                ):
+                    _direct_cache[base_key] = (now, limit, deepcopy(rows))
+                for key, (created, _, cached_rows) in list(_direct_cache.items()):
+                    ttl = _DIRECT_CACHE_TTL_SECONDS if cached_rows else _DIRECT_EMPTY_TTL_SECONDS
+                    if now - created >= ttl:
+                        _direct_cache.pop(key, None)
+                while len(_direct_cache) > _DIRECT_CACHE_MAX_ENTRIES:
+                    _direct_cache.pop(next(iter(_direct_cache)))
+            return rows
+        except Exception as exc:
+            finish(success=False, detail=f"{type(exc).__name__}: {exc}")
+            print(f"{store_name}: DIRECT ERROR {type(exc).__name__}", flush=True)
+            return None
+    finally:
+        _direct_inflight.pop(task_key, None)
 
 
 async def scrape_query(

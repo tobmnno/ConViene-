@@ -13,7 +13,7 @@ if exist "supabase.local.json" (
   set "SUPABASE_DEFINES=--dart-define=SUPABASE_URL=%SUPABASE_URL% --dart-define=SUPABASE_PUBLISHABLE_KEY=%SUPABASE_PUBLISHABLE_KEY%"
 )
 
-flutter --no-version-check run -d web-server --web-hostname 127.0.0.1 --web-port 53246 --dart-define=CONVIENE_API_BASE_URL=http://127.0.0.1:8000 %SUPABASE_DEFINES%
+flutter --no-version-check run -d web-server --release --web-hostname 127.0.0.1 --web-port 53246 --dart-define=CONVIENE_API_BASE_URL=http://127.0.0.1:8000 %SUPABASE_DEFINES%
 goto done
 
 :missing_config

@@ -145,7 +145,7 @@ class BreakdownScreen extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              'Los descuentos se aplican segun tus medios de pago seleccionados.',
+              'Total estimado: algunas promociones tienen exclusiones o topes por periodo que se confirman al pagar.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.deepBlue, fontSize: 12),
             ),

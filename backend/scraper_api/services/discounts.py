@@ -4,6 +4,7 @@ from calendar import monthrange
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timezone
 from functools import lru_cache
+import hashlib
 from html import unescape
 import json
 from pathlib import Path
@@ -15,6 +16,7 @@ import requests
 
 from models import DiscountPromotion, DiscountsResponse
 from scrapers.stores import REQUEST_HEADERS
+from services.monitoring import timed_check
 from services.refresh import refresh_lagallega_catalog
 from services.scraper import resolve_stores
 
@@ -95,7 +97,10 @@ CARD_ALIASES = {
 }
 
 _DISCOUNT_CACHE_TTL_SECONDS = 300
-_discount_cache: dict[tuple, tuple[float, DiscountsResponse]] = {}
+_DEGRADED_CACHE_TTL_SECONDS = 120
+_DISCOUNT_CACHE_MAX_ENTRIES = 128
+_discount_cache: dict[tuple, tuple[float, int, DiscountsResponse]] = {}
+_source_fingerprints: dict[tuple[str, str], str] = {}
 
 
 def clear_discount_cache() -> None:
@@ -110,21 +115,22 @@ def scrape_discounts(
     selected_stores = resolve_stores(stores)
     cache_key = (tuple(selected_stores), current_date.isoformat())
     cached = _discount_cache.get(cache_key)
-    if cached and time.monotonic() - cached[0] < _DISCOUNT_CACHE_TTL_SECONDS:
-        return cached[1]
+    if cached and time.monotonic() - cached[0] < cached[1]:
+        return cached[2]
     warnings: list[str] = []
     promotions: list[DiscountPromotion] = []
 
     def scrape_store(store: str):
         store_warnings: list[str] = []
+        finish_check = timed_check(f"promotions.{store}")
         try:
             if store == "carrefour":
                 rows = _scrape_carrefour(current_date, store_warnings)
                 if not rows:
                     static_covered, static_rows = _static_promotions(store, current_date)
-                    if static_covered:
+                    if static_covered and static_rows:
                         rows = static_rows
-                        store_warnings.append("carrefour: se uso el catalogo local como respaldo")
+                        store_warnings.append("carrefour: catalogo local sin verificacion actual; no se calcula en precios finales")
             elif store == "coto":
                 rows = _scrape_coto(current_date, store_warnings)
             else:
@@ -143,10 +149,24 @@ def scrape_discounts(
                     ]
                     rows.extend(fallback_rows)
                     if fallback_rows:
-                        store_warnings.append("la_gallega: promociones cargadas desde el catalogo local")
+                        store_warnings.append("la_gallega: catalogo local sin verificacion actual; no se calcula en precios finales")
+            rows = _validated_promotions(rows, store_warnings)
+            fingerprint = hashlib.sha256(
+                json.dumps(
+                    sorted((row.id, row.percentage, row.refund_cap, row.start_date,
+                            row.end_date, row.conditions) for row in rows),
+                    ensure_ascii=False,
+                ).encode("utf-8")
+            ).hexdigest()
+            fingerprint_key = (store, current_date.isoformat())
+            previous = _source_fingerprints.get(fingerprint_key)
+            _source_fingerprints[fingerprint_key] = fingerprint
+            change = "catalogo modificado" if previous and previous != fingerprint else ""
+            finish_check(success=bool(rows), count=len(rows), detail="; ".join(store_warnings + ([change] if change else [])))
         except Exception as exc:
             rows = []
             store_warnings.append(f"{store}: no se pudieron leer descuentos ({type(exc).__name__})")
+            finish_check(success=False, detail=f"{type(exc).__name__}: {exc}")
         return rows, store_warnings
 
     with ThreadPoolExecutor(max_workers=len(selected_stores)) as executor:
@@ -164,8 +184,40 @@ def scrape_discounts(
         results=promotions,
         warnings=warnings,
     )
-    _discount_cache[cache_key] = (time.monotonic(), response)
+    ttl = (_DISCOUNT_CACHE_TTL_SECONDS if promotions and not warnings
+           else _DEGRADED_CACHE_TTL_SECONDS)
+    now = time.monotonic()
+    _discount_cache[cache_key] = (now, ttl, response)
+    for key, (created, entry_ttl, _) in list(_discount_cache.items()):
+        if now - created >= entry_ttl:
+            _discount_cache.pop(key, None)
+    while len(_discount_cache) > _DISCOUNT_CACHE_MAX_ENTRIES:
+        _discount_cache.pop(next(iter(_discount_cache)))
     return response
+
+
+def _validated_promotions(
+    rows: list[DiscountPromotion], warnings: list[str]
+) -> list[DiscountPromotion]:
+    valid: list[DiscountPromotion] = []
+    rejected = 0
+    for row in rows:
+        try:
+            start = date.fromisoformat(row.start_date)
+            end = date.fromisoformat(row.end_date)
+        except ValueError:
+            rejected += 1
+            continue
+        if (start > end or not row.weekdays or
+                any(day < 1 or day > 7 for day in row.weekdays) or
+                not 0 <= row.percentage <= 100 or row.refund_cap < 0 or
+                row.minimum_purchase < 0 or not row.source_url):
+            rejected += 1
+            continue
+        valid.append(row)
+    if rejected:
+        warnings.append(f"se omitieron {rejected} promociones con datos contradictorios o incompletos")
+    return valid
 
 
 def _lagallega_blink_promotions(catalog: dict[str, Any], selected_date: date) -> list[DiscountPromotion]:
@@ -173,7 +225,13 @@ def _lagallega_blink_promotions(catalog: dict[str, Any], selected_date: date) ->
     if not isinstance(benefits, list):
         return []
     source_url = _clean_text(catalog.get("source_url")) or LAGALLEGA_URL
-    scraped_at = _clean_text(catalog.get("checked_at")) or datetime.now(timezone.utc).isoformat()
+    scraped_at = _clean_text(catalog.get("checked_at"))
+    try:
+        captured = datetime.fromisoformat(scraped_at.replace("Z", "+00:00"))
+        source_fresh = (datetime.now(timezone.utc) - captured).total_seconds() <= 86_400
+    except (TypeError, ValueError):
+        captured = datetime.now(timezone.utc)
+        source_fresh = False
     rows: list[DiscountPromotion] = []
     for raw in benefits:
         if not isinstance(raw, dict):
@@ -181,9 +239,9 @@ def _lagallega_blink_promotions(catalog: dict[str, Any], selected_date: date) ->
         conditions = _clean_text(raw.get("condicion"))
         declared_end_date = _parse_iso_date(raw.get("validUntil"))
         end_date = declared_end_date or _extract_end_date(conditions, selected_date.year)
-        start_date = _extract_start_date(conditions, selected_date) or date(selected_date.year, 1, 1)
+        start_date = _extract_start_date(conditions, selected_date) or date(captured.year, captured.month, 1)
         if end_date is None:
-            end_date = date(selected_date.year, 12, 31)
+            end_date = date(captured.year, captured.month, monthrange(captured.year, captured.month)[1])
         if (declared_end_date is None and _is_clearly_expired(conditions, selected_date)) or not start_date <= selected_date <= end_date:
             continue
         weekdays = _weekdays_from_text(_clean_text(raw.get("cuando")))
@@ -236,6 +294,9 @@ def _lagallega_blink_promotions(catalog: dict[str, Any], selected_date: date) ->
                 required_entity_groups=groups,
                 compatible_payment_types=payment_types,
                 scraped_at=scraped_at,
+                source_type="third_party_feed",
+                verification_status="source_reported" if source_fresh else "unverified",
+                calculation_status="estimate" if source_fresh and percentage > 0 else "not_calculable",
             )
         )
     return rows
@@ -312,16 +373,17 @@ def _static_promotion_from_json(
         valid_from = explicit_date
         valid_until = explicit_date
     elif explicit_start or explicit_end:
-        valid_from = explicit_start or date(selected_date.year, 1, 1)
-        valid_until = explicit_end or date(selected_date.year, 12, 31)
+        if not explicit_start or not explicit_end:
+            return None
+        valid_from = explicit_start
+        valid_until = explicit_end
     elif limited_to_capture_period:
         valid_from = period_start
         valid_until = period_end
     else:
-        # The JSON period identifies when the data was captured. A promotion without
-        # a campaign date remains available by weekday across the selected year.
-        valid_from = date(selected_date.year, 1, 1)
-        valid_until = date(selected_date.year, 12, 31)
+        # A capture month is not evidence that an undated benefit recurs all year.
+        valid_from = period_start
+        valid_until = period_end
     raw_days = _listify(raw.get("dias"))
     weekdays = list(range(1, 8)) if any(_normalize(day) == "todos" for day in raw_days) else sorted(
         {SPANISH_WEEKDAYS[_normalize(day)] for day in raw_days if _normalize(day) in SPANISH_WEEKDAYS}
@@ -344,7 +406,9 @@ def _static_promotion_from_json(
         CARREFOUR_URL if store == "carrefour" else LAGALLEGA_URL
     )
     channel = "Online" if "online" in _normalize(conditions) else "Sucursal" if "sucursal" in _normalize(conditions) else ""
-    captured_at = datetime.fromtimestamp(STATIC_PROMOTIONS_FILE.stat().st_mtime, tz=timezone.utc).isoformat()
+    # File modification time can change during deployment; the source JSON has
+    # no per-entry capture timestamp, so it cannot substantiate a checked date.
+    captured_at = ""
     # A wallet offer can require a particular card tier. Keep that tier in the
     # title as well as the compatibility groups so Visa and Mastercard offers
     # do not collapse into one generic promotion during deduplication.
@@ -387,6 +451,9 @@ def _static_promotion_from_json(
         compatible_payment_types=payment_types,
         any_entity=any_entity,
         scraped_at=captured_at,
+        source_type="static_fallback",
+        verification_status="unverified",
+        calculation_status="not_calculable",
     )
 
 
@@ -537,6 +604,13 @@ def _scrape_carrefour(selected_date: date, warnings: list[str]) -> list[Discount
         title = _clean_text(raw.get("title"))
         if not title:
             continue
+        source_start = _parse_source_datetime(raw.get("active_from"))
+        source_end = _parse_source_datetime(raw.get("active_to"))
+        selected_instant = datetime.fromisoformat(f"{selected_date.isoformat()}T23:59:59+00:00")
+        if (_is_false(raw.get("active")) or source_start is None or
+                source_end is None or not source_start <= selected_instant < source_end):
+            normalized_dates += 1
+            continue
         subtitle = _clean_text(raw.get("sub_title"))
         legal = _clean_text(raw.get("legal"))
         if _is_false(raw.get("valid")):
@@ -599,12 +673,18 @@ def _scrape_carrefour(selected_date: date, warnings: list[str]) -> list[Discount
                 compatible_payment_types=payment_types,
                 any_entity=_is_all_payment_methods(title, legal),
                 scraped_at=scraped_at,
+                source_type="official_api",
+                verification_status="source_reported",
+                calculation_status=_carrefour_calculation_status(
+                    title, subtitle, percentage
+                ),
+                cap_frequency=_cap_frequency(f"{subtitle} {legal}"),
             )
         )
 
     if normalized_dates:
         warnings.append(
-            f"carrefour: se omitieron {normalized_dates} promociones marcadas activas cuyos legales estaban vencidos"
+            f"carrefour: se omitieron {normalized_dates} promociones con vigencia de fuente o legales contradictorios"
         )
     if not rows:
         warnings.append("carrefour: la API oficial no devolvio promociones vigentes para la fecha consultada")
@@ -654,13 +734,18 @@ def _coto_from_api(raw: dict[str, Any], channel: str, selected_date: date, scrap
         return None
     start_date = _parse_iso_date(raw.get("vigenciaDesde"))
     end_date = _parse_iso_date(raw.get("vigenciaHasta"))
+    captured_date = _parse_iso_date(scraped_at) or date.today()
+    if start_date is None and end_date is None and (
+        selected_date.year != captured_date.year or selected_date.month != captured_date.month
+    ):
+        return None
     if (start_date and selected_date < start_date) or (end_date and selected_date > end_date):
         return None
-    start_date = start_date or date(selected_date.year, selected_date.month, 1)
+    start_date = start_date or date(captured_date.year, captured_date.month, 1)
     end_date = end_date or date(
-        selected_date.year,
-        selected_date.month,
-        monthrange(selected_date.year, selected_date.month)[1],
+        captured_date.year,
+        captured_date.month,
+        monthrange(captured_date.year, captured_date.month)[1],
     )
     entities = _entities_from_text(f"{description} {observation} {raw.get('icono', '')}")
     if "Naranja X" in entities:
@@ -688,6 +773,10 @@ def _coto_from_api(raw: dict[str, Any], channel: str, selected_date: date, scrap
         required_entity_groups=_required_entity_groups(entities),
         compatible_payment_types=payment_types,
         scraped_at=scraped_at,
+        source_type="official_api",
+        verification_status="source_reported",
+        calculation_status="estimate" if percentage > 0 else "not_calculable",
+        cap_frequency=_cap_frequency(observation),
     )
 
 
@@ -718,7 +807,12 @@ def _scrape_lagallega(selected_date: date, warnings: list[str]) -> list[Discount
         rows: list[DiscountPromotion] = []
         for endpoint in ("PromoxDia.asp", "PromoxBanco.asp"):
             url = f"https://www.lagallega.com.ar/{endpoint}"
-            response = session.get(url, headers=REQUEST_HEADERS, timeout=25)
+            try:
+                response = session.get(url, headers=REQUEST_HEADERS, timeout=25)
+                response.raise_for_status()
+            except requests.RequestException:
+                warnings.append(f"la_gallega: {endpoint} no respondio")
+                continue
             response.encoding = response.apparent_encoding or response.encoding
             text = response.text
             if "top.location.href" in text and "login.asp" in text:
@@ -782,6 +876,10 @@ def _scrape_lagallega_coinag(selected_date: date, scraped_at: str) -> list[Disco
             compatible_entities=entities,
             compatible_payment_types=["bank", "card"],
             scraped_at=scraped_at,
+            source_type="official_page",
+            verification_status="source_reported",
+            calculation_status="estimate" if percentage > 0 else "not_calculable",
+            cap_frequency=_cap_frequency(text),
         )
     ]
 
@@ -815,6 +913,8 @@ def _master_data(entity: str, fields: str, *, where: str = "") -> list[dict[str,
     )
     response.raise_for_status()
     payload = _response_json(response)
+    if isinstance(payload, dict) and payload.get("errors"):
+        raise ValueError("Carrefour devolvio errores GraphQL")
     documents = payload.get("data", {}).get("documents", []) if isinstance(payload, dict) else []
     rows: list[dict[str, Any]] = []
     for document in documents:
@@ -933,6 +1033,10 @@ def _lagallega_promotions_from_html(html: str, selected_date: date, scraped_at: 
                 required_entity_groups=_required_entity_groups(entities),
                 compatible_payment_types=payment_types,
                 scraped_at=scraped_at,
+                source_type="official_page",
+                verification_status="source_reported",
+                calculation_status="estimate" if percentage > 0 else "not_calculable",
+                cap_frequency=_cap_frequency(chunk),
             )
         )
     return rows
@@ -971,7 +1075,7 @@ def _carrefour_payment_requirements(
     title: str, legal: str, entities: list[str]
 ) -> tuple[list[str], list[list[str]]]:
     if not re.search(r"\bexclusiv[oa]\b.{0,30}\bmodo\b", _normalize(title)):
-        return entities, []
+        return entities, _required_entity_groups(entities)
     issuer = re.search(
         r"\bemitidas? por (?:el )?banco [a-z]+",
         _normalize(legal),
@@ -984,6 +1088,14 @@ def _carrefour_payment_requirements(
         ]
         entities = _unique(entities + banks)
     return entities, _required_entity_groups(entities)
+
+
+def _carrefour_calculation_status(title: str, subtitle: str, percentage: float) -> str:
+    if percentage <= 0 or re.search(
+        r"\b(?:singular|plan sueldo)\b", _normalize(f"{title} {subtitle}")
+    ):
+        return "not_calculable"
+    return "estimate"
 
 
 def _entities_from_text(text: str) -> list[str]:
@@ -1170,6 +1282,14 @@ def _parse_iso_date(value: Any) -> date | None:
         return _make_date(match.group(1), match.group(2), match.group(3), date.today().year) if match else None
 
 
+def _parse_source_datetime(value: Any) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
 def _response_json(response: requests.Response) -> Any:
     try:
         return response.json()
@@ -1195,6 +1315,17 @@ def _cap_from_text(text: str) -> float | None:
     if not match:
         match = re.search(r"\$\s*([\d.,]+)\s*(?:por|mensual|de tope)", text, flags=re.I)
     return _as_float(match.group(1)) if match else None
+
+
+def _cap_frequency(text: str) -> str:
+    normalized = _normalize(text)
+    for token, label in (("por transaccion", "transaction"), ("por compra", "transaction"),
+                         ("por semana", "weekly"), ("semanal", "weekly"),
+                         ("por mes", "monthly"), ("mensual", "monthly"),
+                         ("por cuenta", "account")):
+        if token in normalized:
+            return label
+    return "unknown"
 
 
 def _as_float(value: Any) -> float | None:

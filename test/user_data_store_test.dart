@@ -37,6 +37,7 @@ void main() {
             active: true,
           ),
         ],
+        usedRefundCaps: {'promo|2026-10-01': 1250},
       ),
     );
 
@@ -50,6 +51,7 @@ void main() {
       restored?.customPaymentMethods.single.displayName,
       'Billetera prueba',
     );
+    expect(restored?.usedRefundCaps['promo|2026-10-01'], 1250);
     expect(preferences.value, isNot(contains('price')));
     expect(preferences.value, isNot(contains('number')));
   });

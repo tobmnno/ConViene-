@@ -92,17 +92,18 @@ class _ConvieneAppState extends State<ConvieneApp> {
   }
 
   Future<void> _ensureFirebaseProfile(firebase.User user) async {
+    if (_profileBusy) return;
     _profileBusy = true;
-    _profileError = null;
     if (mounted) setState(() {});
     try {
-      await user.getIdToken(true);
+      await user.getIdToken(true).timeout(const Duration(seconds: 20));
       final client = widget.supabaseClient!;
       final existing = await client
           .from('firebase_profiles')
           .select('username')
           .eq('uid', user.uid)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(const Duration(seconds: 20));
       String? username = existing?['username'] as String?;
       if (username == null) {
         final proposed = user.displayName?.trim() ?? '';
@@ -114,7 +115,8 @@ class _ConvieneAppState extends State<ConvieneApp> {
             .from('firebase_profiles')
             .insert({'uid': user.uid, 'username': proposed})
             .select('username')
-            .single();
+            .single()
+            .timeout(const Duration(seconds: 20));
         username = inserted['username'] as String;
       }
       if (mounted && widget.firebaseAuth?.currentUser?.uid == user.uid) {
@@ -125,7 +127,8 @@ class _ConvieneAppState extends State<ConvieneApp> {
           ? 'Ese nombre de usuario ya existe. Elegí otro.'
           : 'No pudimos completar tu perfil. Reintentá.';
     } catch (_) {
-      _profileError = 'No pudimos conectar con la base. Reintentá.';
+      _profileError =
+          'Tu sesión está iniciada, pero la base de datos no responde. Probá Reintentar conexión en unos momentos.';
     } finally {
       _profileBusy = false;
       if (mounted) {
@@ -142,17 +145,18 @@ class _ConvieneAppState extends State<ConvieneApp> {
   }
 
   Future<void> _saveFirebaseUsername(String username) async {
+    if (_profileBusy) return;
     final user = widget.firebaseAuth?.currentUser;
     if (user == null || !user.emailVerified) return;
     _profileBusy = true;
-    _profileError = null;
     setState(() {});
     try {
       final row = await widget.supabaseClient!
           .from('firebase_profiles')
           .insert({'uid': user.uid, 'username': username.trim()})
           .select('username')
-          .single();
+          .single()
+          .timeout(const Duration(seconds: 20));
       final savedUsername = row['username'] as String;
       try {
         await user.updateDisplayName(savedUsername);
@@ -165,7 +169,8 @@ class _ConvieneAppState extends State<ConvieneApp> {
           ? 'Ese nombre de usuario ya existe. Elegí otro.'
           : 'No pudimos guardar tu perfil. Reintentá.';
     } catch (_) {
-      _profileError = 'No pudimos conectar con la base. Reintentá.';
+      _profileError =
+          'Tu sesión está iniciada, pero no pudimos guardar el perfil. Reintentá cuando vuelva la conexión.';
     } finally {
       _profileBusy = false;
       if (mounted) setState(() {});
@@ -248,6 +253,9 @@ class _ConvieneAppState extends State<ConvieneApp> {
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(dark: _darkMode),
       themeAnimationDuration: const Duration(milliseconds: 180),
+      builder: (context, child) => state == null
+          ? child ?? const SizedBox.shrink()
+          : AppScope(notifier: state, child: child ?? const SizedBox.shrink()),
       home: widget.supabaseClient == null
           ? const SupabaseSetupScreen()
           : widget.firebaseAuth != null

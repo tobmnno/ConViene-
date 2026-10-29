@@ -18,6 +18,7 @@ dependencies:
   share_plus: ^11.1.0
   shared_preferences: ^2.5.5
   supabase_flutter: 2.18.3
+  url_launcher: ^6.3.3
   web: ^1.1.1
 
 dev_dependencies:
@@ -28,6 +29,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/brand/conviene_logo.png
+    - assets/brand/conviene_logo_source.png
     - assets/logos/
   fonts:
     - family: Manrope

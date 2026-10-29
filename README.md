@@ -30,6 +30,13 @@ combinacion mas barata entre distintas tiendas.
 - Changuito con comparacion por supermercado y productos faltantes.
 - Plan combinado con el mejor precio de cada producto.
 - Descuentos compatibles con las tarjetas, bancos y billeteras del usuario.
+- Ofertas por cantidad de Coto vinculadas al EAN y sucursal cuando el catalogo
+  publica una mecanica estructurada (por ejemplo 2x1 o segunda unidad).
+- Ofertas por cantidad de Carrefour solo cuando el carrito oficial confirma
+  la mecanica para ese EAN y canal; La Gallega queda sin calculo por cantidad
+  hasta disponer de una fuente oficial verificable.
+- Registro privado del tope de reintegro ya utilizado por periodo; se edita en
+  el detalle de cada beneficio compatible.
 - Errores de consulta diferenciados de productos no encontrados, sin precios simulados.
 - Resultados parciales visibles con aviso cuando falla alguna tienda.
 - Tema claro u oscuro desde Inicio, con preferencia guardada en el dispositivo.
@@ -135,6 +142,11 @@ directamente a Internet.
 La app consulta precios de los catalogos disponibles y muestra una advertencia
 cuando la disponibilidad no esta confirmada. Los importes pueden variar segun
 la ubicacion, el canal de venta y el momento de la compra.
+Las ofertas por cantidad se consultan junto con el producto y solo se calculan
+para su EAN y sucursal durante los 30 minutos posteriores a la captura. Si no
+registraste cuanto reintegro ya usaste, el ahorro con tope es un maximo
+estimado. Conviene no tiene acceso a los consumos bancarios, al stock definitivo
+ni al ticket de caja: el total final siempre debe confirmarse en el comercio.
 
 Para desplegar el backend con Docker:
 
@@ -197,6 +209,22 @@ falla; los resultados de las otras tiendas siguen visibles con una advertencia.
 Las promociones se obtienen desde las fuentes publicas de cada comercio y se
 normalizan por entidad, porcentaje, tope, dia, vigencia y canal. La app resalta
 los beneficios compatibles con los medios de pago activos.
+
+La API distingue promociones de medio de pago y ofertas del supermercado. El
+motor admite reglas estructuradas por EAN (2x1, 3x2, segunda unidad y precio
+de paquete). Coto publica algunas reglas por producto; Carrefour solo las
+habilita tras contrastar 1, N y N+1 unidades con la simulacion oficial del
+carrito. La Gallega no publica una fuente verificable por EAN para estas
+ofertas, por lo que no se estiman. Los precios de oferta unitarios se respetan
+como base. Un beneficio bancario no se acumula automaticamente con esa oferta.
+
+Las promociones de un catalogo local sin verificacion reciente se muestran
+solo como referencia y no reducen el total. Los beneficios publicados por
+fuentes actuales pueden producir un **total estimado**: exclusiones, consumos
+previos de un tope semanal/mensual, sucursal y aprobacion del medio de pago se
+confirman en caja. La ficha indica origen, fecha de consulta y condiciones.
+El plan mixto recalcula sus subtotales por tienda, pero la seleccion inicial
+por producto no optimiza globalmente compras minimas entre tiendas.
 
 Los registros cuyos legales estan vencidos se omiten, aunque la fuente todavia
 los marque como activos. Conviene prefiere no mostrar una promocion antes que

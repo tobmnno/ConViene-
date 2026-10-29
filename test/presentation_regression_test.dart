@@ -1,4 +1,6 @@
 import 'package:conviene/models/cart_item.dart';
+import 'package:conviene/models/discount.dart';
+import 'package:conviene/models/payment_method.dart';
 import 'package:conviene/models/product.dart';
 import 'package:conviene/models/store_comparison.dart';
 import 'package:conviene/repositories/mock_repository.dart';
@@ -106,6 +108,113 @@ void main() {
     state.dispose();
   });
 
+  testWidgets('usuario registra el tope ya consumido desde un descuento', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final date = DateTime(2026, 10, 20);
+    final state = AppState(repository: MockRepository(), initialDate: date);
+    state.supermarkets = await MockRepository().getSupermarkets();
+    state.paymentMethods = const [
+      PaymentMethod(
+        id: 'visa',
+        type: PaymentMethodType.card,
+        entity: 'Visa',
+        displayName: 'Visa',
+        active: true,
+      ),
+    ];
+    final promotion = Promotion(
+      id: 'cap-ui',
+      storeId: 'coto',
+      tipoMedioPago: PaymentMethodType.card,
+      entidad: 'Visa',
+      porcentajeDescuento: 20,
+      topeReintegro: 100,
+      diasSemana: {date.weekday},
+      fechaInicio: date,
+      fechaFin: date,
+      condiciones: 'Tope mensual',
+      categorias: const ['todos'],
+      titulo: 'Promo con tope',
+      capFrequency: 'monthly',
+    );
+    state.promotions = [promotion];
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: const MaterialApp(home: Scaffold(body: DiscountsScreen())),
+      ),
+    );
+    await tester.tap(find.text('Promo con tope'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('No informado; el ahorro es un maximo estimado'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Registrar tope utilizado'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), '60');
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+    expect(state.usedRefundCapFor(promotion), 60);
+    state.dispose();
+  });
+
+  testWidgets('un respaldo muestra su estado y fuente sin marcar ahorro', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final state = AppState(
+      repository: MockRepository(),
+      initialDate: DateTime(2026, 8, 20),
+    );
+    state.supermarkets = await MockRepository().getSupermarkets();
+    state.paymentMethods = const [
+      PaymentMethod(
+        id: 'visa',
+        type: PaymentMethodType.card,
+        entity: 'Visa',
+        displayName: 'Visa',
+        active: true,
+      ),
+    ];
+    state.promotions = [
+      Promotion(
+        id: 'static',
+        storeId: 'coto',
+        tipoMedioPago: PaymentMethodType.card,
+        entidad: 'Visa',
+        porcentajeDescuento: 20,
+        topeReintegro: 0,
+        diasSemana: const {DateTime.thursday},
+        fechaInicio: DateTime(2026, 8, 1),
+        fechaFin: DateTime(2026, 8, 31),
+        condiciones: 'Condiciones por confirmar',
+        categorias: const ['todos'],
+        titulo: 'Beneficio de referencia',
+        fuenteUrl: 'https://www.coto.com.ar/descuentos',
+        sourceType: 'static_fallback',
+        verificationStatus: 'unverified',
+        calculationStatus: 'not_calculable',
+      ),
+    ];
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: const MaterialApp(home: Scaffold(body: DiscountsScreen())),
+      ),
+    );
+    expect(find.text('Referencia sin verificar'), findsOneWidget);
+    await tester.tap(find.text('Beneficio de referencia'));
+    await tester.pumpAndSettle();
+    expect(find.text('Catalogo local de respaldo'), findsOneWidget);
+    expect(find.text('https://www.coto.com.ar/descuentos'), findsOneWidget);
+    state.dispose();
+  });
+
   testWidgets('el escaner es el acceso central y no esta en la busqueda', (
     tester,
   ) async {
@@ -126,9 +235,39 @@ void main() {
 
     expect(find.byTooltip('Escanear codigo de barras'), findsOneWidget);
     expect(find.byType(BottomAppBar), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsNothing);
+    expect(find.text('Escanear'), findsOneWidget);
+    final scanCircle = find.byKey(const Key('scan-action-circle'));
+    expect(tester.getSize(scanCircle), const Size(40, 40));
+    expect(
+      tester.getTopLeft(scanCircle).dy,
+      greaterThan(tester.getTopLeft(find.byType(BottomAppBar)).dy),
+    );
     await tester.tap(find.text('Buscar').last);
     await tester.pumpAndSettle();
     expect(find.byTooltip('Escanear codigo de barras'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    state.dispose();
+  });
+
+  testWidgets('el acceso Escanear cabe en la barra a 320 px', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final state = AppState(repository: MockRepository())
+      ..isBootstrapping = false;
+    state.supermarkets = await MockRepository().getSupermarkets();
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: MaterialApp(
+          home: AppShell(darkMode: false, onToggleDarkMode: () {}),
+        ),
+      ),
+    );
+    final bar = tester.getRect(find.byType(BottomAppBar));
+    final scan = tester.getRect(find.byKey(const Key('scan-action-circle')));
+    expect(bar.contains(scan.center), isTrue);
+    expect(find.text('Escanear'), findsOneWidget);
     expect(tester.takeException(), isNull);
     state.dispose();
   });

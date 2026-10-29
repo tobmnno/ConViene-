@@ -14,6 +14,9 @@ import '../widgets/price_block.dart';
 import '../widgets/product_art.dart';
 import '../widgets/screen_frame.dart';
 import '../widgets/store_logo.dart';
+import '../widgets/product_comparison_trigger.dart';
+import '../widgets/product_skeleton_card.dart';
+import 'product_detail_screen.dart';
 import 'favorites_screen.dart';
 import 'contribution_screen.dart';
 
@@ -59,6 +62,13 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final skeletonCount = state.isSearching
+        ? state.searchPendingStoreIds.isNotEmpty
+              ? state.searchPendingStoreIds.length.clamp(1, 3)
+              : state.searchResults.isEmpty
+              ? 1
+              : 0
+        : 0;
     final bestPrice = state.searchResults.isEmpty
         ? null
         : state.searchResults
@@ -146,50 +156,60 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
           if (!state.paymentSetupComplete || state.activePaymentMethods.isEmpty)
             const _NoPaymentMethodsHint(),
-          if (state.isSearching)
-            const Expanded(
-              child: Center(
-                child: CircularProgressIndicator(color: AppColors.blue),
-              ),
-            )
-          else
-            Expanded(
-              child: state.lastError != null
-                  ? const SizedBox.shrink()
-                  : state.searchResults.isEmpty
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _EmptyResults(
-                          partial: state.searchWarning != null,
-                          barcode: normalizedBarcode(state.searchQuery) != null,
-                          identified: state.searchNotice != null,
-                        ),
-                        if (state.canContribute) ...[
-                          const SizedBox(height: 20),
-                          _contributionButton(state),
-                        ],
+          Expanded(
+            child: state.lastError != null && state.searchResults.isEmpty
+                ? const SizedBox.shrink()
+                : state.searchResults.isEmpty && !state.isSearching
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _EmptyResults(
+                        partial: state.searchWarning != null,
+                        barcode: normalizedBarcode(state.searchQuery) != null,
+                        identified: state.searchNotice != null,
+                      ),
+                      if (state.canContribute) ...[
+                        const SizedBox(height: 20),
+                        _contributionButton(state),
                       ],
-                    )
-                  : ListView.separated(
-                      itemCount:
-                          state.searchResults.length +
-                          (state.canContribute ? 1 : 0),
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        if (index == state.searchResults.length) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 4, bottom: 20),
-                            child: _contributionButton(state),
-                          );
-                        }
-                        final result = state.searchResults[index];
-                        final discount = state.discountForResult(result);
-                        final isBest =
-                            bestPrice != null &&
-                            (discount.precioFinal - bestPrice).abs() < 0.01;
-                        return _ResultCard(
+                    ],
+                  )
+                : ListView.separated(
+                    itemCount:
+                        state.searchResults.length +
+                        skeletonCount +
+                        (state.canContribute && !state.isSearching ? 1 : 0),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      if (index >= state.searchResults.length &&
+                          index < state.searchResults.length + skeletonCount) {
+                        return const ProductSkeletonCard();
+                      }
+                      if (index >= state.searchResults.length + skeletonCount) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4, bottom: 20),
+                          child: _contributionButton(state),
+                        );
+                      }
+                      final result = state.searchResults[index];
+                      final discount = state.discountForResult(result);
+                      final isBest =
+                          bestPrice != null &&
+                          (discount.precioFinal - bestPrice).abs() < 0.01;
+                      return ProductComparisonTrigger(
+                        product: result.product,
+                        onDetails: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => AppScope(
+                              notifier: state,
+                              child: ProductDetailScreen(
+                                product: result.product,
+                              ),
+                            ),
+                          ),
+                        ),
+                        child: _ResultCard(
                           result: result,
                           isBest: isBest,
                           isFavorite: state.isFavorite(result.product.id),
@@ -206,10 +226,11 @@ class _SearchScreenState extends State<SearchScreen> {
                             result.product.name,
                             result.supermarket.id,
                           ),
-                        );
-                      },
-                    ),
-            ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
     );

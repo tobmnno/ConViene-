@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../models/cart_item.dart';
 import '../models/discount.dart';
 import '../models/payment_method.dart';
@@ -11,10 +13,81 @@ import '../repositories/product_equivalence_repository.dart';
 import 'discount_engine.dart';
 
 class PriceComparisonService {
-  const PriceComparisonService(this._repository, this._discountEngine);
+  PriceComparisonService(
+    this._repository,
+    this._discountEngine, {
+    this.usedRefundCaps = const {},
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now;
 
   final ConvieneRepository _repository;
   final DiscountEngine _discountEngine;
+  final Map<String, double> usedRefundCaps;
+  final DateTime Function() _clock;
+  final _equivalentQuotes = <String, (DateTime, EquivalentProductsResult)>{};
+  final _pendingQuotes = <String, Future<EquivalentProductsResult>>{};
+  int _quoteEpoch = 0;
+
+  void invalidateQuotes() {
+    ++_quoteEpoch;
+    _equivalentQuotes.clear();
+    _pendingQuotes.clear();
+  }
+
+  Future<EquivalentProductsResult> _equivalentsForCart(
+    Product product,
+    Set<String> storeIds,
+    ShoppingContext context, {
+    required bool forceRefresh,
+  }) async {
+    final key = jsonEncode([
+      product.id,
+      product.ean,
+      product.name,
+      product.brand,
+      product.presentation,
+      (storeIds.toList()..sort()),
+      context.postalCode,
+      context.fulfillmentApiValue,
+      context.cotoStore,
+      context.carrefourSalesChannel,
+      context.latitude,
+      context.longitude,
+    ]);
+    if (forceRefresh) _equivalentQuotes.remove(key);
+    final cached = _equivalentQuotes[key];
+    if (cached != null &&
+        _clock().difference(cached.$1) < const Duration(minutes: 1)) {
+      return cached.$2;
+    }
+    final pending = _pendingQuotes[key];
+    if (pending != null) return pending;
+    final epoch = _quoteEpoch;
+    final repository = _repository as ProductEquivalenceRepository;
+    final request = repository.findEquivalentProducts(
+      product: product,
+      storeIds: storeIds,
+      context: context,
+    );
+    _pendingQuotes[key] = request;
+    try {
+      final response = await request;
+      if (epoch == _quoteEpoch &&
+          storeIds.every(
+            (id) =>
+                response.storeStatus[id] != null &&
+                response.storeStatus[id] != 'error',
+          )) {
+        if (_equivalentQuotes.length >= 64) {
+          _equivalentQuotes.remove(_equivalentQuotes.keys.first);
+        }
+        _equivalentQuotes[key] = (_clock(), response);
+      }
+      return response;
+    } finally {
+      if (identical(_pendingQuotes[key], request)) _pendingQuotes.remove(key);
+    }
+  }
 
   static const _unitTokens = {
     'kg',
@@ -140,6 +213,7 @@ class PriceComparisonService {
     required List<Promotion> promociones,
     required Set<String> storeIds,
     ShoppingContext context = const ShoppingContext(),
+    bool forceRefreshPrices = false,
   }) async {
     if (cartItems.isEmpty) {
       return const CartComparisonResult(
@@ -204,13 +278,12 @@ class PriceComparisonService {
                 storeStatus: storeStatus,
               );
             }
-            final response =
-                await (equivalenceRepository as ProductEquivalenceRepository)
-                    .findEquivalentProducts(
-                      product: selectedProduct,
-                      storeIds: missingStoreIds,
-                      context: context,
-                    );
+            final response = await _equivalentsForCart(
+              selectedProduct,
+              missingStoreIds,
+              context,
+              forceRefresh: forceRefreshPrices,
+            );
             storeStatus.addAll(response.storeStatus);
             for (final suggestion in response.alternatives) {
               if (missingStoreIds.contains(suggestion.supermarket.id) &&
@@ -317,6 +390,13 @@ class PriceComparisonService {
   }) {
     final comparisons = <StoreComparison>[];
     for (final store in selectedStores) {
+      final purchaseTotal = comparableItems.fold<double>(0, (total, item) {
+        final offer = item.offersByStore[store.id];
+        return total +
+            (offer != null && offer.price.stock
+                ? offer.price.priceOriginal * item.cartItem.quantity
+                : 0);
+      });
       final lines = <PricedCartItem>[];
       final missing = <Product>[];
       final missingStatus = <String, String>{};
@@ -341,11 +421,12 @@ class PriceComparisonService {
             fecha: fecha,
             mediosPagoUsuario: mediosPagoUsuario,
             promociones: promociones,
+            purchaseTotal: purchaseTotal,
           ),
         );
       }
 
-      final cappedLines = _applyAggregateCaps(lines);
+      final cappedLines = _applyAggregateCaps(lines, fecha);
       final totalOriginal = cappedLines.fold<double>(
         0,
         (total, line) => total + line.discount.precioOriginal,
@@ -392,6 +473,16 @@ class PriceComparisonService {
     if (comparableItems.isEmpty) {
       return null;
     }
+    final totalsByStore = <String, double>{};
+    for (final item in comparableItems) {
+      final offer = item.selectedOffer;
+      if (offer != null && offer.price.stock) {
+        final storeId = offer.supermarket.id;
+        totalsByStore[storeId] =
+            (totalsByStore[storeId] ?? 0) +
+            offer.price.priceOriginal * item.cartItem.quantity;
+      }
+    }
     final lines = <PricedCartItem>[];
     final missing = <Product>[];
     for (final item in comparableItems) {
@@ -407,10 +498,17 @@ class PriceComparisonService {
           fecha: fecha,
           mediosPagoUsuario: mediosPagoUsuario,
           promociones: promociones,
+          purchaseTotal: totalsByStore[result.supermarket.id],
         ),
       );
     }
-    return _multiStorePlan(lines, missing);
+    return _multiStorePlan(
+      lines,
+      missing,
+      fecha: fecha,
+      mediosPagoUsuario: mediosPagoUsuario,
+      promociones: promociones,
+    );
   }
 
   MultiStoreComparison? _buildBestPerProductPlan({
@@ -445,7 +543,13 @@ class PriceComparisonService {
         lines.add(bestLine);
       }
     }
-    return _multiStorePlan(lines, missing);
+    return _multiStorePlan(
+      lines,
+      missing,
+      fecha: fecha,
+      mediosPagoUsuario: mediosPagoUsuario,
+      promociones: promociones,
+    );
   }
 
   SearchResult? _selectedOfferFor({
@@ -487,6 +591,7 @@ class PriceComparisonService {
     required DateTime fecha,
     required List<PaymentMethod> mediosPagoUsuario,
     required List<Promotion> promociones,
+    double? purchaseTotal,
   }) {
     final lineOriginal = result.price.priceOriginal * cartItem.quantity;
     final discount = _discountEngine.calcularPrecioFinal(
@@ -495,7 +600,12 @@ class PriceComparisonService {
       precioOriginal: lineOriginal,
       fecha: fecha,
       mediosPagoUsuario: mediosPagoUsuario,
-      promociones: promociones,
+      promociones: [...promociones, ...result.price.quantityOffers],
+      quantity: cartItem.quantity,
+      purchaseTotal: purchaseTotal,
+      hasStoreOffer: result.price.hasStoreOffer,
+      branchId: result.price.branchId,
+      usedRefundCaps: usedRefundCaps,
     );
     return PricedCartItem(
       product: result.product,
@@ -507,11 +617,56 @@ class PriceComparisonService {
     );
   }
 
+  MultiStoreComparison repriceKnownLines(
+    List<PricedCartItem> lines, {
+    required DateTime date,
+    required List<PaymentMethod> paymentMethods,
+    required List<Promotion> promotions,
+  }) => _multiStorePlan(
+    lines,
+    const [],
+    fecha: date,
+    mediosPagoUsuario: paymentMethods,
+    promociones: promotions,
+  );
+
   MultiStoreComparison _multiStorePlan(
     List<PricedCartItem> lines,
-    List<Product> missing,
-  ) {
-    final cappedLines = _applyAggregateCaps(lines);
+    List<Product> missing, {
+    required DateTime fecha,
+    required List<PaymentMethod> mediosPagoUsuario,
+    required List<Promotion> promociones,
+  }) {
+    final totalsByStore = <String, double>{};
+    for (final line in lines) {
+      final id = line.supermarket.id;
+      totalsByStore[id] =
+          (totalsByStore[id] ?? 0) + line.price.priceOriginal * line.quantity;
+    }
+    final repriced = [
+      for (final line in lines)
+        PricedCartItem(
+          product: line.product,
+          supermarket: line.supermarket,
+          quantity: line.quantity,
+          price: line.price,
+          cartProductId: line.cartProductId,
+          discount: _discountEngine.calcularPrecioFinal(
+            product: line.product,
+            supermercado: line.supermarket.id,
+            precioOriginal: line.price.priceOriginal * line.quantity,
+            quantity: line.quantity,
+            fecha: fecha,
+            mediosPagoUsuario: mediosPagoUsuario,
+            promociones: [...promociones, ...line.price.quantityOffers],
+            purchaseTotal: totalsByStore[line.supermarket.id],
+            hasStoreOffer: line.price.hasStoreOffer,
+            branchId: line.price.branchId,
+            usedRefundCaps: usedRefundCaps,
+          ),
+        ),
+    ];
+    final cappedLines = _applyAggregateCaps(repriced, fecha);
     final totalOriginal = cappedLines.fold<double>(
       0,
       (total, line) => total + line.discount.precioOriginal,
@@ -559,6 +714,9 @@ class PriceComparisonService {
     final tolerance = (selectedSize.value * 0.02).clamp(1, 50).toDouble();
     return difference <= tolerance;
   }
+
+  bool isVerifiedEquivalent(Product selectedProduct, SearchResult result) =>
+      _isVerifiedEquivalent(selectedProduct, result);
 
   bool _isVerifiedEquivalent(Product selectedProduct, SearchResult result) {
     if (!result.isExactMatch) {
@@ -1027,7 +1185,10 @@ class PriceComparisonService {
     return null;
   }
 
-  List<PricedCartItem> _applyAggregateCaps(List<PricedCartItem> lines) {
+  List<PricedCartItem> _applyAggregateCaps(
+    List<PricedCartItem> lines,
+    DateTime fecha,
+  ) {
     final rawDiscountByPromo = <String, double>{};
     final capByPromo = <String, double>{};
     for (final line in lines) {
@@ -1037,7 +1198,11 @@ class PriceComparisonService {
       }
       rawDiscountByPromo[promotion.id] =
           (rawDiscountByPromo[promotion.id] ?? 0) + line.discount.rawDiscount;
-      capByPromo[promotion.id] = promotion.topeReintegro;
+      final key = promotion.capUsageKey(fecha);
+      capByPromo[promotion.id] =
+          (promotion.topeReintegro -
+                  (key == null ? 0 : (usedRefundCaps[key] ?? 0)))
+              .clamp(0.0, double.infinity);
     }
 
     return [
@@ -1057,7 +1222,7 @@ class PriceComparisonService {
     }
     final totalRaw = rawDiscountByPromo[promotion.id] ?? 0;
     final cap = capByPromo[promotion.id] ?? promotion.topeReintegro;
-    if (totalRaw <= cap) {
+    if (promotion.topeReintegro <= 0 || totalRaw <= cap) {
       return line;
     }
     final ratio = cap / totalRaw;

@@ -214,6 +214,94 @@ void main() {
     state.dispose();
   });
 
+  testWidgets('opcion completa mantiene un encabezado legible a 320 px', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 614));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final line = PricedCartItem(
+      product: _product,
+      supermarket: _store,
+      quantity: 1,
+      price: ProductPrice(
+        storeId: 'coto',
+        productId: _product.id,
+        priceOriginal: 6605.99,
+        priceUnitario: 6605.99,
+        stock: true,
+        url: '',
+        fechaActualizacion: DateTime(2026, 10, 28),
+      ),
+      discount: DiscountQuote.noDiscount(6605.99),
+    );
+    final state = AppState(repository: MockRepository())
+      ..cartComparisons = [
+        StoreComparison(
+          supermarket: _store,
+          items: [line],
+          missingProducts: const [],
+          totalOriginal: 6605.99,
+          totalDiscount: 0,
+          totalFinal: 6605.99,
+        ),
+      ];
+    addTearDown(state.dispose);
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: const MaterialApp(home: StoreComparisonScreen()),
+      ),
+    );
+
+    expect(find.text('Compra completa'), findsOneWidget);
+    expect(find.text('Coto'), findsOneWidget);
+    expect(find.text('MEJOR OPCION'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('mejor mix pone el importe debajo en pantalla estrecha', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final line = PricedCartItem(
+      product: _product,
+      supermarket: _store,
+      quantity: 1,
+      price: ProductPrice(
+        storeId: 'coto',
+        productId: _product.id,
+        priceOriginal: 6605.99,
+        priceUnitario: 6605.99,
+        stock: true,
+        url: '',
+        fechaActualizacion: DateTime(2026, 10, 28),
+      ),
+      discount: DiscountQuote.noDiscount(6605.99),
+    );
+    final state = AppState(repository: MockRepository())
+      ..bestPerProductPlan = MultiStoreComparison(
+        items: [line],
+        missingProducts: const [],
+        totalOriginal: 6605.99,
+        totalDiscount: 0,
+        totalFinal: 6605.99,
+      );
+    addTearDown(state.dispose);
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: const MaterialApp(home: StoreComparisonScreen()),
+      ),
+    );
+
+    expect(
+      tester.getTopLeft(find.text('\$6.605,99')).dy,
+      greaterThan(tester.getBottomLeft(find.text('Por producto')).dy),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('la opcion parcial aclara cual producto si encontro', (
     tester,
   ) async {

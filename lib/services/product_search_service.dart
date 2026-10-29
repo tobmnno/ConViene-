@@ -1,6 +1,7 @@
 import '../models/price_quote.dart';
 import '../models/shopping_context.dart';
 import '../repositories/conviene_repository.dart';
+import '../repositories/progressive_search_repository.dart';
 
 enum SearchSort { bestPrice, unitPrice, alphabetical }
 
@@ -14,12 +15,33 @@ class ProductSearchService {
     required Set<String> storeIds,
     required SearchSort sort,
     ShoppingContext context = const ShoppingContext(),
+    SearchProgress? onProgress,
   }) async {
-    final results = await _repository.searchProducts(
-      query: query,
-      storeIds: storeIds,
-      context: context,
-    );
+    final results = _repository is ProgressiveSearchRepository
+        ? await (_repository as ProgressiveSearchRepository)
+              .searchProductsProgressively(
+                query: query,
+                storeIds: storeIds,
+                context: context,
+                onProgress: (rows, pending) => onProgress?.call(
+                  _visibleResults(rows, query, sort, storeIds),
+                  pending,
+                ),
+              )
+        : await _repository.searchProducts(
+            query: query,
+            storeIds: storeIds,
+            context: context,
+          );
+    return _visibleResults(results, query, sort, storeIds);
+  }
+
+  List<SearchResult> _visibleResults(
+    List<SearchResult> results,
+    String query,
+    SearchSort sort,
+    Set<String> storeIds,
+  ) {
     final hasSpecificTerm = _queryTokens(
       query,
     ).any((token) => int.tryParse(token) == null);
@@ -31,7 +53,23 @@ class ProductSearchService {
             (hasSpecificTerm && exactResults.isNotEmpty)
         ? exactResults
         : results;
-    return sortResults(visibleResults, sort, query: query);
+    final sorted = sortResults(visibleResults, sort, query: query);
+    if (sorted.length <= 20) return sorted;
+    final selected = sorted.take(20).toList();
+    for (final store in storeIds) {
+      if (selected.any((row) => row.supermarket.id == store)) continue;
+      final candidate = sorted.where((row) => row.supermarket.id == store);
+      if (candidate.isEmpty) continue;
+      final replace = selected.lastIndexWhere(
+        (row) =>
+            selected
+                .where((item) => item.supermarket.id == row.supermarket.id)
+                .length >
+            1,
+      );
+      if (replace >= 0) selected[replace] = candidate.first;
+    }
+    return sortResults(selected, sort, query: query);
   }
 
   bool _hasRequestedVariant(String query) {
@@ -52,6 +90,7 @@ class ProductSearchService {
     List<SearchResult> results,
     SearchSort sort, {
     String query = '',
+    double Function(SearchResult)? effectivePrice,
   }) {
     final sorted = [...results];
     final queryTokens = _queryTokens(query);
@@ -73,9 +112,10 @@ class ProductSearchService {
         return relevance;
       }
       return switch (sort) {
-        SearchSort.bestPrice => a.price.priceOriginal.compareTo(
-          b.price.priceOriginal,
-        ),
+        SearchSort.bestPrice =>
+          (effectivePrice?.call(a) ?? a.price.priceOriginal).compareTo(
+            effectivePrice?.call(b) ?? b.price.priceOriginal,
+          ),
         SearchSort.unitPrice => a.price.priceUnitario.compareTo(
           b.price.priceUnitario,
         ),

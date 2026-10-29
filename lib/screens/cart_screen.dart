@@ -15,6 +15,8 @@ import '../widgets/product_art.dart';
 import '../widgets/quantity_stepper.dart';
 import '../widgets/screen_frame.dart';
 import '../widgets/store_logo.dart';
+import '../widgets/conviene_loader.dart';
+import '../widgets/cart_quantity_notice.dart';
 import 'breakdown_screen.dart';
 import 'store_comparison_screen.dart';
 import 'cart_share_screen.dart';
@@ -124,11 +126,23 @@ class _CartScreenState extends State<CartScreen> {
     Product? missingProduct,
   }) => KeyedSubtree(
     key: _lineKey(item),
-    child: _CartLine(
-      cartItem: item,
-      pricedLine: pricedLine,
-      missingProduct: missingProduct,
-      onQuantityChanged: (quantity) => _updateQuantity(state, item, quantity),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _CartLine(
+          cartItem: item,
+          pricedLine: pricedLine,
+          missingProduct: missingProduct,
+          onQuantityChanged: (quantity) =>
+              _updateQuantity(state, item, quantity),
+        ),
+        if (pricedLine != null)
+          CartQuantityNotice(
+            key: ValueKey('${_lineId(item)}|${item.quantity}'),
+            line: pricedLine,
+            onAccept: () => _updateQuantity(state, item, 2),
+          ),
+      ],
     ),
   );
 
@@ -193,7 +207,9 @@ class _CartScreenState extends State<CartScreen> {
                 tooltip: 'Actualizar precios',
                 onPressed: state.cartItems.isEmpty || state.isComparing
                     ? null
-                    : () => unawaited(state.refreshComparisons()),
+                    : () => unawaited(
+                        state.refreshComparisons(forceRefreshPrices: true),
+                      ),
                 icon: Icon(Icons.refresh, color: AppColors.deepBlue),
               ),
               IconButton(
@@ -207,12 +223,12 @@ class _CartScreenState extends State<CartScreen> {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 12,
-            child: state.isComparing
-                ? const LinearProgressIndicator(
-                    semanticsLabel: 'Comparando precios reales',
-                  )
-                : null,
+            height: 48,
+            child: ConvieneLoader(
+              compact: true,
+              active: state.isComparing,
+              message: 'Comparando precios reales',
+            ),
           ),
           if (state.cartItems.isEmpty)
             const Expanded(child: _EmptyCart())

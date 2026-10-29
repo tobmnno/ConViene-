@@ -12,12 +12,20 @@ import '../models/shopping_context.dart';
 import 'conviene_repository.dart';
 import 'promotion_status_repository.dart';
 import 'product_equivalence_repository.dart';
+import 'progressive_search_repository.dart';
 import 'search_status_repository.dart';
+
+typedef _SearchPayload = ({
+  List<SearchResult> results,
+  String? warning,
+  String? notice,
+});
 
 class ApiRepository
     implements
         ConvieneRepository,
         ProductEquivalenceRepository,
+        ProgressiveSearchRepository,
         PromotionStatusRepository,
         SearchStatusRepository {
   ApiRepository({
@@ -113,86 +121,195 @@ class ApiRepository
   }) async {
     _lastSearchWarning = null;
     _lastSearchNotice = null;
+    try {
+      final payload = await _fetchSearch(query, storeIds, context);
+      _lastSearchWarning = payload.warning;
+      _lastSearchNotice = payload.notice;
+      return payload.results;
+    } on Object {
+      throw StateError(
+        'No se pudo consultar los precios reales. Intenta nuevamente.',
+      );
+    }
+  }
+
+  @override
+  Future<List<SearchResult>> searchProductsProgressively({
+    required String query,
+    required Set<String> storeIds,
+    required SearchProgress onProgress,
+    ShoppingContext context = const ShoppingContext(),
+  }) async {
+    if (storeIds.length <= 1) {
+      final results = await searchProducts(
+        query: query,
+        storeIds: storeIds,
+        context: context,
+      );
+      onProgress(results, const {});
+      return results;
+    }
+    _lastSearchWarning = null;
+    _lastSearchNotice = null;
+    final pending = Set<String>.of(storeIds);
+    final rowsByStore = <String, List<SearchResult>>{};
+    final failed = <String>{};
+    final warnings = <String>{};
+    final notices = <String>{};
+
+    await Future.wait([
+      for (final store in storeIds)
+        () async {
+          try {
+            final payload = await _fetchSearch(query, {store}, context);
+            rowsByStore[store] = payload.results;
+            if (payload.warning != null) warnings.add(payload.warning!);
+            if (payload.notice != null) notices.add(payload.notice!);
+          } on Object {
+            failed.add(store);
+          } finally {
+            pending.remove(store);
+            onProgress([
+              for (final rows in rowsByStore.values) ...rows,
+            ], Set<String>.of(pending));
+          }
+        }(),
+    ]);
+
+    var results = [for (final rows in rowsByStore.values) ...rows];
+    if (RegExp(r'^\d{8,14}$').hasMatch(query) &&
+        results
+                .where((row) => row.product.ean == query)
+                .map((row) => row.supermarket.id)
+                .toSet()
+                .length <
+            storeIds.length) {
+      final unresolved = storeIds.difference(
+        results
+            .where((row) => row.product.ean == query)
+            .map((row) => row.supermarket.id)
+            .toSet(),
+      );
+      onProgress(results, unresolved);
+      try {
+        final complete = await _fetchSearch(query, storeIds, context);
+        if (complete.results.isNotEmpty) {
+          final recoveredStores = complete.results
+              .map((row) => row.supermarket.id)
+              .where(unresolved.contains)
+              .toSet();
+          results = [
+            for (final row in results)
+              if (!recoveredStores.contains(row.supermarket.id)) row,
+            for (final row in complete.results)
+              if (recoveredStores.contains(row.supermarket.id)) row,
+          ];
+          failed.removeAll(recoveredStores);
+        }
+        if (complete.warning != null) warnings.add(complete.warning!);
+        if (complete.notice != null) notices.add(complete.notice!);
+      } on Object {
+        warnings.add('No se pudo completar la comparacion por nombre.');
+      } finally {
+        onProgress(results, const {});
+      }
+    }
+
+    if (failed.length == storeIds.length && results.isEmpty) {
+      throw StateError(
+        'No se pudo consultar los precios reales. Intenta nuevamente.',
+      );
+    }
+    if (failed.isNotEmpty) {
+      warnings.add(
+        'No se pudo consultar ${failed.map(_storeDisplayName).join(', ')}. '
+        'Los resultados de otros supermercados son parciales.',
+      );
+    }
+    _lastSearchWarning = warnings.isEmpty ? null : warnings.join(' ');
+    _lastSearchNotice = notices.isEmpty ? null : notices.join(' ');
+    return results;
+  }
+
+  Future<_SearchPayload> _fetchSearch(
+    String query,
+    Set<String> storeIds,
+    ShoppingContext context,
+  ) async {
     final contextKey = _contextKey(context);
     if (_pricesContextKey != contextKey) {
       // A store branch or fulfillment mode can change product prices and stock.
       _cachedPrices.clear();
       _pricesContextKey = contextKey;
     }
-    try {
-      final uri = _searchUri(query, storeIds, context);
-      final response = await _client.get(uri).timeout(timeout);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw StateError('Scraper API returned ${response.statusCode}');
-      }
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) {
-        throw const FormatException('Scraper API response must be an object');
-      }
-      final rawResults = decoded['results'];
-      if (rawResults is! List<dynamic>) {
-        throw const FormatException(
-          'Scraper API response must include results',
-        );
-      }
-      final rawStatus = decoded['store_status'];
-      if (rawStatus is Map<String, dynamic>) {
-        final failed = [
-          for (final store in storeIds)
-            if (_asString(rawStatus[_storeIdForApi(store)]) == 'error') store,
-        ];
-        if (failed.isNotEmpty) {
-          if (failed.length == storeIds.length && rawResults.isEmpty) {
-            throw StateError('All supermarket sources failed');
-          }
-          _lastSearchWarning =
-              'No se pudo consultar ${failed.map(_storeDisplayName).join(', ')}. '
-              'Los resultados de otros supermercados son parciales.';
+    final uri = _searchUri(query, storeIds, context);
+    final response = await _client.get(uri).timeout(timeout);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Scraper API returned ${response.statusCode}');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Scraper API response must be an object');
+    }
+    final rawResults = decoded['results'];
+    if (rawResults is! List<dynamic>) {
+      throw const FormatException('Scraper API response must include results');
+    }
+    String? warning;
+    final rawStatus = decoded['store_status'];
+    if (rawStatus is Map<String, dynamic>) {
+      final failed = [
+        for (final store in storeIds)
+          if (_asString(rawStatus[_storeIdForApi(store)]) == 'error') store,
+      ];
+      if (failed.isNotEmpty) {
+        if (failed.length == storeIds.length && rawResults.isEmpty) {
+          throw StateError('All supermarket sources failed');
         }
+        warning =
+            'No se pudo consultar ${failed.map(_storeDisplayName).join(', ')}. '
+            'Los resultados de otros supermercados son parciales.';
       }
-      final notices = <String>[];
-      final identified = decoded['identified_product'];
-      if (identified is Map<String, dynamic>) {
-        final name = _asString(
-          identified['name'],
-        ).replaceFirst(RegExp(r'[.!?]+$'), '');
-        if (name.isNotEmpty) {
-          notices.add('Codigo identificado: $name.');
-        }
+    }
+    final notices = <String>[];
+    final identified = decoded['identified_product'];
+    if (identified is Map<String, dynamic>) {
+      final name = _asString(
+        identified['name'],
+      ).replaceFirst(RegExp(r'[.!?]+$'), '');
+      if (name.isNotEmpty) {
+        notices.add('Codigo identificado: $name.');
       }
-      if (rawResults.any(
-        (item) =>
-            item is Map<String, dynamic> && item['match_type'] == 'name_match',
-      )) {
-        notices.add(
-          'Las coincidencias sin EAN se buscaron por nombre, presentacion y variante.',
-        );
-      }
-      final unavailable = decoded['unavailable_products'];
-      if (unavailable is List<dynamic> && unavailable.isNotEmpty) {
-        final products = unavailable.whereType<Map<String, dynamic>>().toList();
-        if (products.isNotEmpty) {
-          final name = _asString(products.first['name']);
-          final stores = products
-              .map((item) => _storeDisplayName(_asString(item['store'])))
-              .toSet()
-              .join(', ');
-          if (name.isNotEmpty && stores.isNotEmpty) {
-            notices.add(
-              'En $stores, $name figura sin stock o sin precio disponible.',
-            );
-          }
-        }
-      }
-      _lastSearchNotice = notices.isEmpty ? null : notices.join(' ');
-      return _parseResults(rawResults);
-    } on Object {
-      _lastSearchWarning = null;
-      _lastSearchNotice = null;
-      throw StateError(
-        'No se pudo consultar los precios reales. Intenta nuevamente.',
+    }
+    if (rawResults.any(
+      (item) =>
+          item is Map<String, dynamic> && item['match_type'] == 'name_match',
+    )) {
+      notices.add(
+        'Las coincidencias sin EAN se buscaron por nombre, presentacion y variante.',
       );
     }
+    final unavailable = decoded['unavailable_products'];
+    if (unavailable is List<dynamic> && unavailable.isNotEmpty) {
+      final products = unavailable.whereType<Map<String, dynamic>>().toList();
+      if (products.isNotEmpty) {
+        final name = _asString(products.first['name']);
+        final stores = products
+            .map((item) => _storeDisplayName(_asString(item['store'])))
+            .toSet()
+            .join(', ');
+        if (name.isNotEmpty && stores.isNotEmpty) {
+          notices.add(
+            'En $stores, $name figura sin stock o sin precio disponible.',
+          );
+        }
+      }
+    }
+    return (
+      results: await _parseResults(rawResults),
+      warning: warning,
+      notice: notices.isEmpty ? null : notices.join(' '),
+    );
   }
 
   String _storeDisplayName(String id) => switch (id) {
@@ -378,6 +495,12 @@ class ApiRepository
         deliveryAvailable: productData['delivery_available'] is bool
             ? productData['delivery_available'] as bool
             : null,
+        hasStoreOffer: (_asDouble(productData['regular_price']) ?? 0) > price,
+        quantityOffers: _quantityOffersFromProduct(
+          productData,
+          product,
+          storeId,
+        ),
       );
 
       _cachedProducts[productId] = product;
@@ -407,6 +530,76 @@ class ApiRepository
       return Map<String, dynamic>.from(product);
     }
     return result;
+  }
+
+  List<Promotion> _quantityOffersFromProduct(
+    Map<String, dynamic> data,
+    Product product,
+    String storeId,
+  ) {
+    final raw = data['quantity_offers'];
+    if (raw is! List || product.ean.isEmpty) return const [];
+    final offers = <Promotion>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final offer = Map<String, dynamic>.from(entry);
+      final captured = DateTime.tryParse(_asString(offer['captured_at']));
+      final id = _asString(offer['id']);
+      final branch = _asString(offer['branch_id']);
+      final required = _asInt(offer['required_quantity']) ?? 0;
+      final charged = _asInt(offer['charged_quantity']) ?? 0;
+      final mechanic = _asString(offer['mechanic']);
+      if (captured == null ||
+          id.isEmpty ||
+          branch.isEmpty ||
+          required < 2 ||
+          !{'buy_n_pay_m', 'second_unit_discount'}.contains(mechanic)) {
+        continue;
+      }
+      final localCapture = captured.toLocal();
+      final date = DateTime(
+        localCapture.year,
+        localCapture.month,
+        localCapture.day,
+      );
+      offers.add(
+        Promotion(
+          id: id,
+          storeId: storeId,
+          tipoMedioPago: PaymentMethodType.card,
+          entidad: switch (storeId) {
+            'carrefour' => 'Carrefour',
+            'lagallega' => 'La Gallega',
+            _ => 'Coto',
+          },
+          porcentajeDescuento: 0,
+          topeReintegro: 0,
+          diasSemana: {date.weekday},
+          fechaInicio: date,
+          fechaFin: date,
+          condiciones: storeId == 'carrefour'
+              ? 'Oferta contrastada con el carrito oficial para 1, $required y ${required + 1} unidades. Total estimado; confirmar en caja.'
+              : 'Oferta publicada para el producto y sucursal consultados. Confirmar en caja.',
+          categorias: const ['todos'],
+          titulo: mechanic == 'buy_n_pay_m'
+              ? '${required}x$charged - ${product.name}'
+              : 'Segunda unidad - ${product.name}',
+          fuenteUrl: _asString(offer['source_url']),
+          promotionKind: 'store_product',
+          mechanic: mechanic,
+          productEans: {product.ean},
+          branchIds: {branch},
+          requiredQuantity: required,
+          chargedQuantity: charged,
+          secondUnitDiscount: _asDouble(offer['second_unit_discount']) ?? 0,
+          sourceType: 'official_api',
+          verificationStatus: 'source_reported',
+          calculationStatus: 'estimate',
+          capturedAt: captured,
+        ),
+      );
+    }
+    return offers;
   }
 
   String? _nullableString(dynamic value) {
@@ -477,6 +670,26 @@ class ApiRepository
         tiposMedioPagoCompatibles: paymentTypes,
         cualquierEntidad: result['any_entity'] == true,
         compraMinima: _asDouble(result['minimum_purchase']) ?? 0,
+        promotionKind: _asString(result['promotion_kind']).isEmpty
+            ? 'payment'
+            : _asString(result['promotion_kind']),
+        mechanic: _asString(result['mechanic']).isEmpty
+            ? 'percentage'
+            : _asString(result['mechanic']),
+        productEans: _asStringList(result['product_eans']).toSet(),
+        branchIds: _asStringList(result['branch_ids']).toSet(),
+        requiredQuantity: _asInt(result['required_quantity']) ?? 1,
+        chargedQuantity: _asInt(result['charged_quantity']) ?? 1,
+        secondUnitDiscount: _asDouble(result['second_unit_discount']) ?? 0,
+        bundlePrice: _asDouble(result['bundle_price']) ?? 0,
+        allowsStacking: result['allows_stacking'] == true,
+        capFrequency: _asString(result['cap_frequency']),
+        sourceType: _asString(result['source_type']),
+        verificationStatus: _asString(result['verification_status']),
+        calculationStatus: _asString(result['calculation_status']).isEmpty
+            ? 'not_calculable'
+            : _asString(result['calculation_status']),
+        capturedAt: DateTime.tryParse(_asString(result['scraped_at'])),
       );
       if (promotion.appliesOn(selectedDate)) {
         promotions.add(promotion);
@@ -627,6 +840,9 @@ class ApiRepository
     }
     return null;
   }
+
+  int? _asInt(Object? value) =>
+      value is int ? value : int.tryParse(_asString(value));
 
   String _asString(Object? value) {
     return value?.toString().trim() ?? '';

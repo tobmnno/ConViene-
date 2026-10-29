@@ -163,8 +163,8 @@ class _CartShareScreenState extends State<CartShareScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Image.asset(
-                                      'assets/brand/conviene_logo.png',
-                                      fit: BoxFit.contain,
+                                      'assets/brand/conviene_logo_source.png',
+                                      fit: BoxFit.cover,
                                     ),
                                   ),
                                   const SizedBox(width: 12),

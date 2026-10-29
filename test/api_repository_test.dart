@@ -10,6 +10,110 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test('maps verified Carrefour offer to its own sales channel', () async {
+    final captured = DateTime.now().toUtc().toIso8601String();
+    final repository = ApiRepository(
+      baseUrl: Uri.parse('http://127.0.0.1:8000'),
+      fallback: MockRepository(),
+      client: MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'results': [
+              {
+                'product': {
+                  'store': 'carrefour',
+                  'name': 'Chocolate 22 grs',
+                  'ean': '8445292446327',
+                  'price': 1599,
+                  'regular_price': 1999,
+                  'branch_id': 'sales-channel-1',
+                  'scraped_at': captured,
+                  'quantity_offers': [
+                    {
+                      'id': 'carrefour-1-8445292446327-buy_n_pay_m-2-1-0',
+                      'mechanic': 'buy_n_pay_m',
+                      'required_quantity': 2,
+                      'charged_quantity': 1,
+                      'branch_id': 'sales-channel-1',
+                      'source_url': 'https://www.carrefour.com.ar/chocolate/p',
+                      'captured_at': captured,
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+          200,
+        ),
+      ),
+    );
+    final result = (await repository.searchProducts(
+      query: 'chocolate',
+      storeIds: {'carrefour'},
+    )).single;
+    final offer = result.price.quantityOffers.single;
+    expect(offer.storeId, 'carrefour');
+    expect(offer.branchIds, {'sales-channel-1'});
+    expect(offer.productEans, {'8445292446327'});
+    expect(offer.canCalculate, isTrue);
+    expect(result.price.hasStoreOffer, isTrue);
+  });
+
+  test(
+    'maps Coto EAN-bound quantity offer without treating it as single-unit discount',
+    () async {
+      final captured = DateTime.now().toUtc().toIso8601String();
+      final repository = ApiRepository(
+        baseUrl: Uri.parse('http://127.0.0.1:8000'),
+        fallback: MockRepository(),
+        client: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'results': [
+                {
+                  'score': 100,
+                  'match_type': 'exact',
+                  'product': {
+                    'store': 'coto',
+                    'name': 'Leche chocolatada 200 ml',
+                    'ean': '7798338291056',
+                    'price': 1980,
+                    'branch_id': '200',
+                    'scraped_at': captured,
+                    'quantity_offers': [
+                      {
+                        'id': 'coto-200-7798338291056-123',
+                        'mechanic': 'buy_n_pay_m',
+                        'required_quantity': 2,
+                        'charged_quantity': 1,
+                        'branch_id': '200',
+                        'source_url':
+                            'https://www.coto.com.ar/productos/example',
+                        'captured_at': captured,
+                      },
+                    ],
+                  },
+                },
+              ],
+            }),
+            200,
+          ),
+        ),
+      );
+      final result = (await repository.searchProducts(
+        query: 'leche',
+        storeIds: {'coto'},
+      )).single;
+      expect(result.price.priceOriginal, 1980);
+      expect(result.price.hasStoreOffer, isFalse);
+      expect(result.price.quantityOffers, hasLength(1));
+      final offer = result.price.quantityOffers.single;
+      expect(offer.productEans, {'7798338291056'});
+      expect(offer.branchIds, {'200'});
+      expect(offer.requiredQuantity, 2);
+    },
+  );
+
   test('consume scraper API contract and maps store aliases', () async {
     final repository = ApiRepository(
       baseUrl: Uri.parse('http://127.0.0.1:8000'),
@@ -485,6 +589,10 @@ void main() {
                   'compatible_payment_types': ['bank', 'card'],
                   'any_entity': false,
                   'scraped_at': '2026-09-04T00:00:00+00:00',
+                  'source_type': 'third_party_feed',
+                  'verification_status': 'source_reported',
+                  'calculation_status': 'estimate',
+                  'cap_frequency': 'monthly',
                 },
               ],
               'warnings': <String>[],
@@ -503,6 +611,10 @@ void main() {
       expect(promotions.single.porcentajeDescuento, 30);
       expect(promotions.single.topeReintegro, 25000);
       expect(promotions.single.compraMinima, 90000);
+      expect(promotions.single.sourceType, 'third_party_feed');
+      expect(promotions.single.calculationStatus, 'estimate');
+      expect(promotions.single.capFrequency, 'monthly');
+      expect(promotions.single.capturedAt, DateTime.utc(2026, 9, 4));
       expect(promotions.single.entidadesCompatibles, contains('Visa'));
       expect(promotions.single.entidadesRequeridas, hasLength(2));
       expect(
