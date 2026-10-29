@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:conviene/services/payment_method_service.dart';
 import 'package:conviene/repositories/mock_repository.dart';
 import 'package:conviene/widgets/conviene_logo.dart';
@@ -22,7 +24,7 @@ void main() {
       (await rootBundle.load('assets/brand/conviene_logo.png')).lengthInBytes,
       greaterThan(100000),
     );
-    expect(visa.logoAsset, 'assets/logos/payment_visa.png');
+    expect(visa.logoAsset, 'assets/logos/payment_visa_clear.png');
 
     for (final brightness in [Brightness.light, Brightness.dark]) {
       await tester.pumpWidget(
@@ -53,6 +55,24 @@ void main() {
       );
       expect(find.byType(Image), findsNWidgets(2));
       expect(tester.takeException(), isNull);
+    }
+  });
+
+  test('improved payment logos are high-resolution transparent PNGs', () async {
+    final methods = const PaymentMethodService().initialMethods();
+    for (final id in ['visa', 'banco_provincia', 'banco_supervielle', 'uala']) {
+      final method = methods.firstWhere((method) => method.id == id);
+      expect(method.logoAsset, endsWith('_clear.png'));
+      final data = await rootBundle.load(method.logoAsset);
+      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+      final frame = await codec.getNextFrame();
+      final image = frame.image;
+      expect(image.width, greaterThanOrEqualTo(512), reason: id);
+      final pixels = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      expect(pixels, isNotNull, reason: id);
+      expect(pixels!.getUint8(3), 0, reason: '$id has an opaque background');
+      image.dispose();
+      codec.dispose();
     }
   });
 

@@ -12,7 +12,7 @@ class PaymentMethodService {
         entity: 'Visa',
         displayName: 'Visa',
         active: true,
-        logoAsset: 'assets/logos/payment_visa.png',
+        logoAsset: 'assets/logos/payment_visa_clear.png',
       ),
       PaymentMethod(
         id: 'mastercard',
@@ -110,7 +110,7 @@ class PaymentMethodService {
         entity: 'Banco Provincia',
         displayName: 'Banco Provincia',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_provincia_iso.jpg',
+        logoAsset: 'assets/logos/payment_banco_provincia_clear.png',
       ),
       PaymentMethod(
         id: 'banco_ciudad',
@@ -150,7 +150,7 @@ class PaymentMethodService {
         entity: 'Banco Supervielle',
         displayName: 'Supervielle',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_supervielle.png',
+        logoAsset: 'assets/logos/payment_banco_supervielle_clear.png',
       ),
       PaymentMethod(
         id: 'banco_credicoop',
@@ -335,7 +335,7 @@ class PaymentMethodService {
         entity: 'Uala',
         displayName: 'Uala',
         active: false,
-        logoAsset: 'assets/logos/payment_uala.png',
+        logoAsset: 'assets/logos/payment_uala_clear.png',
       ),
       PaymentMethod(
         id: 'modo',

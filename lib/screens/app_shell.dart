@@ -113,11 +113,34 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                 ),
               ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: state.isBootstrapping
+          ? null
+          : Transform.translate(
+              offset: const Offset(0, 5),
+              child: SizedBox(
+                width: 52,
+                height: 52,
+                child: FloatingActionButton(
+                  heroTag: 'scan-barcode',
+                  key: const Key('scan-action-circle'),
+                  tooltip: 'Escanear codigo de barras',
+                  onPressed: _openScanner,
+                  backgroundColor: AppColors.blue,
+                  foregroundColor: Colors.white,
+                  elevation: 2,
+                  shape: const CircleBorder(),
+                  child: const Icon(Icons.qr_code_scanner, size: 26),
+                ),
+              ),
+            ),
       bottomNavigationBar: state.isBootstrapping
           ? null
           : BottomAppBar(
               color: AppColors.surface,
               elevation: 3,
+              shape: const CircularNotchedRectangle(),
+              notchMargin: 6,
               padding: EdgeInsets.zero,
               child: SafeArea(
                 top: false,
@@ -139,7 +162,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                         selected: _index == 1,
                         onTap: () => setState(() => _index = 1),
                       ),
-                      _ScanNavItem(onTap: _openScanner),
+                      const SizedBox(width: 64, child: _ScanNavLabel()),
                       _NavItem(
                         label: 'Descuentos',
                         icon: Icons.local_offer_outlined,
@@ -167,46 +190,21 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 }
 
-class _ScanNavItem extends StatelessWidget {
-  const _ScanNavItem({required this.onTap});
-
-  final VoidCallback onTap;
+class _ScanNavLabel extends StatelessWidget {
+  const _ScanNavLabel();
 
   @override
-  Widget build(BuildContext context) => Expanded(
-    child: Tooltip(
-      message: 'Escanear codigo de barras',
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              key: const Key('scan-action-circle'),
-              width: 40,
-              height: 40,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                color: AppColors.blue,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.qr_code_scanner,
-                color: Colors.white,
-                size: 23,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Escanear',
-              maxLines: 1,
-              style: TextStyle(
-                color: AppColors.accentBlue,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.bottomCenter,
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Text(
+        'Escanear',
+        maxLines: 1,
+        style: TextStyle(
+          color: AppColors.accentBlue,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
         ),
       ),
     ),

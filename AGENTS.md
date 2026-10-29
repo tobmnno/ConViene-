@@ -331,3 +331,25 @@ when available; keep all unverified offers out of the calculable total.
   be repeated; widget tests cover the layout and asset rendering. Next:
   review staged files for secrets and generated artifacts, commit and push
   the intended local work as explicitly requested.
+
+2026-10-29 scanner follow-up:
+- Restored the original center-docked floating scanner and BottomAppBar notch.
+  Reduced the circle from 68 to 52 px, lowered it 5 px and placed the visible
+  "Escanear" label beneath it. The 390 px and 320 px focused navigation tests
+  pass, including icon/label separation and no narrow-screen overflow.
+- Next: replace selected low-resolution or white-background payment images
+  with transparent high-resolution PNG exports from existing original vector
+  assets; verify every changed logo and run full regression before commit.
+- Logo step complete: Visa (1024 px), Uala (640 px), Banco Provincia (512 px)
+  and Banco Supervielle (512 px) now use transparent PNGs exported from their
+  existing vector artwork; no logo was drawn or invented. The bank symbols
+  were cropped from their original art or stripped of its white backdrop.
+  All four files were visually inspected and decoded; corner alpha is zero.
+  Focused logo and navigation suites: 11 passed. Next: full regression,
+  analyzer, release build, review working diff, then commit as requested.
+- Final checks: Flutter 149 passed / 2 optional live skipped; backend 118
+  passed / 8 optional live skipped and 43 subtests; analyzer clean; release
+  web and Android debug APK builds passed. App and API returned HTTP 200 on
+  ports 53246 and 8002. Browser interaction remained disabled in Work settings,
+  so the new layout was verified through 320/390 px widget geometry tests,
+  not a live click-through. User requested a new commit after review.

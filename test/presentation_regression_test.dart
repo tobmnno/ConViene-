@@ -235,13 +235,17 @@ void main() {
 
     expect(find.byTooltip('Escanear codigo de barras'), findsOneWidget);
     expect(find.byType(BottomAppBar), findsOneWidget);
-    expect(find.byType(FloatingActionButton), findsNothing);
+    expect(find.byType(FloatingActionButton), findsOneWidget);
     expect(find.text('Escanear'), findsOneWidget);
     final scanCircle = find.byKey(const Key('scan-action-circle'));
-    expect(tester.getSize(scanCircle), const Size(40, 40));
+    expect(tester.getSize(scanCircle), const Size(52, 52));
     expect(
       tester.getTopLeft(scanCircle).dy,
-      greaterThan(tester.getTopLeft(find.byType(BottomAppBar)).dy),
+      lessThan(tester.getTopLeft(find.byType(BottomAppBar)).dy),
+    );
+    expect(
+      tester.getBottomLeft(scanCircle).dy,
+      lessThan(tester.getTopLeft(find.text('Escanear')).dy),
     );
     await tester.tap(find.text('Buscar').last);
     await tester.pumpAndSettle();
@@ -267,6 +271,8 @@ void main() {
     final bar = tester.getRect(find.byType(BottomAppBar));
     final scan = tester.getRect(find.byKey(const Key('scan-action-circle')));
     expect(bar.contains(scan.center), isTrue);
+    expect(scan.width, 52);
+    expect(tester.getRect(find.text('Escanear')).top, greaterThan(scan.bottom));
     expect(find.text('Escanear'), findsOneWidget);
     expect(tester.takeException(), isNull);
     state.dispose();
