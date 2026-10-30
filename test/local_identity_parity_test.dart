@@ -9,13 +9,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('local matcher follows the shared backend identity cases', () {
-    final cases =
-        jsonDecode(
-              File(
-                'test/fixtures/product_identity_cases.json',
-              ).readAsStringSync(),
-            )
-            as List<dynamic>;
+    final cases = <dynamic>[
+      for (final fixture in [
+        'product_identity_cases.json',
+        'product_identity_verified_cases.json',
+      ])
+        ...jsonDecode(File('test/fixtures/$fixture').readAsStringSync())
+            as List<dynamic>,
+    ];
     final service = PriceComparisonService(
       MockRepository(),
       const DiscountEngine(),

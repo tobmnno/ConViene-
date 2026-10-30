@@ -214,7 +214,10 @@ def _validated_promotions(
                 row.minimum_purchase < 0 or not row.source_url):
             rejected += 1
             continue
-        valid.append(row)
+        scope = ("restricted" if row.branch_ids or row.channel else
+                 row.applicability_scope if row.source_type in {"official_api", "official_page"}
+                 and row.verification_status == "source_reported" else "unknown")
+        valid.append(row.model_copy(update={"applicability_scope": scope}))
     if rejected:
         warnings.append(f"se omitieron {rejected} promociones con datos contradictorios o incompletos")
     return valid
@@ -228,10 +231,8 @@ def _lagallega_blink_promotions(catalog: dict[str, Any], selected_date: date) ->
     scraped_at = _clean_text(catalog.get("checked_at"))
     try:
         captured = datetime.fromisoformat(scraped_at.replace("Z", "+00:00"))
-        source_fresh = (datetime.now(timezone.utc) - captured).total_seconds() <= 86_400
     except (TypeError, ValueError):
         captured = datetime.now(timezone.utc)
-        source_fresh = False
     rows: list[DiscountPromotion] = []
     for raw in benefits:
         if not isinstance(raw, dict):
@@ -295,8 +296,8 @@ def _lagallega_blink_promotions(catalog: dict[str, Any], selected_date: date) ->
                 compatible_payment_types=payment_types,
                 scraped_at=scraped_at,
                 source_type="third_party_feed",
-                verification_status="source_reported" if source_fresh else "unverified",
-                calculation_status="estimate" if source_fresh and percentage > 0 else "not_calculable",
+                verification_status="unverified",
+                calculation_status="not_calculable",
             )
         )
     return rows

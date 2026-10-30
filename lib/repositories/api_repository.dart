@@ -177,19 +177,21 @@ class ApiRepository
     ]);
 
     var results = [for (final rows in rowsByStore.values) ...rows];
+    final exactStores = results
+        .where((row) => row.product.ean == query)
+        .map((row) => row.supermarket.id)
+        .toSet();
+    final resolvedStores = results
+        .where(
+          (row) => row.product.ean == query || row.matchType == 'name_match',
+        )
+        .map((row) => row.supermarket.id)
+        .toSet();
     if (RegExp(r'^\d{8,14}$').hasMatch(query) &&
-        results
-                .where((row) => row.product.ean == query)
-                .map((row) => row.supermarket.id)
-                .toSet()
-                .length <
-            storeIds.length) {
-      final unresolved = storeIds.difference(
-        results
-            .where((row) => row.product.ean == query)
-            .map((row) => row.supermarket.id)
-            .toSet(),
-      );
+        (exactStores.isEmpty || resolvedStores.length < storeIds.length)) {
+      final unresolved = exactStores.isEmpty
+          ? storeIds
+          : storeIds.difference(resolvedStores);
       onProgress(results, unresolved);
       try {
         final complete = await _fetchSearch(query, storeIds, context);
@@ -595,6 +597,9 @@ class ApiRepository
           sourceType: 'official_api',
           verificationStatus: 'source_reported',
           calculationStatus: 'estimate',
+          applicabilityScope: _asString(offer['applicability_scope']).isEmpty
+              ? 'restricted'
+              : _asString(offer['applicability_scope']),
           capturedAt: captured,
         ),
       );
@@ -689,6 +694,9 @@ class ApiRepository
         calculationStatus: _asString(result['calculation_status']).isEmpty
             ? 'not_calculable'
             : _asString(result['calculation_status']),
+        applicabilityScope: _asString(result['applicability_scope']).isEmpty
+            ? 'unknown'
+            : _asString(result['applicability_scope']),
         capturedAt: DateTime.tryParse(_asString(result['scraped_at'])),
       );
       if (promotion.appliesOn(selectedDate)) {

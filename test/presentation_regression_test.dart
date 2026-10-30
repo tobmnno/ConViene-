@@ -138,6 +138,7 @@ void main() {
       condiciones: 'Tope mensual',
       categorias: const ['todos'],
       titulo: 'Promo con tope',
+      applicabilityScope: 'general_confirmed',
       capFrequency: 'monthly',
     );
     state.promotions = [promotion];
@@ -207,7 +208,7 @@ void main() {
         child: const MaterialApp(home: Scaffold(body: DiscountsScreen())),
       ),
     );
-    expect(find.text('Referencia sin verificar'), findsOneWidget);
+    expect(find.text('Sin verificacion actual'), findsOneWidget);
     await tester.tap(find.text('Beneficio de referencia'));
     await tester.pumpAndSettle();
     expect(find.text('Catalogo local de respaldo'), findsOneWidget);

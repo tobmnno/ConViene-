@@ -159,6 +159,10 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('MENOR COSTO ESTIMADO'), findsOneWidget);
+    expect(
+      find.textContaining('Catálogo de sucursal consultada'),
+      findsWidgets,
+    );
     expect(find.byTooltip('Agregar 1 en Coto'), findsOneWidget);
     expect(find.text('Ver en sitio oficial'), findsOneWidget);
     expect(find.textContaining('Precio publicado por unidad'), findsNothing);
@@ -166,10 +170,7 @@ void main() {
 
     await tester.tap(find.text('Beneficios'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('Sin beneficios adicionales verificados.'),
-      findsOneWidget,
-    );
+    expect(find.text('Sin beneficios adicionales informados.'), findsOneWidget);
     expect(find.textContaining('Precio publicado por unidad'), findsNothing);
     expect(find.textContaining('A pagar estimado'), findsNothing);
     expect(find.textContaining('Precio consultado'), findsNothing);
@@ -185,6 +186,62 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     state.dispose();
   });
+
+  testWidgets(
+    'restricted promotion remains visible in Benefits without reducing price',
+    (tester) async {
+      final today = DateTime.now();
+      final state = DetailState()
+        ..paymentMethods = [
+          const PaymentMethod(
+            id: 'visa',
+            type: PaymentMethodType.card,
+            entity: 'Visa',
+            displayName: 'Visa',
+            active: true,
+          ),
+        ]
+        ..promotions = [
+          Promotion(
+            id: 'restricted-coto',
+            storeId: 'coto',
+            tipoMedioPago: PaymentMethodType.card,
+            entidad: 'Visa',
+            porcentajeDescuento: 25,
+            topeReintegro: 0,
+            diasSemana: {today.weekday},
+            fechaInicio: today,
+            fechaFin: today,
+            condiciones: 'Solo compras online',
+            categorias: const ['todos'],
+            titulo: 'Visa online',
+            canal: 'Online',
+            applicabilityScope: 'restricted',
+            sourceType: 'official_api',
+            capturedAt: today,
+          ),
+        ];
+      await tester.pumpWidget(
+        AppScope(
+          notifier: state,
+          child: const MaterialApp(home: ProductDetailScreen(product: milk)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Beneficios'));
+      await tester.pumpAndSettle();
+      expect(find.text('BENEFICIO APLICADO'), findsNothing);
+      expect(find.text('Otros beneficios (1)'), findsOneWidget);
+      await tester.tap(find.text('Otros beneficios (1)'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Limitado a canal o sucursal; no incluido en el total'),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox());
+      state.dispose();
+    },
+  );
 
   testWidgets(
     'benefits show a compact summary with optional verified details',
@@ -213,6 +270,7 @@ void main() {
             fechaFin: DateTime(2026, 10, 31),
             condiciones: 'En un pago',
             categorias: const ['todos'],
+            applicabilityScope: 'general_confirmed',
             beneficio: '25% OFF',
             fuenteUrl: 'https://www.coto.com.ar/descuentos',
           ),
@@ -228,6 +286,7 @@ void main() {
             fechaFin: DateTime(2026, 10, 31),
             condiciones: 'Con Mastercard',
             categorias: const ['todos'],
+            applicabilityScope: 'general_confirmed',
             titulo: '20% Mastercard',
           ),
         ];
@@ -309,7 +368,7 @@ void main() {
     await tester.tap(find.text('Beneficios'));
     await tester.pumpAndSettle();
     expect(
-      find.text('No hay beneficios aplicados con tus medios de pago.'),
+      find.text('No hay beneficios aplicados. Revisá las condiciones.'),
       findsOneWidget,
     );
     expect(find.text('Otros beneficios (1)'), findsOneWidget);

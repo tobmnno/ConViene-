@@ -1,4 +1,5 @@
 import '../models/discount.dart';
+import '../models/price_quote.dart';
 
 Uri? officialProductUri(String storeId, String value) {
   final uri = Uri.tryParse(value.trim());
@@ -48,3 +49,14 @@ bool isDeferredRefund(Promotion? promotion) =>
 
 String promotionDate(DateTime date) =>
     '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
+String priceSourceLine(ProductPrice price) {
+  final origin = switch (price.pricingScope) {
+    'selected_store' => 'Catálogo de sucursal consultada',
+    'online_sales_channel' => 'Catálogo online consultado',
+    'catalog_no_branch' => 'Catálogo sin sucursal confirmada',
+    'community' => 'Precio aportado por usuario',
+    _ => 'Catálogo consultado',
+  };
+  return '$origin · ${promotionDate(price.fechaActualizacion)}';
+}

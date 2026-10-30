@@ -1,0 +1,1382 @@
+[
+  {
+    "id": "official_positive_0",
+    "selected": {
+      "store": "coto",
+      "name": "Leche Larga Vida Parcialmente Descremada Liviana 1% La Serenisima 1l",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742363107",
+      "url": "https://www.coto.com.ar/productos_/R-00251876-00251876-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Leche La serenisima liviana 1% 1L",
+      "brand": "La Serenísima",
+      "ean": "7790742363107",
+      "url": "https://www.carrefour.com.ar/leche-la-serenisima-liviana-1-1l-720720/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00251876-00251876-200",
+      "https://www.carrefour.com.ar/leche-la-serenisima-liviana-1-1l-720720/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_1",
+    "selected": {
+      "store": "coto",
+      "name": "Leche Larga Vida Entera Ua Clasica 3% LA SERENISIMA 1l",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742363008",
+      "url": "https://www.coto.com.ar/productos_/R-00251875-00251875-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Leche La serenisima clásica 3% 1L",
+      "brand": "La Serenísima",
+      "ean": "7790742363008",
+      "url": "https://www.carrefour.com.ar/leche-la-serenisima-clasica-3-1l-720719/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00251875-00251875-200",
+      "https://www.carrefour.com.ar/leche-la-serenisima-clasica-3-1l-720719/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_2",
+    "selected": {
+      "store": "carrefour",
+      "name": "Crema de leche La Serenísima para cocinar 200 cc.",
+      "brand": "La Serenísima",
+      "ean": "7790742141606",
+      "url": "https://www.carrefour.com.ar/crema-de-leche-la-serenisima-para-cocinar-200-cc/p"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "crema de leche la serenisima para cocinar x 200 ml",
+      "brand": "",
+      "ean": "7790742141606",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=25107&P=1&producto=Crema-de-leche-la-serenisima-para-cocinar-x-200-ml."
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.carrefour.com.ar/crema-de-leche-la-serenisima-para-cocinar-200-cc/p",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=25107&P=1&producto=Crema-de-leche-la-serenisima-para-cocinar-x-200-ml."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_3",
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Rellenas Con Crema Sabor Original 354g",
+      "brand": "OREO",
+      "ean": "7622201735258",
+      "url": "https://www.coto.com.ar/productos_/R-00532300-00532300-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Galletitas Oreo Rellenas con crema sabor original 354 g.",
+      "brand": "Oreo",
+      "ean": "7622201735258",
+      "url": "https://www.carrefour.com.ar/galletitas-oreo-rellenas-con-crema-sabor-original-354-g-715951/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00532300-00532300-200",
+      "https://www.carrefour.com.ar/galletitas-oreo-rellenas-con-crema-sabor-original-354-g-715951/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_4",
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Rellenas Con Crema Sabor Original 118g",
+      "brand": "OREO",
+      "ean": "7622201735296",
+      "url": "https://www.coto.com.ar/productos_/R-00532297-00532297-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Galletitas dulces Oreo rellenas con crema 118 g.",
+      "brand": "Oreo",
+      "ean": "7622201735296",
+      "url": "https://www.carrefour.com.ar/galletitas-dulce-oreo-rellenas-con-crema-118-g-715949/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00532297-00532297-200",
+      "https://www.carrefour.com.ar/galletitas-dulce-oreo-rellenas-con-crema-118-g-715949/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_5",
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Mini Rellenas Con Crema Sabor Original 50g",
+      "brand": "OREO",
+      "ean": "7622201761288",
+      "url": "https://www.coto.com.ar/productos_/R-00182704-00182704-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Galletitas Oreo Mini rellenas con crema sabor original 50 g.",
+      "brand": "Oreo",
+      "ean": "7622201761288",
+      "url": "https://www.carrefour.com.ar/galletitas-oreo-mini-rellenas-con-crema-sabor-original-50-g-720547/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00182704-00182704-200",
+      "https://www.carrefour.com.ar/galletitas-oreo-mini-rellenas-con-crema-sabor-original-50-g-720547/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_6",
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Mini Rellenas Con Crema Sabor Original 50g",
+      "brand": "OREO",
+      "ean": "7622201761288",
+      "url": "https://www.coto.com.ar/productos_/R-00182704-00182704-200"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "gall.mini oreo x50gr",
+      "brand": "",
+      "ean": "7622201761288",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=16849&P=1&producto=GALL.MINI-OREO-X50GR."
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00182704-00182704-200",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=16849&P=1&producto=GALL.MINI-OREO-X50GR."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_7",
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Sin Gluten 95g",
+      "brand": "OREO",
+      "ean": "7622202038099",
+      "url": "https://www.coto.com.ar/productos_/R-00582738-00582738-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Galletitas Oreo sin gluten 95 g.",
+      "brand": "Oreo",
+      "ean": "7622202038099",
+      "url": "https://www.carrefour.com.ar/galletitas-oreo-sin-gluten-95-g-740135/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00582738-00582738-200",
+      "https://www.carrefour.com.ar/galletitas-oreo-sin-gluten-95-g-740135/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_8",
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas Mini OREO Rellenas Con Crema Sabor Original 150g",
+      "brand": "OREO",
+      "ean": "7622202219337",
+      "url": "https://www.coto.com.ar/productos_/R-00584001-00584001-200"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "gall.mini oreo x150gr",
+      "brand": "",
+      "ean": "7622202219337",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=28999&P=1&producto=GALL.MINI-OREO-X150GR."
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00584001-00584001-200",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=28999&P=1&producto=GALL.MINI-OREO-X150GR."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_9",
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Bañadas En Chocolate Blanco X 7 Unidades 119g",
+      "brand": "OREO",
+      "ean": "7622201745608",
+      "url": "https://www.coto.com.ar/productos_/R-00124153-00124153-200"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "gall.oreo x119gr.ban.choc.bco",
+      "brand": "",
+      "ean": "7622201745608",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=18938&P=1&producto=GALL.OREO-X119GR.BAN.CHOC.BCO."
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00124153-00124153-200",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=18938&P=1&producto=GALL.OREO-X119GR.BAN.CHOC.BCO."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_12",
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Taragui 1 Kg",
+      "brand": "TARAGUI",
+      "ean": "7790387013610",
+      "url": "https://www.coto.com.ar/productos_/R-00499474-00499474-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Yerba mate Taragüi con palo origen controlado 1 kg.",
+      "brand": "Taragui",
+      "ean": "7790387013610",
+      "url": "https://www.carrefour.com.ar/yerba-mate-taragui-con-palo-origen-controlado-1-kg/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00499474-00499474-200",
+      "https://www.carrefour.com.ar/yerba-mate-taragui-con-palo-origen-controlado-1-kg/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_13",
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Taragui 1 Kg",
+      "brand": "TARAGUI",
+      "ean": "7790387013610",
+      "url": "https://www.coto.com.ar/productos_/R-00499474-00499474-200"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "yerba mate taragui 4 flex x 1 kg",
+      "brand": "",
+      "ean": "7790387013610",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=38894&P=1&producto=Yerba-mate-taragui-4-flex-x-1-kg."
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00499474-00499474-200",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=38894&P=1&producto=Yerba-mate-taragui-4-flex-x-1-kg."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_14",
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Sin Pal Taragui Paq 500 Grm",
+      "brand": "TARAGUI",
+      "ean": "7790387013504",
+      "url": "https://www.coto.com.ar/productos_/R-00507761-00507761-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Yerba mate sin palo 4flex Taragüi 500 g.",
+      "brand": "Taragui",
+      "ean": "7790387013504",
+      "url": "https://www.carrefour.com.ar/yerba-mate-sin-palo-4flex-taragui-500-g/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00507761-00507761-200",
+      "https://www.carrefour.com.ar/yerba-mate-sin-palo-4flex-taragui-500-g/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_15",
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Sin Pal Taragui Paq 500 Grm",
+      "brand": "TARAGUI",
+      "ean": "7790387013504",
+      "url": "https://www.coto.com.ar/productos_/R-00507761-00507761-200"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "yerba mate taragui sin palo x 500 gr",
+      "brand": "",
+      "ean": "7790387013504",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=10241&P=1&producto=Yerba-mate-taragui-sin-palo-x-500-gr."
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00507761-00507761-200",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=10241&P=1&producto=Yerba-mate-taragui-sin-palo-x-500-gr."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_16",
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex TARAGUI 500 Gr",
+      "brand": "TARAGUI",
+      "ean": "7790387013627",
+      "url": "https://www.coto.com.ar/productos_/R-00499473-00499473-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Yerba mate Taragüi con palo origen controlado 4flex 500 g.",
+      "brand": "Taragui",
+      "ean": "7790387013627",
+      "url": "https://www.carrefour.com.ar/yerba-mate-taragui-con-palo-origen-controlado-4flex-500-g/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00499473-00499473-200",
+      "https://www.carrefour.com.ar/yerba-mate-taragui-con-palo-origen-controlado-4flex-500-g/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_17",
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex TARAGUI 500 Gr",
+      "brand": "TARAGUI",
+      "ean": "7790387013627",
+      "url": "https://www.coto.com.ar/productos_/R-00499473-00499473-200"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "yerba mate taragui 4 flex x 500 gr",
+      "brand": "",
+      "ean": "7790387013627",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=38895&P=1&producto=Yerba-mate-taragui-4-flex-x-500-gr."
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00499473-00499473-200",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=38895&P=1&producto=Yerba-mate-taragui-4-flex-x-500-gr."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_18",
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Sin Pal Taragui Paq 1 Kgm",
+      "brand": "TARAGUI",
+      "ean": "7790387013498",
+      "url": "https://www.coto.com.ar/productos_/R-00507766-00507766-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Yerba mate sin palo 4flex Taragüi 1 kg.",
+      "brand": "Taragui",
+      "ean": "7790387013498",
+      "url": "https://www.carrefour.com.ar/yerba-mate-sin-palo-4flex-taragui-1-kg/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00507766-00507766-200",
+      "https://www.carrefour.com.ar/yerba-mate-sin-palo-4flex-taragui-1-kg/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_19",
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Sin Pal Taragui Paq 1 Kgm",
+      "brand": "TARAGUI",
+      "ean": "7790387013498",
+      "url": "https://www.coto.com.ar/productos_/R-00507766-00507766-200"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "yerba mate taragui sin palo x 1 kg",
+      "brand": "",
+      "ean": "7790387013498",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=10240&P=1&producto=Yerba-mate-taragui-sin-palo-x-1-kg."
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00507766-00507766-200",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=10240&P=1&producto=Yerba-mate-taragui-sin-palo-x-1-kg."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_23",
+    "selected": {
+      "store": "carrefour",
+      "name": "Yerba mate sin palo 4flex Taragüi 1 kg.",
+      "brand": "Taragui",
+      "ean": "7790387013498",
+      "url": "https://www.carrefour.com.ar/yerba-mate-sin-palo-4flex-taragui-1-kg/p"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "yerba mate taragui sin palo x 1 kg",
+      "brand": "",
+      "ean": "7790387013498",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=10240&P=1&producto=Yerba-mate-taragui-sin-palo-x-1-kg."
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.carrefour.com.ar/yerba-mate-sin-palo-4flex-taragui-1-kg/p",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=10240&P=1&producto=Yerba-mate-taragui-sin-palo-x-1-kg."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_24",
+    "selected": {
+      "store": "carrefour",
+      "name": "Yerba mate con palo 4flex Taragüi 250 g.",
+      "brand": "Taragui",
+      "ean": "7790387013634",
+      "url": "https://www.carrefour.com.ar/yerba-mate-con-palo-4flex-taragui-250-g/p"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "yerba mate taragui x 250 gr",
+      "brand": "",
+      "ean": "7790387013634",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=10242&P=1&producto=Yerba-mate-taragui-x-250-gr."
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.carrefour.com.ar/yerba-mate-con-palo-4flex-taragui-250-g/p",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=10242&P=1&producto=Yerba-mate-taragui-x-250-gr."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_25",
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Sabor Original 2,25 Lt",
+      "brand": "COCA COLA",
+      "ean": "7790895000997",
+      "url": "https://www.coto.com.ar/productos_/R-00014450-00014450-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Gaseosa cola Coca Cola sabor original 2,25 lts",
+      "brand": "Coca Cola",
+      "ean": "7790895000997",
+      "url": "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-sabor-original-225-lts-30138/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00014450-00014450-200",
+      "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-sabor-original-225-lts-30138/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_26",
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Sabor Original 1,25 Lt",
+      "brand": "COCA COLA",
+      "ean": "7790895012266",
+      "url": "https://www.coto.com.ar/productos_/R-00474292-00474292-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Gaseosa cola Coca Cola sabor original 1,25 lts",
+      "brand": "Coca Cola",
+      "ean": "7790895012266",
+      "url": "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-sabor-original-125-lts-630679/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00474292-00474292-200",
+      "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-sabor-original-125-lts-630679/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_27",
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Zero 2,25 Lt",
+      "brand": "COCA COLA",
+      "ean": "7790895067570",
+      "url": "https://www.coto.com.ar/productos_/R-00180416-00180416-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Gaseosa cola Coca Cola Zero 2,25 lts",
+      "brand": "Coca Cola",
+      "ean": "7790895067570",
+      "url": "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-zero-225-lts-393964/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00180416-00180416-200",
+      "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-zero-225-lts-393964/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_28",
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Zero COCA COLA 1.25l",
+      "brand": "COCA COLA",
+      "ean": "7790895012273",
+      "url": "https://www.coto.com.ar/productos_/R-00487535-00487535-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Gaseosa cola Coca Cola Zero 1,25 lts",
+      "brand": "Coca Cola",
+      "ean": "7790895012273",
+      "url": "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-zero-125-lts-649300/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00487535-00487535-200",
+      "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-zero-125-lts-649300/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_30",
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Zero 1,75l",
+      "brand": "COCA COLA",
+      "ean": "7790895012259",
+      "url": "https://www.coto.com.ar/productos_/R-00478989-00478989-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Gaseosa cola Coca Cola Zero 1,75 lts",
+      "brand": "Coca Cola",
+      "ean": "7790895012259",
+      "url": "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-zero-175-lts-636689/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00478989-00478989-200",
+      "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-zero-175-lts-636689/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_31",
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Sabor Original Coca Cola 600ml",
+      "brand": "COCA COLA",
+      "ean": "7790895650833",
+      "url": "https://www.coto.com.ar/productos_/R-00611336-00611336-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Gaseosa Coca-Cola sabor original 600 ml",
+      "brand": "Coca Cola",
+      "ean": "7790895650833",
+      "url": "https://www.carrefour.com.ar/gaseosa-coca-cola-sabor-original-600-ml-763994/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00611336-00611336-200",
+      "https://www.carrefour.com.ar/gaseosa-coca-cola-sabor-original-600-ml-763994/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_32",
+    "selected": {
+      "store": "coto",
+      "name": "Dulce De Leche LS Repostero Pote 400G",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742067005",
+      "url": "https://www.coto.com.ar/productos_/R-00298995-00298995-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Dulce de leche repostero La Serenísima 400 g.",
+      "brand": "La Serenísima",
+      "ean": "7790742067005",
+      "url": "https://www.carrefour.com.ar/dulce-de-leche-repostero-la-serenisima-400-g/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00298995-00298995-200",
+      "https://www.carrefour.com.ar/dulce-de-leche-repostero-la-serenisima-400-g/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_33",
+    "selected": {
+      "store": "coto",
+      "name": "DULCE DE LECHE LS ESTILO CLASICO POTE 400GR",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742625304",
+      "url": "https://www.coto.com.ar/productos_/R-00510306-00510306-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Dulce de leche clásico La Serenísima 400 g.",
+      "brand": "La Serenísima",
+      "ean": "7790742625304",
+      "url": "https://www.carrefour.com.ar/dulce-de-leche-clasico-la-serenisima-400-g/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00510306-00510306-200",
+      "https://www.carrefour.com.ar/dulce-de-leche-clasico-la-serenisima-400-g/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_34",
+    "selected": {
+      "store": "coto",
+      "name": "Preservativos TULIPAN Texturado Bli 6 Uni",
+      "brand": "TULIPAN",
+      "ean": "7791014001529",
+      "url": "https://www.coto.com.ar/productos_/R-00116239-00116239-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Preservativos Tulipán texturado 6 u",
+      "brand": "Tulipán",
+      "ean": "7791014001529",
+      "url": "https://www.carrefour.com.ar/preservativos-tulipan-texturado-6-u-9261/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00116239-00116239-200",
+      "https://www.carrefour.com.ar/preservativos-tulipan-texturado-6-u-9261/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_positive_35",
+    "selected": {
+      "store": "coto",
+      "name": "Preservativos Sup/Fino TULIPAN Bli 6 Uni",
+      "brand": "TULIPAN",
+      "ean": "7791014001536",
+      "url": "https://www.coto.com.ar/productos_/R-00103376-00103376-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Preservativos Tulipán super fino 6 u",
+      "brand": "Tulipán",
+      "ean": "7791014001536",
+      "url": "https://www.carrefour.com.ar/preservativos-tulipan-super-fino-6-u-33940/p"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00103376-00103376-200",
+      "https://www.carrefour.com.ar/preservativos-tulipan-super-fino-6-u-33940/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_0",
+    "selected": {
+      "store": "coto",
+      "name": "Leche Multidefensas 3% LA SERENISIMA Sachet 1l",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742348302",
+      "url": "https://www.coto.com.ar/productos_/R-00511510-00511510-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Leche La serenisima clásica 3% 1L",
+      "brand": "La Serenísima",
+      "ean": "7790742363008",
+      "url": "https://www.carrefour.com.ar/leche-la-serenisima-clasica-3-1l-720719/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00511510-00511510-200",
+      "https://www.carrefour.com.ar/leche-la-serenisima-clasica-3-1l-720719/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_1",
+    "selected": {
+      "store": "coto",
+      "name": "Leche Multidefensas 3% LA SERENISIMA Sachet 1l",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742348302",
+      "url": "https://www.coto.com.ar/productos_/R-00511510-00511510-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Leche La serenisima liviana 1% 1L",
+      "brand": "La Serenísima",
+      "ean": "7790742363107",
+      "url": "https://www.carrefour.com.ar/leche-la-serenisima-liviana-1-1l-720720/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00511510-00511510-200",
+      "https://www.carrefour.com.ar/leche-la-serenisima-liviana-1-1l-720720/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_2",
+    "selected": {
+      "store": "coto",
+      "name": "Leche Multidefensas 3% LA SERENISIMA Sachet 1l",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742348302",
+      "url": "https://www.coto.com.ar/productos_/R-00511510-00511510-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Leche La SerenÍsima barista 1L",
+      "brand": "La Serenísima",
+      "ean": "7790742358400",
+      "url": "https://www.carrefour.com.ar/leche-la-serenisima-barista-1-l-717049/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00511510-00511510-200",
+      "https://www.carrefour.com.ar/leche-la-serenisima-barista-1-l-717049/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_3",
+    "selected": {
+      "store": "coto",
+      "name": "Leche Multidefensas 3% LA SERENISIMA Sachet 1l",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742348302",
+      "url": "https://www.coto.com.ar/productos_/R-00511510-00511510-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Leche La serenísima clásica más liviana 2% 1L",
+      "brand": "La Serenísima",
+      "ean": "7790742363206",
+      "url": "https://www.carrefour.com.ar/leche-la-serenisima-clasica-mas-liviana-2-1l-720721/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00511510-00511510-200",
+      "https://www.carrefour.com.ar/leche-la-serenisima-clasica-mas-liviana-2-1l-720721/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_65",
+    "selected": {
+      "store": "coto",
+      "name": "Leche Protein La Serenisima 1L",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742358608",
+      "url": "https://www.coto.com.ar/productos_/R-00508911-00508911-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Leche La SerenÍsima barista 1L",
+      "brand": "La Serenísima",
+      "ean": "7790742358400",
+      "url": "https://www.carrefour.com.ar/leche-la-serenisima-barista-1-l-717049/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00508911-00508911-200",
+      "https://www.carrefour.com.ar/leche-la-serenisima-barista-1-l-717049/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_189",
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Rellenas Con Crema Sabor Original 354g",
+      "brand": "OREO",
+      "ean": "7622201735258",
+      "url": "https://www.coto.com.ar/productos_/R-00532300-00532300-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Galletitas Oreo Mini rellenas con crema sabor original 50 g.",
+      "brand": "Oreo",
+      "ean": "7622201761288",
+      "url": "https://www.carrefour.com.ar/galletitas-oreo-mini-rellenas-con-crema-sabor-original-50-g-720547/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00532300-00532300-200",
+      "https://www.carrefour.com.ar/galletitas-oreo-mini-rellenas-con-crema-sabor-original-50-g-720547/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_195",
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Rellenas Con Crema Sabor Original 354g",
+      "brand": "OREO",
+      "ean": "7622201735258",
+      "url": "https://www.coto.com.ar/productos_/R-00532300-00532300-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Galletitas Oreo rellenas con crema sabor original 182,5 g.",
+      "brand": "Oreo",
+      "ean": "7622201735821",
+      "url": "https://www.carrefour.com.ar/galletitas-oreo-rellena-con-crema-sabor-original-1825-g-715950/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00532300-00532300-200",
+      "https://www.carrefour.com.ar/galletitas-oreo-rellena-con-crema-sabor-original-1825-g-715950/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_200",
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Rellenas Con Crema Sabor Original 354g",
+      "brand": "OREO",
+      "ean": "7622201735258",
+      "url": "https://www.coto.com.ar/productos_/R-00532300-00532300-200"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "gall.mini oreo x50gr",
+      "brand": "",
+      "ean": "7622201761288",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=16849&P=1&producto=GALL.MINI-OREO-X50GR."
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00532300-00532300-200",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=16849&P=1&producto=GALL.MINI-OREO-X50GR."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_225",
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Rellenas Con Crema Sabor Original 118g",
+      "brand": "OREO",
+      "ean": "7622201735296",
+      "url": "https://www.coto.com.ar/productos_/R-00532297-00532297-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Galletitas Oreo rellenas con crema sabor original 182,5 g.",
+      "brand": "Oreo",
+      "ean": "7622201735821",
+      "url": "https://www.carrefour.com.ar/galletitas-oreo-rellena-con-crema-sabor-original-1825-g-715950/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00532297-00532297-200",
+      "https://www.carrefour.com.ar/galletitas-oreo-rellena-con-crema-sabor-original-1825-g-715950/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_279",
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas Mini OREO Rellenas Con Crema Sabor Original 150g",
+      "brand": "OREO",
+      "ean": "7622202219337",
+      "url": "https://www.coto.com.ar/productos_/R-00584001-00584001-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Galletitas Oreo Mini rellenas con crema sabor original 50 g.",
+      "brand": "Oreo",
+      "ean": "7622201761288",
+      "url": "https://www.carrefour.com.ar/galletitas-oreo-mini-rellenas-con-crema-sabor-original-50-g-720547/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00584001-00584001-200",
+      "https://www.carrefour.com.ar/galletitas-oreo-mini-rellenas-con-crema-sabor-original-50-g-720547/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_372",
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Taragui 1 Kg",
+      "brand": "TARAGUI",
+      "ean": "7790387013610",
+      "url": "https://www.coto.com.ar/productos_/R-00499474-00499474-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Yerba mate sin palo 4flex Taragüi 500 g.",
+      "brand": "Taragui",
+      "ean": "7790387013504",
+      "url": "https://www.carrefour.com.ar/yerba-mate-sin-palo-4flex-taragui-500-g/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00499474-00499474-200",
+      "https://www.carrefour.com.ar/yerba-mate-sin-palo-4flex-taragui-500-g/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_373",
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Taragui 1 Kg",
+      "brand": "TARAGUI",
+      "ean": "7790387013610",
+      "url": "https://www.coto.com.ar/productos_/R-00499474-00499474-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Yerba mate sin palo 4flex Taragüi 1 kg.",
+      "brand": "Taragui",
+      "ean": "7790387013498",
+      "url": "https://www.carrefour.com.ar/yerba-mate-sin-palo-4flex-taragui-1-kg/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00499474-00499474-200",
+      "https://www.carrefour.com.ar/yerba-mate-sin-palo-4flex-taragui-1-kg/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_375",
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Taragui 1 Kg",
+      "brand": "TARAGUI",
+      "ean": "7790387013610",
+      "url": "https://www.coto.com.ar/productos_/R-00499474-00499474-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Yerba mate con palo 4flex Taragüi 250 g.",
+      "brand": "Taragui",
+      "ean": "7790387013634",
+      "url": "https://www.carrefour.com.ar/yerba-mate-con-palo-4flex-taragui-250-g/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00499474-00499474-200",
+      "https://www.carrefour.com.ar/yerba-mate-con-palo-4flex-taragui-250-g/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_401",
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Sin Pal Taragui Paq 1 Kgm",
+      "brand": "TARAGUI",
+      "ean": "7790387013498",
+      "url": "https://www.coto.com.ar/productos_/R-00507766-00507766-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Yerba mate Taragüi con palo origen controlado 1 kg.",
+      "brand": "Taragui",
+      "ean": "7790387013610",
+      "url": "https://www.carrefour.com.ar/yerba-mate-taragui-con-palo-origen-controlado-1-kg/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00507766-00507766-200",
+      "https://www.carrefour.com.ar/yerba-mate-taragui-con-palo-origen-controlado-1-kg/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_477",
+    "selected": {
+      "store": "carrefour",
+      "name": "Yerba mate Taragüi sin TACC 1 kg.",
+      "brand": "Taragui",
+      "ean": "7790387113310",
+      "url": "https://www.carrefour.com.ar/yerba-mate-taragui-sin-tacc-1-kg/p"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "yerba mate taragui sin palo x 1 kg",
+      "brand": "",
+      "ean": "7790387013498",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=10240&P=1&producto=Yerba-mate-taragui-sin-palo-x-1-kg."
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.carrefour.com.ar/yerba-mate-taragui-sin-tacc-1-kg/p",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=10240&P=1&producto=Yerba-mate-taragui-sin-palo-x-1-kg."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_494",
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Sabor Original 2,25 Lt",
+      "brand": "COCA COLA",
+      "ean": "7790895000997",
+      "url": "https://www.coto.com.ar/productos_/R-00014450-00014450-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Gaseosa cola Coca Cola sabor original 1,25 lts",
+      "brand": "Coca Cola",
+      "ean": "7790895012266",
+      "url": "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-sabor-original-125-lts-630679/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00014450-00014450-200",
+      "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-sabor-original-125-lts-630679/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_503",
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Sabor Original 2,25 Lt",
+      "brand": "COCA COLA",
+      "ean": "7790895000997",
+      "url": "https://www.coto.com.ar/productos_/R-00014450-00014450-200"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "gaseosa coca cola light x 2,25 lt",
+      "brand": "",
+      "ean": "7790895005312",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=22376&P=1&producto=Gaseosa-coca-cola-light-x-2,25-lt."
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00014450-00014450-200",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=22376&P=1&producto=Gaseosa-coca-cola-light-x-2,25-lt."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_504",
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Sabor Original 1,25 Lt",
+      "brand": "COCA COLA",
+      "ean": "7790895012266",
+      "url": "https://www.coto.com.ar/productos_/R-00474292-00474292-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Gaseosa cola Coca Cola sabor original 2,25 lts",
+      "brand": "Coca Cola",
+      "ean": "7790895000997",
+      "url": "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-sabor-original-225-lts-30138/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00474292-00474292-200",
+      "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-sabor-original-225-lts-30138/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_520",
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Zero 2,25 Lt",
+      "brand": "COCA COLA",
+      "ean": "7790895067570",
+      "url": "https://www.coto.com.ar/productos_/R-00180416-00180416-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Gaseosa cola Coca Cola Zero 1,25 lts",
+      "brand": "Coca Cola",
+      "ean": "7790895012273",
+      "url": "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-zero-125-lts-649300/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00180416-00180416-200",
+      "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-zero-125-lts-649300/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_583",
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Zero 354 Ml",
+      "brand": "COCA COLA",
+      "ean": "7790895067587",
+      "url": "https://www.coto.com.ar/productos_/R-00179844-00179844-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Gaseosa Coca-Cola Zero 600 ml",
+      "brand": "Coca Cola",
+      "ean": "7790895650840",
+      "url": "https://www.carrefour.com.ar/gaseosa-coca-cola-zero-600-ml-763995/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00179844-00179844-200",
+      "https://www.carrefour.com.ar/gaseosa-coca-cola-zero-600-ml-763995/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_708",
+    "selected": {
+      "store": "coto",
+      "name": "Dulce De Leche LS Repostero Pote 400G",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742067005",
+      "url": "https://www.coto.com.ar/productos_/R-00298995-00298995-200"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "dulce de leche la paulina repostero x 400 gr",
+      "brand": "",
+      "ean": "7794990866977",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=25007&P=1&producto=Dulce-de-leche-la-paulina-repostero-x-400-gr."
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00298995-00298995-200",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=25007&P=1&producto=Dulce-de-leche-la-paulina-repostero-x-400-gr."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_765",
+    "selected": {
+      "store": "coto",
+      "name": "Dulce De Leche Repostero San Ignacio 410gr",
+      "brand": "SAN IGNACIO",
+      "ean": "7790244941551",
+      "url": "https://www.coto.com.ar/productos_/R-00561007-00561007-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Dulce de leche repostero La Serenísima 400 g.",
+      "brand": "La Serenísima",
+      "ean": "7790742067005",
+      "url": "https://www.carrefour.com.ar/dulce-de-leche-repostero-la-serenisima-400-g/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00561007-00561007-200",
+      "https://www.carrefour.com.ar/dulce-de-leche-repostero-la-serenisima-400-g/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_780",
+    "selected": {
+      "store": "carrefour",
+      "name": "Dulce de leche clásico La Serenísima 400 g.",
+      "brand": "La Serenísima",
+      "ean": "7790742625304",
+      "url": "https://www.carrefour.com.ar/dulce-de-leche-clasico-la-serenisima-400-g/p"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "dulce de leche la paulina x 400 gr",
+      "brand": "",
+      "ean": "7794990878581",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=14364&P=1&producto=Dulce-de-leche-la-paulina-x-400-gr."
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.carrefour.com.ar/dulce-de-leche-clasico-la-serenisima-400-g/p",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=14364&P=1&producto=Dulce-de-leche-la-paulina-x-400-gr."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_785",
+    "selected": {
+      "store": "carrefour",
+      "name": "Dulce de leche La Serenísima colonial 400 g.",
+      "brand": "La Serenísima",
+      "ean": "7790742625205",
+      "url": "https://www.carrefour.com.ar/dulce-de-leche-la-serenisima-colonial-400-g-678862/p"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "dulce de leche la paulina x 400 gr",
+      "brand": "",
+      "ean": "7794990878581",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=14364&P=1&producto=Dulce-de-leche-la-paulina-x-400-gr."
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.carrefour.com.ar/dulce-de-leche-la-serenisima-colonial-400-g-678862/p",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=14364&P=1&producto=Dulce-de-leche-la-paulina-x-400-gr."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_787",
+    "selected": {
+      "store": "carrefour",
+      "name": "Dulce de leche repostero La Serenísima 400 g.",
+      "brand": "La Serenísima",
+      "ean": "7790742067005",
+      "url": "https://www.carrefour.com.ar/dulce-de-leche-repostero-la-serenisima-400-g/p"
+    },
+    "candidate": {
+      "store": "la_gallega",
+      "name": "dulce de leche la paulina repostero x 400 gr",
+      "brand": "",
+      "ean": "7794990866977",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=25007&P=1&producto=Dulce-de-leche-la-paulina-repostero-x-400-gr."
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.carrefour.com.ar/dulce-de-leche-repostero-la-serenisima-400-g/p",
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=25007&P=1&producto=Dulce-de-leche-la-paulina-repostero-x-400-gr."
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_818",
+    "selected": {
+      "store": "coto",
+      "name": "Preservativos . TULIPAN Bli 6 Uni",
+      "brand": "TULIPAN",
+      "ean": "7791014001512",
+      "url": "https://www.coto.com.ar/productos_/R-00103812-00103812-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Preservativo Tulipán control 6 uni",
+      "brand": "Tulipán",
+      "ean": "7791014121890",
+      "url": "https://www.carrefour.com.ar/preservativo-tulipan-control-6-uni-700626/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00103812-00103812-200",
+      "https://www.carrefour.com.ar/preservativo-tulipan-control-6-uni-700626/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_825",
+    "selected": {
+      "store": "coto",
+      "name": "Preservativos TULIPAN Texturado Bli 6 Uni",
+      "brand": "TULIPAN",
+      "ean": "7791014001529",
+      "url": "https://www.coto.com.ar/productos_/R-00116239-00116239-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Preservativo Tulipán control 6 uni",
+      "brand": "Tulipán",
+      "ean": "7791014121890",
+      "url": "https://www.carrefour.com.ar/preservativo-tulipan-control-6-uni-700626/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00116239-00116239-200",
+      "https://www.carrefour.com.ar/preservativo-tulipan-control-6-uni-700626/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_830",
+    "selected": {
+      "store": "coto",
+      "name": "Preservativos TULIPAN Texturado Bli 6 Uni",
+      "brand": "TULIPAN",
+      "ean": "7791014001529",
+      "url": "https://www.coto.com.ar/productos_/R-00116239-00116239-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Preservativos Tulipán texturado 12 u.",
+      "brand": "Tulipán",
+      "ean": "7791014001321",
+      "url": "https://www.carrefour.com.ar/preservativos-tulipan-texturado-12-u-11524/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00116239-00116239-200",
+      "https://www.carrefour.com.ar/preservativos-tulipan-texturado-12-u-11524/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_832",
+    "selected": {
+      "store": "coto",
+      "name": "Preservativos Sup/Fino TULIPAN Bli 6 Uni",
+      "brand": "TULIPAN",
+      "ean": "7791014001536",
+      "url": "https://www.coto.com.ar/productos_/R-00103376-00103376-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Preservativo Tulipán control 6 uni",
+      "brand": "Tulipán",
+      "ean": "7791014121890",
+      "url": "https://www.carrefour.com.ar/preservativo-tulipan-control-6-uni-700626/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00103376-00103376-200",
+      "https://www.carrefour.com.ar/preservativo-tulipan-control-6-uni-700626/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_negative_842",
+    "selected": {
+      "store": "coto",
+      "name": "Preservativos Ultrafinos Tulipan Bli 1 Uni",
+      "brand": "TULIPAN",
+      "ean": "7791014121906",
+      "url": "https://www.coto.com.ar/productos_/R-00491831-00491831-200"
+    },
+    "candidate": {
+      "store": "carrefour",
+      "name": "Preservativo súper fino Tulipán 12 u.",
+      "brand": "Tulipán",
+      "ean": "7791014001338",
+      "url": "https://www.carrefour.com.ar/preservativo-super-fino-tulipan-12-u/p"
+    },
+    "same_product": false,
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00491831-00491831-200",
+      "https://www.carrefour.com.ar/preservativo-super-fino-tulipan-12-u/p"
+    ],
+    "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  }
+]

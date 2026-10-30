@@ -239,6 +239,7 @@ def normalize_text(text: str) -> NormalizedText:
     stripped = _strip_accents(raw).lower()
     stripped = re.sub(r"\b(?:las\s+)?3\s+ninas\b", "tres ninas", stripped)
     stripped = re.sub(r"\bpreservativos\b", "preservativo", stripped)
+    stripped = re.sub(r"\bgall\.(?=\s|[a-z])", "galletita ", stripped)
     stripped = re.sub(r"\bgalletitas?\b", "galletita", stripped)
     stripped = re.sub(r"\bgalletas?\b", "galletita", stripped)
     stripped = re.sub(r"\balmendras\b", "almendra", stripped)

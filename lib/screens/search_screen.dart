@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/price_quote.dart';
 import '../services/product_search_service.dart';
+import '../services/product_offer_details.dart';
 import '../state/app_state.dart';
 import '../state/app_scope.dart';
 import '../theme/app_theme.dart';
@@ -725,6 +726,16 @@ class _ResultCardState extends State<_ResultCard> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
+                      if (!widget.result.isCommunityPrice)
+                        Text(
+                          priceSourceLine(widget.result.price),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppColors.textGray,
+                            fontSize: 10,
+                          ),
+                        ),
                     ],
                   ),
                 ),

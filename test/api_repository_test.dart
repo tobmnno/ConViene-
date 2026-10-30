@@ -10,7 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
-  test('maps verified Carrefour offer to its own sales channel', () async {
+  test('keeps Carrefour channel offer visible but out of the total', () async {
     final captured = DateTime.now().toUtc().toIso8601String();
     final repository = ApiRepository(
       baseUrl: Uri.parse('http://127.0.0.1:8000'),
@@ -55,7 +55,8 @@ void main() {
     expect(offer.storeId, 'carrefour');
     expect(offer.branchIds, {'sales-channel-1'});
     expect(offer.productEans, {'8445292446327'});
-    expect(offer.canCalculate, isTrue);
+    expect(offer.applicabilityScope, 'restricted');
+    expect(offer.canCalculate, isFalse);
     expect(result.price.hasStoreOffer, isTrue);
   });
 
@@ -110,6 +111,8 @@ void main() {
       final offer = result.price.quantityOffers.single;
       expect(offer.productEans, {'7798338291056'});
       expect(offer.branchIds, {'200'});
+      expect(offer.applicabilityScope, 'restricted');
+      expect(offer.canCalculate, isFalse);
       expect(offer.requiredQuantity, 2);
     },
   );
@@ -590,8 +593,9 @@ void main() {
                   'any_entity': false,
                   'scraped_at': '2026-09-04T00:00:00+00:00',
                   'source_type': 'third_party_feed',
-                  'verification_status': 'source_reported',
-                  'calculation_status': 'estimate',
+                  'verification_status': 'unverified',
+                  'calculation_status': 'not_calculable',
+                  'applicability_scope': 'unknown',
                   'cap_frequency': 'monthly',
                 },
               ],
@@ -612,7 +616,9 @@ void main() {
       expect(promotions.single.topeReintegro, 25000);
       expect(promotions.single.compraMinima, 90000);
       expect(promotions.single.sourceType, 'third_party_feed');
-      expect(promotions.single.calculationStatus, 'estimate');
+      expect(promotions.single.calculationStatus, 'not_calculable');
+      expect(promotions.single.applicabilityScope, 'unknown');
+      expect(promotions.single.canCalculate, isFalse);
       expect(promotions.single.capFrequency, 'monthly');
       expect(promotions.single.capturedAt, DateTime.utc(2026, 9, 4));
       expect(promotions.single.entidadesCompatibles, contains('Visa'));

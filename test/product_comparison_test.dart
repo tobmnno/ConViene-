@@ -53,6 +53,7 @@ class ComparisonRepository extends MockRepository
             stock: true,
             url: 'https://www.coto.com.ar/productos/leche',
             fechaActualizacion: DateTime.now(),
+            pricingScope: 'selected_store',
           ),
           supermarket: (await getSupermarkets()).first,
         ),
@@ -105,6 +106,7 @@ void main() {
         fechaFin: DateTime(2026, 10, 31),
         condiciones: 'Reintegro',
         categorias: const ['todos'],
+        applicabilityScope: 'general_confirmed',
         compraMinima: 200,
         capFrequency: 'monthly',
       );

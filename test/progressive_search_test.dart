@@ -167,6 +167,59 @@ void main() {
     },
   );
 
+  test(
+    'resolved EAN and verified name match do not repeat aggregate search',
+    () async {
+      final requests = <Set<String>>[];
+      final repository = ApiRepository(
+        baseUrl: Uri.parse('http://127.0.0.1:8000'),
+        fallback: MockRepository(),
+        client: MockClient((request) async {
+          final stores = request.url.queryParametersAll['stores']!.toSet();
+          requests.add(stores);
+          if (stores.length != 1) {
+            fail('Already resolved stores must not be fetched again');
+          }
+          if (stores.single == 'coto') {
+            return _searchResponse(
+              'coto',
+              'Sprite 500 ml',
+              ean: '7790895000829',
+            );
+          }
+          return http.Response(
+            jsonEncode({
+              'results': [
+                {
+                  'score': 90,
+                  'match_type': 'name_match',
+                  'product': {
+                    'store': 'carrefour',
+                    'name': 'Sprite 500 ml',
+                    'price': 2300,
+                    'available': true,
+                  },
+                },
+              ],
+              'store_status': {'carrefour': 'found'},
+            }),
+            200,
+          );
+        }),
+      );
+      final rows = await repository.searchProductsProgressively(
+        query: '7790895000829',
+        storeIds: {'coto', 'carrefour'},
+        onProgress: (_, _) {},
+      );
+      expect(rows.map((row) => row.supermarket.id).toSet(), {
+        'coto',
+        'carrefour',
+      });
+      expect(requests, hasLength(2));
+    },
+  );
+
   test('an incomplete EAN fallback does not erase a healthy store', () async {
     final repository = ApiRepository(
       baseUrl: Uri.parse('http://127.0.0.1:8000'),

@@ -11,6 +11,7 @@ class QuantityOffer(BaseModel):
     source_url: str
     captured_at: str
     branch_id: str
+    applicability_scope: Literal["general_confirmed", "restricted", "unknown"] = "restricted"
 
 
 class Product(BaseModel):
@@ -161,6 +162,7 @@ class DiscountPromotion(BaseModel):
     source_type: Literal["official_api", "official_page", "third_party_feed", "static_fallback"] = "static_fallback"
     verification_status: Literal["source_reported", "unverified"] = "unverified"
     calculation_status: Literal["exact", "estimate", "not_calculable"] = "not_calculable"
+    applicability_scope: Literal["general_confirmed", "restricted", "unknown"] = "unknown"
 
 
 class DiscountsResponse(BaseModel):

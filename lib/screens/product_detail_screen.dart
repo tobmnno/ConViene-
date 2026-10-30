@@ -293,6 +293,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ],
           ),
+          Text(priceSourceLine(row.price), style: theme.textTheme.bodySmall),
           if (uri == null)
             const Text(
               'Enlace directo no disponible',
@@ -317,7 +318,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       for (final p in [...state.promotions, ...row.price.quantityOffers])
         if (p.storeId == row.supermarket.id &&
             p.id != promotion?.id &&
-            p.canCalculate &&
             p.appliesOn(state.selectedDate) &&
             p.appliesToProduct(row.product) &&
             p.appliesToCategory(row.product.category))
@@ -380,9 +380,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ] else if (row.price.hasStoreOffer)
             const Text('Oferta del supermercado incluida en el precio.')
           else if (available.isNotEmpty)
-            const Text('No hay beneficios aplicados con tus medios de pago.')
+            const Text('No hay beneficios aplicados. Revisá las condiciones.')
           else
-            const Text('Sin beneficios adicionales verificados.'),
+            const Text('Sin beneficios adicionales informados.'),
           if (available.isNotEmpty)
             ExpansionTile(
               key: ValueKey('other-${row.supermarket.id}'),
@@ -400,6 +400,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   String _pendingReason(AppState state, SearchResult row, Promotion p) {
+    if (p.verificationStatus == 'unverified' ||
+        (p.sourceType.isNotEmpty && !p.isEvidenceFresh)) {
+      return 'Sin verificación actual';
+    }
+    if (p.applicabilityScope == 'restricted') {
+      return 'Limitado a canal o sucursal; no incluido en el total';
+    }
+    if (p.applicabilityScope != 'general_confirmed') {
+      return 'Alcance sin confirmar; no incluido en el total';
+    }
     if (!p.appliesToBranch(row.price.branchId)) return 'Requiere otra sucursal';
     if (!p.isCompatibleWithAny(state.activePaymentMethods))
       return 'Requiere un medio de pago compatible';
@@ -452,6 +462,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             if (p.canal.isNotEmpty) Text('Canal: ${p.canal}'),
             if (p.branchIds.isNotEmpty)
               Text('Sucursales: ${p.branchIds.join(', ')}'),
+            Text('Alcance: ${_promotionScope(p.applicabilityScope)}'),
             Text(
               p.allowsStacking
                   ? 'Acumulación sujeta a condiciones'
@@ -469,4 +480,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
     ],
   );
+
+  String _promotionScope(String scope) => switch (scope) {
+    'general_confirmed' => 'General confirmado',
+    'restricted' => 'Limitado a canal o sucursal',
+    _ => 'Sin confirmar',
+  };
 }

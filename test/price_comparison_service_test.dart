@@ -107,6 +107,7 @@ void main() {
         fechaFin: DateTime(2026, 12, 31),
         condiciones: '',
         categorias: const ['todos'],
+        applicabilityScope: 'general_confirmed',
         capFrequency: 'monthly',
       );
       const visa = PaymentMethod(
@@ -156,6 +157,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: 'Sin tope',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
     );
     const visa = PaymentMethod(
       id: 'visa',
@@ -194,6 +196,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: '',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
     );
     const visa = PaymentMethod(
       id: 'visa',

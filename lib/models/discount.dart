@@ -37,6 +37,7 @@ class Promotion {
     this.sourceType = '',
     this.verificationStatus = 'source_reported',
     this.calculationStatus = 'exact',
+    this.applicabilityScope = 'unknown',
     this.capturedAt,
   });
 
@@ -74,6 +75,7 @@ class Promotion {
   final String sourceType;
   final String verificationStatus;
   final String calculationStatus;
+  final String applicabilityScope;
   final DateTime? capturedAt;
 
   String get nombreVisible => titulo.isEmpty ? entidad : titulo;
@@ -82,12 +84,21 @@ class Promotion {
       porcentajeDescuento > 0 ||
       (promotionKind == 'store_product' && mechanic != 'percentage');
 
+  bool get isEvidenceFresh {
+    if (capturedAt == null) return false;
+    final age = DateTime.now().difference(capturedAt!);
+    return age >= const Duration(minutes: -5) &&
+        age < Duration(minutes: promotionKind == 'store_product' ? 30 : 1440);
+  }
+
   bool get canCalculate =>
+      applicabilityScope == 'general_confirmed' &&
+      branchIds.isEmpty &&
+      canal.isEmpty &&
       verificationStatus != 'unverified' &&
-      (promotionKind != 'store_product' ||
-          sourceType != 'official_api' ||
-          (capturedAt != null &&
-              DateTime.now().difference(capturedAt!).inMinutes < 30)) &&
+      (sourceType.isEmpty ||
+          ((sourceType == 'official_api' || sourceType == 'official_page') &&
+              isEvidenceFresh)) &&
       (calculationStatus == 'exact' || calculationStatus == 'estimate');
 
   String? capUsageKey(DateTime date) {

@@ -29,6 +29,7 @@ void main() {
     fechaFin: DateTime(2026, 12, 31),
     condiciones: 'En un pago',
     categorias: const ['lacteos'],
+    applicabilityScope: 'general_confirmed',
   );
   const visa = PaymentMethod(
     id: 'visa',
@@ -37,6 +38,71 @@ void main() {
     displayName: 'Visa',
     active: true,
   );
+
+  test('solo un alcance general confirmado afecta el total', () {
+    DiscountQuote calculate(String scope) => engine.calcularPrecioFinal(
+      product: product,
+      supermercado: 'coto',
+      precioOriginal: 1000,
+      fecha: date,
+      mediosPagoUsuario: const [visa],
+      promociones: [
+        Promotion(
+          id: 'scope',
+          storeId: 'coto',
+          tipoMedioPago: PaymentMethodType.card,
+          entidad: 'Visa',
+          porcentajeDescuento: 20,
+          topeReintegro: 0,
+          diasSemana: const {DateTime.thursday},
+          fechaInicio: DateTime(2026, 1, 1),
+          fechaFin: DateTime(2026, 12, 31),
+          condiciones: '',
+          categorias: const ['todos'],
+          applicabilityScope: scope,
+        ),
+      ],
+    );
+    expect(calculate('restricted').precioFinal, 1000);
+    expect(calculate('unknown').precioFinal, 1000);
+    expect(calculate('general_confirmed').precioFinal, 800);
+  });
+
+  test('evidencia antigua o feed externo no calculan ahorro', () {
+    final today = DateTime.now();
+    Promotion offer(String source, DateTime captured) => Promotion(
+      id: source,
+      storeId: 'coto',
+      tipoMedioPago: PaymentMethodType.card,
+      entidad: 'Visa',
+      porcentajeDescuento: 20,
+      topeReintegro: 0,
+      diasSemana: {today.weekday},
+      fechaInicio: today,
+      fechaFin: today,
+      condiciones: '',
+      categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
+      sourceType: source,
+      capturedAt: captured,
+    );
+    DiscountQuote quote(Promotion promotion) => engine.calcularPrecioFinal(
+      product: product,
+      supermercado: 'coto',
+      precioOriginal: 1000,
+      fecha: today,
+      mediosPagoUsuario: const [visa],
+      promociones: [promotion],
+    );
+    expect(
+      quote(
+        offer('official_api', today.subtract(const Duration(days: 2))),
+      ).precioFinal,
+      1000,
+    );
+    expect(quote(offer('third_party_feed', today)).precioFinal, 1000);
+    expect(quote(offer('official_api', today)).precioFinal, 800);
+  });
 
   test('calcula precio final con descuento compatible', () {
     final quote = engine.calcularPrecioFinal(
@@ -82,6 +148,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: 'En un pago',
       categorias: const ['lacteos'],
+      applicabilityScope: 'general_confirmed',
     );
 
     final quote = engine.calcularPrecioFinal(
@@ -111,6 +178,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: 'Con tope',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
     );
     final uncapped = Promotion(
       id: 'visa_15_sin_tope',
@@ -124,6 +192,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: 'Sin tope',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
     );
 
     final quote = engine.calcularPrecioFinal(
@@ -153,6 +222,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: 'Sin tope',
       categorias: const ['lacteos'],
+      applicabilityScope: 'general_confirmed',
     );
 
     final quote = engine.calcularPrecioFinal(
@@ -182,6 +252,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: 'Compra minima de 20000',
       categorias: const ['lacteos'],
+      applicabilityScope: 'general_confirmed',
     );
 
     final quote = engine.calcularPrecioFinal(
@@ -210,6 +281,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: 'Saldo en cuenta o debito asociado',
       categorias: const ['lacteos'],
+      applicabilityScope: 'general_confirmed',
       entidadesCompatibles: const {'Visa', 'Saldo en cuenta'},
       tiposMedioPagoCompatibles: const {
         PaymentMethodType.card,
@@ -250,6 +322,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: 'MODO con Banco Credicoop',
       categorias: const ['lacteos'],
+      applicabilityScope: 'general_confirmed',
       entidadesCompatibles: const {'MODO', 'Banco Credicoop'},
       entidadesRequeridas: const [
         {'MODO'},
@@ -309,6 +382,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: 'Visa de Banco Comafi',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
       entidadesCompatibles: const {'Visa', 'Banco Comafi'},
       entidadesRequeridas: const [
         {'Visa'},
@@ -363,6 +437,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: 'Visa o Mastercard',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
       entidadesCompatibles: const {'Visa', 'Mastercard'},
     );
     const mastercard = PaymentMethod(
@@ -389,6 +464,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: 'Solo tarjeta Carrefour Banco',
       categorias: const ['lacteos'],
+      applicabilityScope: 'general_confirmed',
     );
 
     final quote = engine.calcularPrecioFinal(
@@ -416,6 +492,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: '',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
       calculationStatus: 'not_calculable',
     );
     final expired = Promotion(
@@ -430,6 +507,7 @@ void main() {
       fechaFin: DateTime(2026, 7, 31),
       condiciones: '',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
     );
     final quote = engine.calcularPrecioFinal(
       product: product,
@@ -456,6 +534,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: '',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
     );
     final quote = engine.calcularPrecioFinal(
       product: product,
@@ -495,6 +574,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: 'Tope mensual sujeto a consumos anteriores',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
       calculationStatus: 'estimate',
       capFrequency: 'monthly',
     );
@@ -510,51 +590,49 @@ void main() {
     expect(quote.estimated, isTrue);
   });
 
-  test(
-    '2x1 oficial por EAN no descuenta una sola unidad y respeta sucursal',
-    () {
-      final today = DateTime.now();
-      final offer = Promotion(
-        id: 'coto-200-1-2x1',
-        storeId: 'coto',
-        tipoMedioPago: PaymentMethodType.card,
-        entidad: 'Coto',
-        porcentajeDescuento: 0,
-        topeReintegro: 0,
-        diasSemana: {today.weekday},
-        fechaInicio: today,
-        fechaFin: today,
-        condiciones: 'Llevando 2',
-        categorias: const ['todos'],
-        promotionKind: 'store_product',
-        mechanic: 'buy_n_pay_m',
-        productEans: const {'1'},
-        branchIds: const {'200'},
-        requiredQuantity: 2,
-        chargedQuantity: 1,
-        sourceType: 'official_api',
-        verificationStatus: 'source_reported',
-        calculationStatus: 'estimate',
-        capturedAt: DateTime.now(),
-      );
-      DiscountQuote quote(int quantity, String branch) =>
-          engine.calcularPrecioFinal(
-            product: product,
-            supermercado: 'coto',
-            precioOriginal: quantity * 1980,
-            fecha: today,
-            mediosPagoUsuario: const [],
-            promociones: [offer],
-            quantity: quantity,
-            branchId: branch,
-          );
-      expect(quote(1, '200').precioFinal, 1980);
-      expect(quote(2, '200').precioFinal, 1980);
-      expect(quote(3, '200').precioFinal, 3960);
-      expect(quote(2, '201').precioFinal, 3960);
-      expect(quote(2, '200').estimated, isTrue);
-    },
-  );
+  test('2x1 por EAN de una sucursal no descuenta sin sucursal confirmada', () {
+    final today = DateTime.now();
+    final offer = Promotion(
+      id: 'coto-200-1-2x1',
+      storeId: 'coto',
+      tipoMedioPago: PaymentMethodType.card,
+      entidad: 'Coto',
+      porcentajeDescuento: 0,
+      topeReintegro: 0,
+      diasSemana: {today.weekday},
+      fechaInicio: today,
+      fechaFin: today,
+      condiciones: 'Llevando 2',
+      categorias: const ['todos'],
+      applicabilityScope: 'restricted',
+      promotionKind: 'store_product',
+      mechanic: 'buy_n_pay_m',
+      productEans: const {'1'},
+      branchIds: const {'200'},
+      requiredQuantity: 2,
+      chargedQuantity: 1,
+      sourceType: 'official_api',
+      verificationStatus: 'source_reported',
+      calculationStatus: 'estimate',
+      capturedAt: DateTime.now(),
+    );
+    DiscountQuote quote(int quantity, String branch) =>
+        engine.calcularPrecioFinal(
+          product: product,
+          supermercado: 'coto',
+          precioOriginal: quantity * 1980,
+          fecha: today,
+          mediosPagoUsuario: const [],
+          promociones: [offer],
+          quantity: quantity,
+          branchId: branch,
+        );
+    expect(quote(1, '200').precioFinal, 1980);
+    expect(quote(2, '200').precioFinal, 3960);
+    expect(quote(3, '200').precioFinal, 5940);
+    expect(quote(2, '201').precioFinal, 3960);
+    expect(quote(2, '200').descuentoAplicado, isFalse);
+  });
 
   test('tope mensual consumido reduce el reintegro y puede agotarlo', () {
     final monthly = Promotion(
@@ -569,6 +647,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: '',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
       capFrequency: 'monthly',
     );
     final key = monthly.capUsageKey(date)!;
@@ -596,6 +675,7 @@ void main() {
       fechaFin: DateTime(2026, 6, 30),
       condiciones: '',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
       capFrequency: 'account',
     );
     final accountB = Promotion(
@@ -610,6 +690,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: '',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
       capFrequency: 'account',
     );
     expect(accountA.capUsageKey(date), isNot(accountB.capUsageKey(date)));
@@ -628,6 +709,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: '',
       categorias: const ['todos'],
+      applicabilityScope: 'restricted',
       branchIds: const {'200'},
     );
     DiscountQuote quote(String? branch) => engine.calcularPrecioFinal(
@@ -641,7 +723,7 @@ void main() {
     );
     expect(quote(null).descuentoAplicado, isFalse);
     expect(quote('201').descuentoAplicado, isFalse);
-    expect(quote('200').importeDescuento, 200);
+    expect(quote('200').importeDescuento, 0);
   });
 
   test('calcula 2x1, 3x2 y segunda unidad solo para el EAN alcanzado', () {
@@ -662,6 +744,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: '',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
       promotionKind: 'store_product',
       mechanic: mechanic,
       productEans: const {'1'},
@@ -700,6 +783,7 @@ void main() {
       fechaFin: DateTime(2026, 12, 31),
       condiciones: '',
       categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
       promotionKind: 'store_product',
       mechanic: 'fixed_bundle_price',
       productEans: const {'1'},
@@ -737,42 +821,44 @@ void main() {
     );
   });
 
-  test('oferta Carrefour verificada puede coexistir con precio unitario de oferta', () {
-    final today = DateTime.now();
-    final offer = Promotion(
-      id: 'carrefour-2x1',
-      storeId: 'carrefour',
-      tipoMedioPago: PaymentMethodType.card,
-      entidad: 'Carrefour',
-      porcentajeDescuento: 0,
-      topeReintegro: 0,
-      diasSemana: {today.weekday},
-      fechaInicio: today,
-      fechaFin: today,
-      condiciones: '',
-      categorias: const ['todos'],
-      promotionKind: 'store_product',
-      mechanic: 'buy_n_pay_m',
-      productEans: const {'1'},
-      branchIds: const {'sales-channel-1'},
-      requiredQuantity: 2,
-      chargedQuantity: 1,
-      sourceType: 'official_api',
-      calculationStatus: 'estimate',
-      capturedAt: today,
-    );
-    final quote = engine.calcularPrecioFinal(
-      product: product,
-      supermercado: 'carrefour',
-      precioOriginal: 2000,
-      quantity: 2,
-      fecha: today,
-      mediosPagoUsuario: const [],
-      promociones: [offer],
-      hasStoreOffer: true,
-      branchId: 'sales-channel-1',
-    );
-    expect(quote.precioFinal, 1000);
-    expect(quote.estimated, isTrue);
-  });
+  test(
+    'oferta Carrefour verificada puede coexistir con precio unitario de oferta',
+    () {
+      final today = DateTime.now();
+      final offer = Promotion(
+        id: 'carrefour-2x1',
+        storeId: 'carrefour',
+        tipoMedioPago: PaymentMethodType.card,
+        entidad: 'Carrefour',
+        porcentajeDescuento: 0,
+        topeReintegro: 0,
+        diasSemana: {today.weekday},
+        fechaInicio: today,
+        fechaFin: today,
+        condiciones: '',
+        categorias: const ['todos'],
+        applicabilityScope: 'general_confirmed',
+        promotionKind: 'store_product',
+        mechanic: 'buy_n_pay_m',
+        productEans: const {'1'},
+        requiredQuantity: 2,
+        chargedQuantity: 1,
+        sourceType: 'official_api',
+        calculationStatus: 'estimate',
+        capturedAt: today,
+      );
+      final quote = engine.calcularPrecioFinal(
+        product: product,
+        supermercado: 'carrefour',
+        precioOriginal: 2000,
+        quantity: 2,
+        fecha: today,
+        mediosPagoUsuario: const [],
+        promociones: [offer],
+        hasStoreOffer: true,
+      );
+      expect(quote.precioFinal, 1000);
+      expect(quote.estimated, isTrue);
+    },
+  );
 }

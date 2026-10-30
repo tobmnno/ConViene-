@@ -16,6 +16,7 @@ PricedCartItem line({
   bool expired = false,
   String ean = '7790742448309',
   bool priorOffer = false,
+  bool restricted = false,
 }) {
   final now = DateTime.now();
   return PricedCartItem(
@@ -57,7 +58,8 @@ PricedCartItem line({
           promotionKind: 'store_product',
           mechanic: 'buy_n_pay_m',
           productEans: {ean},
-          branchIds: const {'200'},
+          branchIds: restricted ? const {'200'} : const {},
+          applicabilityScope: restricted ? 'restricted' : 'general_confirmed',
           requiredQuantity: 2,
           chargedQuantity: 1,
           sourceType: 'official_api',
@@ -100,6 +102,7 @@ void main() {
         fechaFin: now,
         condiciones: 'No acumulable',
         categorias: const ['todos'],
+        applicabilityScope: 'general_confirmed',
       ),
     ];
     final result = quantitySuggestion(state, line())!;
@@ -113,15 +116,16 @@ void main() {
     state.dispose();
   });
 
-  test('only fresh, chosen-store exact EAN 2x1 produces a suggestion', () {
+  test('only fresh, general exact EAN 2x1 produces a suggestion', () {
     final state = cartState();
     final suggestion = quantitySuggestion(state, line())!;
     expect(suggestion.samePrice, isTrue);
     expect(suggestion.two.precioFinal, 1500);
     expect(quantitySuggestion(state, line(expired: true)), isNull);
     expect(quantitySuggestion(state, line(ean: 'wrong')), isNull);
+    expect(quantitySuggestion(state, line(restricted: true)), isNull);
     state.shoppingContext = const ShoppingContext(cotoStore: '401');
-    expect(quantitySuggestion(state, line()), isNull);
+    expect(quantitySuggestion(state, line()), isNotNull);
     state.shoppingContext = const ShoppingContext();
     state.isComparing = true;
     expect(quantitySuggestion(state, line()), isNull);

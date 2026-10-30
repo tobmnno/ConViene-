@@ -24,13 +24,6 @@ CartQuantitySuggestion? quantitySuggestion(
         item.quantity == 1,
   ))
     return null;
-  final expectedBranch = switch (line.supermarket.id) {
-    'coto' => state.shoppingContext.cotoStore,
-    'carrefour' => state.shoppingContext.carrefourSalesChannel,
-    _ => null,
-  };
-  if (expectedBranch == null || line.price.branchId != expectedBranch)
-    return null;
   final two = state.previewCartLine(line, 2);
   final p = two.promocionUsada;
   if (p == null ||

@@ -353,3 +353,80 @@ when available; keep all unverified offers out of the calculable total.
   ports 53246 and 8002. Browser interaction remained disabled in Work settings,
   so the new layout was verified through 320/390 px widget geometry tests,
   not a live click-through. User requested a new commit after review.
+
+2026-10-30 three-stage reliability plan, stage 1 complete:
+- Captured public catalog responses for six queries across Coto, Carrefour
+  and La Gallega. Froze 60 reviewed cross-store identity cases (30 same,
+  30 distinct) with EAN, catalog names, official product URLs and capture
+  date in test/fixtures/product_identity_verified_cases.json. The optional
+  collector writes candidates under ignored .pytest_cache; its proposals
+  are not automatically treated as verified labels.
+- Baseline on those 60 cases: 0 false positives, 2 false negatives, both
+  Coto/La Gallega Oreo Mini listings abbreviated as `gall.`. A red backend
+  test reproduced them. Normalizing that abbreviation now yields 0 false
+  positives and 0 false negatives. A conflicting same-EAN condom count is
+  separately covered by an existing test and remains rejected.
+- Backend full suite: 118 passed, 8 optional live skipped, 103 subtests
+  passed. Flutter full suite: 149 passed, 2 optional live skipped. No cart
+  or barcode behavior was intentionally changed. Official catalog evidence
+  is a dated snapshot, not a guarantee of current stock or live prices.
+- Next: stage 2 baseline first-result/full-result timings, request counts
+  and errors on the same six product families, then targeted optimization.
+  No commit or push requested for this plan.
+
+2026-10-30 three-stage reliability plan, stage 2 complete:
+- Added an opt-in live benchmark for the same six product families; its
+  machine-readable samples stay under ignored .pytest_cache. With 30 rows
+  per chain, one cold run made 6 upstream calls per chain, with no source
+  failures: first useful result p50 0.52 s / p95 0.84 s, all chains p50
+  1.30 s / p95 1.72 s. Warm cache made zero upstream calls and completed
+  in about 1 ms. This is a small sample of direct catalog lookups, not an
+  end-to-end latency promise; the upstream sites can be much slower.
+- A red progressive-search test showed a redundant aggregate EAN request
+  after Coto returned an exact EAN and Carrefour returned a verified
+  name-based match. That case now uses 2 instead of 3 HTTP requests;
+  unresolved sources and missing EAN identification retain the fallback.
+  No search threshold, candidate rule or source concurrency was relaxed.
+- Backend regression: 118 passed / 8 optional live skipped / 103 subtests.
+  Flutter regression: 150 passed / 2 optional live skipped. Next: stage 3
+  promotion scope and price-provenance audit, tests and UI integration.
+  No commit or push requested.
+
+2026-10-30 three-stage reliability plan, stage 3 complete:
+- API promotions now distinguish `general_confirmed`, `restricted` and
+  `unknown` applicability. Explicit branch/channel limits are restricted;
+  unknown scope is never promoted to general merely because a catalog was
+  queried with a technical branch identifier. The La Gallega third-party
+  feed remains visible but unverified and non-calculable, even when recent.
+- Flutter applies only fresh, official, explicitly general-confirmed
+  benefits without branch/channel restrictions. Conditioned and unverified
+  offers remain visible in Discounts and product Benefits without changing
+  the total or triggering a cart 2x1 notice. Search, detail and cart show
+  catalog provenance and consultation date without a branch selector.
+- The opt-in live official-source contract suite passed (4 tests). A live
+  2026-10-30 API sample returned 36 promotions: 23 restricted Coto, 7
+  restricted Carrefour, 3 restricted and 3 unknown La Gallega. None had
+  explicit evidence of general applicability, so none is currently
+  calculated as a discount. This is conservative by design, not proof that
+  the offers are unavailable at a specific participating branch or channel.
+- Full regression after the final copy update: backend 122 passed / 8
+  optional live skipped / 103 subtests; Flutter 153 passed / 2 optional
+  live skipped. Analyzer clean; release web and Android debug APK built.
+  An initially missing generated Dart hook was rebuilt without deleting
+  existing work. `git diff --check` found no whitespace errors.
+- Browser walkthrough at mobile and desktop sizes, light and dark: live
+  Oreo Mini search rendered progressive results; detail sorted three store
+  prices and showed their catalog origin/date. Benefits showed conditioned
+  offers separately without an applied saving. A live La Gallega Coinag
+  offer listed participating branches and was marked restricted; moving
+  from Friday to Saturday updated the discount list. A test item added
+  from Carrefour retained that store in the cart while all three totals
+  were compared; it was removed and the test cart is empty again. One Coto
+  request failed during an earlier run and was shown as a source error,
+  not a confirmed absence. The user theme and browser viewport were restored.
+- Limits: no currently confirmed general promotion or live eligible 2x1
+  was available for end-to-end savings verification. Bank caps already
+  consumed, current stock and checkout totals remain unknown. The original
+  brand mark has weak contrast on the dark background; revisit its approved
+  dark asset separately without inventing a replacement logo. Local API and
+  web server remain available on ports 8000 and 53246. No commit or push.

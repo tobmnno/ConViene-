@@ -35,13 +35,11 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
       for (final promotion in state.promotions) promotion.id: promotion,
       for (final result in state.searchResults)
         for (final promotion in result.price.quantityOffers)
-          if (promotion.canCalculate && promotion.appliesOn(state.selectedDate))
-            promotion.id: promotion,
+          if (promotion.appliesOn(state.selectedDate)) promotion.id: promotion,
       for (final comparison in state.cartComparisons)
         for (final line in comparison.items)
           for (final promotion in line.price.quantityOffers)
-            if (promotion.canCalculate &&
-                promotion.appliesOn(state.selectedDate))
+            if (promotion.appliesOn(state.selectedDate))
               promotion.id: promotion,
     };
     final filteredPromotions =
@@ -636,6 +634,7 @@ class _PromotionCard extends StatelessWidget {
                   ],
                   _DetailLine('Beneficio', _benefitText(promotion)),
                   _DetailLine('Estado', _statusText(promotion)),
+                  _DetailLine('Alcance', _scopeText(promotion)),
                   _DetailLine('Origen', _sourceTypeText(promotion)),
                   if (promotion.capturedAt != null)
                     _DetailLine(
@@ -829,14 +828,26 @@ class _PromotionCard extends StatelessWidget {
   };
 
   String _statusText(Promotion promotion) {
-    if (promotion.verificationStatus == 'unverified' ||
-        !promotion.canCalculate) {
-      return 'Referencia sin verificar';
+    if (promotion.verificationStatus == 'unverified')
+      return 'Sin verificacion actual';
+    if (promotion.sourceType.isNotEmpty && !promotion.isEvidenceFresh) {
+      return 'Fuente desactualizada';
     }
+    if (promotion.applicabilityScope != 'general_confirmed') {
+      return 'Condicionado por alcance';
+    }
+    if (!promotion.canCalculate) return 'Condiciones sin confirmar';
     return promotion.calculationStatus == 'estimate'
         ? 'Ahorro estimado'
         : 'Fuente consultada';
   }
+
+  String _scopeText(Promotion promotion) =>
+      switch (promotion.applicabilityScope) {
+        'general_confirmed' => 'General confirmado',
+        'restricted' => 'Limitado a canal o sucursal; no descontado',
+        _ => 'No confirmado; no descontado',
+      };
 
   String _sourceTypeText(Promotion promotion) => switch (promotion.sourceType) {
     'official_api' => 'Catalogo del supermercado',

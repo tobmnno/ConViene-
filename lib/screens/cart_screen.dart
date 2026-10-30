@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/cart_item.dart';
 import '../models/product.dart';
 import '../models/store_comparison.dart';
+import '../services/product_offer_details.dart';
 import '../state/app_scope.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
@@ -827,6 +828,15 @@ class _CartLine extends StatelessWidget {
                         ),
                       ),
                     ],
+                    if (line != null)
+                      Text(
+                        priceSourceLine(line.price),
+                        maxLines: 2,
+                        style: TextStyle(
+                          color: AppColors.textGray,
+                          fontSize: 10,
+                        ),
+                      ),
                   ],
                 ),
               ),
