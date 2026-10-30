@@ -285,6 +285,15 @@ class PriceComparisonService {
               forceRefresh: forceRefreshPrices,
             );
             storeStatus.addAll(response.storeStatus);
+            for (final storeId in missingStoreIds) {
+              final status = response.storeStatus[storeId];
+              if (status != null && status != 'found') {
+                offersByStore.remove(storeId);
+                if (storeId == cartItem.selectedStoreId) {
+                  selectedOffer = null;
+                }
+              }
+            }
             for (final suggestion in response.alternatives) {
               if (missingStoreIds.contains(suggestion.supermarket.id) &&
                   !suggestion.isExactMatch) {
@@ -294,8 +303,6 @@ class PriceComparisonService {
                 );
               }
             }
-            offersByStore.clear();
-            selectedOffer = null;
             for (final result in response.results) {
               if (missingStoreIds.contains(result.supermarket.id) &&
                   result.price.stock &&

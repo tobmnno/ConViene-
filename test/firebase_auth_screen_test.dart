@@ -41,6 +41,18 @@ void main() {
     expect(find.text('Mínimo 8 caracteres.'), findsOneWidget);
   });
 
+  testWidgets('keeps auth mode labels on one line on narrow screens', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(220, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(home: FirebaseAuthScreen(auth: _UnusedFirebaseAuth())),
+    );
+
+    expect(tester.getSize(find.text('Registrarme')).height, lessThan(30));
+  });
+
   testWidgets('password recovery requires a valid email', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));

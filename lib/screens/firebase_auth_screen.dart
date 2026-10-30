@@ -158,9 +158,22 @@ class _FirebaseAuthScreenState extends State<FirebaseAuthScreen> {
                   ),
                   const SizedBox(height: 24),
                   SegmentedButton<bool>(
+                    showSelectedIcon: false,
                     segments: const [
-                      ButtonSegment(value: true, label: Text('Registrarme')),
-                      ButtonSegment(value: false, label: Text('Ingresar')),
+                      ButtonSegment(
+                        value: true,
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('Registrarme', maxLines: 1),
+                        ),
+                      ),
+                      ButtonSegment(
+                        value: false,
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('Ingresar', maxLines: 1),
+                        ),
+                      ),
                     ],
                     selected: {_register},
                     onSelectionChanged: _busy

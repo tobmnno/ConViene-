@@ -391,6 +391,39 @@ void main() {
       );
     },
   );
+
+  test(
+    'preserva una oferta exacta cacheada cuando la equivalencia es parcial',
+    () async {
+      final repository = _PartialEquivalenceRepository();
+      final service = PriceComparisonService(repository, const DiscountEngine());
+      final product = (await repository.getProducts()).first;
+
+      final result = await service.compareCartOptions(
+        cartItems: [
+          CartItem(
+            productId: product.id,
+            quantity: 1,
+            selectedStoreId: 'coto',
+          ),
+        ],
+        productCatalog: [product],
+        fecha: DateTime(2026, 10, 30),
+        mediosPagoUsuario: const [],
+        promociones: const [],
+        storeIds: const {'coto', 'carrefour'},
+      );
+
+      final byStore = {
+        for (final comparison in result.singleStoreComparisons)
+          comparison.supermarket.id: comparison,
+      };
+      expect(byStore['coto']!.items, hasLength(1));
+      expect(byStore['coto']!.items.single.price.priceOriginal, 1000);
+      expect(byStore['carrefour']!.items, hasLength(1));
+      expect(repository.requestedStoreIds, {'coto', 'carrefour'});
+    },
+  );
 }
 
 class _CountingEquivalenceRepository extends MockRepository
@@ -431,6 +464,57 @@ class _CountingEquivalenceRepository extends MockRepository
         ),
       ],
       storeStatus: const {'coto': 'found'},
+    );
+  }
+}
+
+class _PartialEquivalenceRepository extends MockRepository
+    implements ProductEquivalenceRepository {
+  Set<String>? requestedStoreIds;
+
+  @override
+  Future<List<ProductPrice>> getPricesForProduct(String productId) async {
+    final product = (await getProducts()).firstWhere((item) => item.id == productId);
+    final coto = (await getSupermarkets()).firstWhere((item) => item.id == 'coto');
+    return [
+      ProductPrice(
+        storeId: coto.id,
+        productId: product.id,
+        priceOriginal: 1000,
+        priceUnitario: 1000,
+        stock: true,
+        url: 'https://www.coto.com.ar/productos/cacheado',
+        fechaActualizacion: DateTime(2026, 10, 30),
+      ),
+    ];
+  }
+
+  @override
+  Future<EquivalentProductsResult> findEquivalentProducts({
+    required Product product,
+    required Set<String> storeIds,
+    required ShoppingContext context,
+  }) async {
+    requestedStoreIds = {...storeIds};
+    final carrefour = (await getSupermarkets())
+        .firstWhere((item) => item.id == 'carrefour');
+    return EquivalentProductsResult(
+      results: [
+        SearchResult(
+          product: product,
+          supermarket: carrefour,
+          price: ProductPrice(
+            storeId: carrefour.id,
+            productId: product.id,
+            priceOriginal: 1200,
+            priceUnitario: 1200,
+            stock: true,
+            url: 'https://www.carrefour.com.ar/productos/equivalente',
+            fechaActualizacion: DateTime(2026, 10, 30),
+          ),
+        ),
+      ],
+      storeStatus: const {'carrefour': 'found'},
     );
   }
 }

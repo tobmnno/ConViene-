@@ -27,6 +27,22 @@ void main() {
     expect(find.text('Minimo 8 caracteres.'), findsOneWidget);
   });
 
+  testWidgets('keeps auth mode labels on one line on narrow screens', (
+    tester,
+  ) async {
+    final client = SupabaseClient(
+      'https://example.supabase.co',
+      'sb_publishable_test',
+      authOptions: const AuthClientOptions(autoRefreshToken: false),
+    );
+    await tester.binding.setSurfaceSize(const Size(220, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(MaterialApp(home: AuthScreen(client: client)));
+
+    expect(tester.getSize(find.text('Registrarme')).height, lessThan(30));
+  });
+
   testWidgets('requires a new password and confirmation on recovery', (
     tester,
   ) async {
