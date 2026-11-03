@@ -15,8 +15,6 @@ if not exist "%FLUTTER%" (
   )
   set "FLUTTER=flutter"
 )
-)
-
 if exist "%ROOT%supabase.local.json" goto config_file
 if not defined SUPABASE_URL goto missing_config
 if not defined SUPABASE_PUBLISHABLE_KEY goto missing_config

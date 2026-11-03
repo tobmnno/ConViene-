@@ -34,6 +34,7 @@ class ConvieneApp extends StatefulWidget {
 }
 
 class _ConvieneAppState extends State<ConvieneApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   AppState? _state;
   StreamSubscription<AuthState>? _authSubscription;
   StreamSubscription<firebase.User?>? _firebaseSubscription;
@@ -43,6 +44,7 @@ class _ConvieneAppState extends State<ConvieneApp> {
   String? _userId;
   String? _username;
   bool _recoveringPassword = false;
+  bool _showAuth = false;
   late bool _darkMode;
   late final ThemePreferences _themePreferences;
 
@@ -52,6 +54,7 @@ class _ConvieneAppState extends State<ConvieneApp> {
     _darkMode = widget.initialDarkMode;
     _themePreferences = widget.themePreferences ?? ThemePreferences();
     AppColors.setDarkMode(_darkMode);
+    _state = _createState(null)..initialize();
     final client = widget.supabaseClient;
     if (client != null && widget.firebaseAuth != null) {
       _firebaseUser = widget.firebaseAuth!.currentUser;
@@ -64,6 +67,7 @@ class _ConvieneAppState extends State<ConvieneApp> {
       _authSubscription = client.auth.onAuthStateChange.listen((event) {
         if (!mounted) return;
         _setUser(event.session?.user.id);
+        if (event.session?.user.id != null) setState(() => _showAuth = false);
         if (event.event == AuthChangeEvent.passwordRecovery ||
             event.event == AuthChangeEvent.signedOut) {
           setState(() {
@@ -121,6 +125,7 @@ class _ConvieneAppState extends State<ConvieneApp> {
       }
       if (mounted && widget.firebaseAuth?.currentUser?.uid == user.uid) {
         _setUser(user.uid, username: username);
+        setState(() => _showAuth = false);
       }
     } on PostgrestException catch (error) {
       _profileError = error.code == '23505'
@@ -163,7 +168,10 @@ class _ConvieneAppState extends State<ConvieneApp> {
       } catch (_) {
         // The database profile is authoritative; this Firebase label is optional.
       }
-      if (mounted) _setUser(user.uid, username: savedUsername);
+      if (mounted) {
+        _setUser(user.uid, username: savedUsername);
+        setState(() => _showAuth = false);
+      }
     } on PostgrestException catch (error) {
       _profileError = error.code == '23505'
           ? 'Ese nombre de usuario ya existe. Elegí otro.'
@@ -195,23 +203,73 @@ class _ConvieneAppState extends State<ConvieneApp> {
       }
       return;
     }
+    final guest = id == null || _userId != null
+        ? null
+        : _state?.guestImportSnapshot();
     _state?.dispose();
     _userId = id;
     _username = username;
-    if (id == null) {
-      _state = null;
-    } else {
-      _state = AppState(
-        repository: CommunityPriceRepository(
-          createRepository(),
-          widget.supabaseClient!,
-          userId: widget.firebaseAuth == null ? null : id,
-        ),
-        userDataStore: LocalUserDataStore(userId: id),
-      )..initialize();
+    final next = _createState(id);
+    _state = next;
+    final initialization = next.initialize();
+    if (id != null) {
       if (widget.firebaseAuth == null) unawaited(_loadUsername(id));
+      if (guest != null &&
+          (guest.cartItems.isNotEmpty || guest.favoriteProductIds.isNotEmpty)) {
+        unawaited(_offerGuestImport(id, guest, next, initialization));
+      }
     }
     if (mounted) setState(() {});
+  }
+
+  AppState _createState(String? id) => AppState(
+    repository: widget.supabaseClient == null
+        ? createRepository()
+        : CommunityPriceRepository(
+            createRepository(),
+            widget.supabaseClient!,
+            userId: widget.firebaseAuth == null ? null : id,
+            allowContributions: id != null,
+          ),
+    userDataStore: LocalUserDataStore(userId: id),
+  );
+
+  Future<void> _offerGuestImport(
+    String id,
+    SavedUserData guest,
+    AppState state,
+    Future<void> initialization,
+  ) async {
+    await initialization;
+    final preferences = SharedPreferencesStringStore();
+    final key = 'conviene.guest_import_decision.$id';
+    if (await preferences.getString(key) != null || !mounted || _userId != id)
+      return;
+    await WidgetsBinding.instance.endOfFrame;
+    final navigatorContext = _navigatorKey.currentContext;
+    if (!mounted || _userId != id || navigatorContext == null) return;
+    final shouldImport = await showDialog<bool>(
+      context: navigatorContext,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('¿Importar tus datos de invitado?'),
+        content: const Text(
+          'Podés sumar tu changuito y favoritos a esta cuenta. Los medios de pago quedarán separados.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('No importar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Importar'),
+          ),
+        ],
+      ),
+    );
+    if (shouldImport == null || !mounted || _userId != id) return;
+    if (shouldImport) await state.importGuestCartAndFavorites(guest);
+    await preferences.setString(key, shouldImport ? 'imported' : 'declined');
   }
 
   Future<void> _loadUsername(String id) async {
@@ -249,6 +307,7 @@ class _ConvieneAppState extends State<ConvieneApp> {
   Widget build(BuildContext context) {
     final state = _state;
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Conviene',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(dark: _darkMode),
@@ -256,53 +315,43 @@ class _ConvieneAppState extends State<ConvieneApp> {
       builder: (context, child) => state == null
           ? child ?? const SizedBox.shrink()
           : AppScope(notifier: state, child: child ?? const SizedBox.shrink()),
-      home: widget.supabaseClient == null
-          ? const SupabaseSetupScreen()
-          : widget.firebaseAuth != null
+      home: widget.firebaseAuth != null
           ? _firebaseHome(state)
-          : _recoveringPassword
+          : widget.supabaseClient != null && _recoveringPassword
           ? PasswordRecoveryScreen(
               client: widget.supabaseClient!,
               onCompleted: () => setState(() => _recoveringPassword = false),
               onCancel: () => widget.supabaseClient!.auth.signOut(),
             )
-          : state == null
-          ? AuthScreen(client: widget.supabaseClient!)
-          : AppScope(
-              notifier: state,
-              child: AppShell(
-                key: ValueKey('${_userId}_$_darkMode'),
-                darkMode: _darkMode,
-                onToggleDarkMode: _toggleDarkMode,
-                username:
-                    _username ??
-                    widget
-                            .supabaseClient!
-                            .auth
-                            .currentUser
-                            ?.userMetadata?['username']
-                        as String? ??
-                    'usuario',
-                onSignOut: () => widget.supabaseClient!.auth.signOut(),
-              ),
-            ),
+          : widget.supabaseClient != null && _showAuth
+          ? AuthScreen(
+              client: widget.supabaseClient!,
+              onContinueAsGuest: () => setState(() => _showAuth = false),
+            )
+          : _shell(state!),
     );
   }
 
   Widget _firebaseHome(AppState? state) {
     final user = _firebaseUser;
-    if (user == null) return FirebaseAuthScreen(auth: widget.firebaseAuth!);
-    if (!user.emailVerified) {
+    if (user == null) {
+      return _showAuth
+          ? FirebaseAuthScreen(
+              auth: widget.firebaseAuth!,
+              onContinueAsGuest: () => setState(() => _showAuth = false),
+            )
+          : _shell(state!);
+    }
+    if (!user.emailVerified && _showAuth) {
       return FirebaseVerificationScreen(
         user: user,
         onRefresh: _refreshFirebaseVerification,
         onSignOut: widget.firebaseAuth!.signOut,
       );
     }
-    if (state == null) {
-      if (_profileError == null) {
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
-      }
+    if (!user.emailVerified) return _shell(state!);
+    if (_userId != user.uid) {
+      if (_profileError == null) return _shell(state!);
       return FirebaseProfileScreen(
         initialUsername: user.displayName ?? '',
         error: _profileError!,
@@ -312,15 +361,26 @@ class _ConvieneAppState extends State<ConvieneApp> {
         onSignOut: widget.firebaseAuth!.signOut,
       );
     }
-    return AppScope(
-      notifier: state,
-      child: AppShell(
-        key: ValueKey('${user.uid}_$_darkMode'),
-        darkMode: _darkMode,
-        onToggleDarkMode: _toggleDarkMode,
-        username: _username ?? user.displayName ?? 'usuario',
-        onSignOut: widget.firebaseAuth!.signOut,
-      ),
-    );
+    return _shell(state!);
   }
+
+  Widget _shell(AppState state) => AppScope(
+    notifier: state,
+    child: AppShell(
+      key: ValueKey('${_userId ?? 'guest'}_$_darkMode'),
+      darkMode: _darkMode,
+      onToggleDarkMode: _toggleDarkMode,
+      username: _userId == null
+          ? 'invitado'
+          : (_username ?? _firebaseUser?.displayName ?? 'usuario'),
+      onSignIn: _userId == null && widget.supabaseClient != null
+          ? () => setState(() => _showAuth = true)
+          : null,
+      onSignOut: _userId == null
+          ? null
+          : widget.firebaseAuth != null
+          ? widget.firebaseAuth!.signOut
+          : () => widget.supabaseClient!.auth.signOut(),
+    ),
+  );
 }

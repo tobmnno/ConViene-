@@ -318,6 +318,8 @@ class ApiRepository
     'coto' => 'Coto',
     'carrefour' => 'Carrefour',
     'lagallega' || 'la_gallega' => 'La Gallega',
+    'jumbo' => 'Jumbo',
+    'lareina' => 'La Reina',
     _ => id,
   };
 
@@ -413,7 +415,7 @@ class ApiRepository
       path: '$basePath/discounts',
       queryParameters: <String, dynamic>{
         'date': _dateParam(date),
-        'stores': const ['carrefour', 'coto', 'la_gallega'],
+        'stores': const ['carrefour', 'coto', 'la_gallega', 'jumbo', 'lareina'],
       },
     );
   }
@@ -572,6 +574,8 @@ class ApiRepository
           entidad: switch (storeId) {
             'carrefour' => 'Carrefour',
             'lagallega' => 'La Gallega',
+            'jumbo' => 'Jumbo',
+            'lareina' => 'La Reina',
             _ => 'Coto',
           },
           porcentajeDescuento: 0,

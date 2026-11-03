@@ -14,6 +14,12 @@ class PaymentMethodLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     if (method.logoAsset.isNotEmpty) {
       final isSvg = method.logoAsset.toLowerCase().endsWith('.svg');
+      final cropVertical =
+          method.logoAsset.endsWith('payment_banco_patagonia_user.png') ||
+          method.logoAsset.endsWith('payment_mercado_pago.png');
+      final enlargeMercadoPago = method.logoAsset.endsWith(
+        'payment_mercado_pago.png',
+      );
       final logo = isSvg
           ? SvgPicture.asset(
               method.logoAsset,
@@ -25,8 +31,8 @@ class PaymentMethodLogo extends StatelessWidget {
           : Image.asset(
               method.logoAsset,
               width: size * 1.35,
-              height: size * 0.9,
-              fit: BoxFit.contain,
+              height: size * (cropVertical ? 0.52 : 0.9),
+              fit: cropVertical ? BoxFit.cover : BoxFit.contain,
               semanticLabel: method.displayName,
             );
       return SizedBox(
@@ -38,7 +44,12 @@ class PaymentMethodLogo extends StatelessWidget {
               color: AppColors.isDark ? AppColors.white : Colors.transparent,
               borderRadius: BorderRadius.circular(5),
             ),
-            child: Padding(padding: EdgeInsets.all(size * 0.08), child: logo),
+            child: Padding(
+              padding: EdgeInsets.all(size * 0.08),
+              child: enlargeMercadoPago
+                  ? ClipRect(child: Transform.scale(scale: 1.3, child: logo))
+                  : logo,
+            ),
           ),
         ),
       );

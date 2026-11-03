@@ -2,6 +2,7 @@ from html.parser import HTMLParser
 import re
 from urllib.parse import urljoin
 
+from services.catalog import valid_gtin
 from .base import parse_price
 
 BASE_URL = "https://www.lagallega.com.ar/"
@@ -16,8 +17,9 @@ def _clean_product_name(value):
 class CatalogPage(HTMLParser):
     """Parse the published product cards, including current and crossed-out prices."""
 
-    def __init__(self, html):
+    def __init__(self, html, base_url=BASE_URL):
         super().__init__(convert_charrefs=True)
+        self.base_url = base_url
         self.rows = []
         self.pages = set()
         self.card = None
@@ -39,11 +41,15 @@ class CatalogPage(HTMLParser):
         if tag == "div":
             self.div_classes.append(attrs.get("class", ""))
         if tag == "a" and "productosdet.asp" in attrs.get("href", ""):
-            self.card["url"] = urljoin(BASE_URL, attrs["href"])
+            self.card["url"] = urljoin(self.base_url, attrs["href"])
+            identifier = re.search(r"[?&]Pr=(\d{8,14})(?:&|$)", attrs["href"], re.I)
+            if identifier:
+                self.card["ean"] = valid_gtin(identifier.group(1))
         if tag == "img":
-            self.card["image"] = urljoin(BASE_URL, attrs.get("src", ""))
+            self.card["image"] = urljoin(self.base_url, attrs.get("src", ""))
             code = re.match(r"(\d{8,14})\b", attrs.get("alt", ""))
-            self.card["ean"] = code.group(1) if code else None
+            if code and valid_gtin(code.group(1)):
+                self.card["ean"] = code.group(1)
 
     def handle_data(self, data):
         if self.card is None:
@@ -74,8 +80,8 @@ class CatalogPage(HTMLParser):
             self.card = None
 
 
-def read_catalog_page(session, query, page, headers, timeout):
-    response = session.get(urljoin(BASE_URL, "productosnl.asp"),
+def read_catalog_page(session, query, page, headers, timeout, base_url=BASE_URL):
+    response = session.get(urljoin(base_url, "productosnl.asp"),
                            params={"cpoB": query, "TM": "Bus", "pg": page},
                            headers=headers, timeout=timeout)
     if response.status_code != 200:
@@ -83,7 +89,7 @@ def read_catalog_page(session, query, page, headers, timeout):
     text = response.text
     if "cuadProd" not in text and "No se han encontrado productos" not in text:
         return None
-    page = CatalogPage(text)
+    page = CatalogPage(text, base_url=base_url)
     if not page.rows and "No se han encontrado productos" not in text:
         return None
     return page

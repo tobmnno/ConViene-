@@ -117,9 +117,15 @@ class Promotion {
     return '$id|${period.year}-${period.month.toString().padLeft(2, '0')}-${period.day.toString().padLeft(2, '0')}';
   }
 
-  bool appliesToProduct(Product product) =>
-      promotionKind != 'store_product' ||
-      (product.ean.isNotEmpty && productEans.contains(product.ean));
+  bool hasKnownCapUsage(DateTime date, Map<String, double> usedRefundCaps) {
+    if (topeReintegro <= 0) return true;
+    final key = capUsageKey(date);
+    return key != null && usedRefundCaps.containsKey(key);
+  }
+
+  bool appliesToProduct(Product product) => productEans.isEmpty
+      ? promotionKind != 'store_product'
+      : product.ean.isNotEmpty && productEans.contains(product.ean);
 
   bool appliesToBranch(String? branchId) =>
       branchIds.isEmpty || (branchId != null && branchIds.contains(branchId));

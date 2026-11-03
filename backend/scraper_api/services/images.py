@@ -11,6 +11,8 @@ import requests
 DEFAULT_IMAGE_HOSTS = frozenset({
     "coto.com.ar", "cotodigital3.com.ar", "carrefour.com.ar",
     "carrefourar.vteximg.com.br", "lagallega.com.ar",
+    "jumbo.com.ar", "jumboargentina.vteximg.com.br",
+    "lareinaonline.com.ar",
 })
 IMAGE_TYPES = frozenset({"image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"})
 MAX_IMAGE_BYTES = 5 * 1024 * 1024

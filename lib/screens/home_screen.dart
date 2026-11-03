@@ -23,6 +23,7 @@ class HomeScreen extends StatefulWidget {
     this.onToggleDarkMode,
     this.username = 'usuario',
     this.onSignOut,
+    this.onSignIn,
   });
 
   final VoidCallback onNavigateToSearch;
@@ -31,6 +32,7 @@ class HomeScreen extends StatefulWidget {
   final VoidCallback? onToggleDarkMode;
   final String username;
   final Future<void> Function()? onSignOut;
+  final VoidCallback? onSignIn;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -121,6 +123,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: Text('Cerrar sesion'),
                               ),
                             ],
+                          ),
+                        if (widget.onSignIn != null)
+                          IconButton(
+                            tooltip: 'Ingresar o registrarme',
+                            onPressed: widget.onSignIn,
+                            icon: const Icon(Icons.account_circle_outlined),
                           ),
                       ],
                     ),

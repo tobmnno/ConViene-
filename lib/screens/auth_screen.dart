@@ -41,9 +41,10 @@ class SupabaseSetupScreen extends StatelessWidget {
 }
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, required this.client});
+  const AuthScreen({super.key, required this.client, this.onContinueAsGuest});
 
   final SupabaseClient client;
+  final VoidCallback? onContinueAsGuest;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -311,6 +312,14 @@ class _AuthScreenState extends State<AuthScreen> {
                 children: [
                   const Center(child: ConvieneLogo(compact: true)),
                   const SizedBox(height: 32),
+                  if (widget.onContinueAsGuest != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: widget.onContinueAsGuest,
+                        child: const Text('Seguir como invitado'),
+                      ),
+                    ),
                   Text(
                     _register ? 'Crea tu cuenta' : 'Bienvenido de nuevo',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(

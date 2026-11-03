@@ -76,6 +76,52 @@ void main() {
     }
   });
 
+  test(
+    'supplied payment and La Gallega logos are wired and decodable',
+    () async {
+      final methods = const PaymentMethodService().initialMethods();
+      expect(
+        methods.firstWhere((method) => method.id == 'amex').logoAsset,
+        'assets/logos/payment_amex.png',
+      );
+      final mercadoPago = methods.firstWhere(
+        (method) => method.id == 'mercado_pago',
+      );
+      expect(mercadoPago.logoAsset, 'assets/logos/payment_mercado_pago.png');
+      final mercadoData = await rootBundle.load(mercadoPago.logoAsset);
+      final mercadoCodec = await ui.instantiateImageCodec(
+        mercadoData.buffer.asUint8List(),
+      );
+      final mercadoFrame = await mercadoCodec.getNextFrame();
+      expect(mercadoFrame.image.width, greaterThanOrEqualTo(700));
+      mercadoFrame.image.dispose();
+      mercadoCodec.dispose();
+      final supplied = <String, String>{
+        'banco_patagonia': 'assets/logos/payment_banco_patagonia_user.png',
+      };
+      for (final entry in supplied.entries) {
+        final method = methods.firstWhere((method) => method.id == entry.key);
+        expect(method.logoAsset, entry.value);
+        final data = await rootBundle.load(entry.value);
+        final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+        final frame = await codec.getNextFrame();
+        expect(frame.image.width, greaterThan(0));
+        frame.image.dispose();
+        codec.dispose();
+      }
+      final gallega = (await MockRepository().getSupermarkets()).firstWhere(
+        (store) => store.id == 'lagallega',
+      );
+      expect(gallega.logoAsset, 'assets/logos/la_gallega_user.png');
+      final data = await rootBundle.load(gallega.logoAsset);
+      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+      final frame = await codec.getNextFrame();
+      expect(frame.image.width, greaterThanOrEqualTo(700));
+      frame.image.dispose();
+      codec.dispose();
+    },
+  );
+
   testWidgets('every active store and payment logo asset renders', (
     tester,
   ) async {

@@ -93,6 +93,21 @@ class AppState extends ChangeNotifier {
   int _promotionsGeneration = 0;
   int _searchGeneration = 0;
   Future<void> _persistenceQueue = Future<void>.value();
+  bool _disposed = false;
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _searchGeneration++;
+    _promotionsGeneration++;
+    _comparisonGeneration++;
+    super.dispose();
+  }
 
   List<PaymentMethod> get activePaymentMethods {
     if (!paymentSetupComplete) {
@@ -112,7 +127,10 @@ class AppState extends ChangeNotifier {
 
   bool isFavorite(String productId) => favoriteProductIds.contains(productId);
 
-  bool get canContribute => _repository is CommunityPriceRepository;
+  bool get canContribute =>
+      _repository is CommunityPriceRepository &&
+      _repository.allowContributions &&
+      currentUserId != null;
 
   String? get currentUserId {
     final repository = _repository;
@@ -137,7 +155,7 @@ class AppState extends ChangeNotifier {
     required bool inStock,
   }) async {
     final repository = _repository;
-    if (repository is! CommunityPriceRepository) {
+    if (!canContribute || repository is! CommunityPriceRepository) {
       throw StateError('Los aportes requieren una sesion iniciada.');
     }
     await repository.saveContribution(
@@ -172,6 +190,49 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> importGuestCartAndFavorites(SavedUserData guest) async {
+    final existing = {for (final item in cartItems) item.productId};
+    final storeIds = supermarkets.map((store) => store.id).toSet();
+    final snapshots = {for (final product in products) product.id: product};
+    for (final product in guest.productSnapshots) {
+      snapshots.putIfAbsent(product.id, () => product);
+    }
+    products = snapshots.values.toList();
+    cartItems = [
+      ...cartItems,
+      for (final item in guest.cartItems)
+        if (existing.add(item.productId) &&
+            snapshots.containsKey(item.productId))
+          CartItem(
+            productId: item.productId,
+            quantity: item.quantity,
+            selectedStoreId: storeIds.contains(item.selectedStoreId)
+                ? item.selectedStoreId
+                : null,
+          ),
+    ];
+    favoriteProductIds = {
+      ...favoriteProductIds,
+      ...guest.favoriteProductIds.where(snapshots.containsKey),
+    };
+    _persistUserData();
+    notifyListeners();
+    await refreshComparisons();
+  }
+
+  SavedUserData guestImportSnapshot() => SavedUserData(
+    cartItems: List.of(cartItems),
+    productSnapshots: [
+      for (final product in products)
+        if (favoriteProductIds.contains(product.id) ||
+            cartItems.any((item) => item.productId == product.id))
+          product,
+    ],
+    favoriteProductIds: Set.of(favoriteProductIds),
+    activePaymentMethodIds: const {},
+    customPaymentMethods: const [],
+  );
+
   StoreComparison? get bestComparison {
     if (cartComparisons.isEmpty) {
       return null;
@@ -200,7 +261,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       supermarkets = await _supermarketService.loadSupermarkets();
+      if (_disposed) return;
       products = await _repository.getProducts();
+      if (_disposed) return;
       SavedUserData? savedData;
       try {
         savedData = await _userDataStore.load();
@@ -266,6 +329,7 @@ class AppState extends ChangeNotifier {
       isLoadingPromotions = false;
       notifyListeners();
       await searchFuture;
+      if (_disposed) return;
       await refreshComparisons();
     } catch (_) {
       lastError = 'No pudimos cargar la informacion inicial. Reintenta.';
@@ -277,6 +341,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> searchProducts(String query) async {
+    if (_disposed) return;
     final generation = ++_searchGeneration;
     final previousQuery = searchQuery;
     searchQuery = query.trim().isEmpty ? 'leche entera' : query.trim();
@@ -305,7 +370,7 @@ class AppState extends ChangeNotifier {
         sort: searchSort,
         context: shoppingContext,
         onProgress: (partial, pending) {
-          if (generation != _searchGeneration) return;
+          if (_disposed || generation != _searchGeneration) return;
           searchResults = _productSearchService.sortResults(
             partial,
             searchSort,
@@ -693,6 +758,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> refreshComparisons({bool forceRefreshPrices = false}) async {
+    if (_disposed) return;
     final generation = ++_comparisonGeneration;
     isComparing = true;
     notifyListeners();

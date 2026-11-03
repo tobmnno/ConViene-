@@ -18,12 +18,14 @@ class AppShell extends StatefulWidget {
     required this.onToggleDarkMode,
     this.username = 'usuario',
     this.onSignOut,
+    this.onSignIn,
   });
 
   final bool darkMode;
   final VoidCallback onToggleDarkMode;
   final String username;
   final Future<void> Function()? onSignOut;
+  final VoidCallback? onSignIn;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -83,8 +85,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         onToggleDarkMode: widget.onToggleDarkMode,
         username: widget.username,
         onSignOut: widget.onSignOut,
+        onSignIn: widget.onSignIn,
       ),
-      SearchScreen(onBack: () => setState(() => _index = 0)),
+      SearchScreen(
+        onBack: () => setState(() => _index = 0),
+        onRequestSignIn: widget.onSignIn,
+      ),
       const DiscountsScreen(),
       const CartScreen(),
     ];

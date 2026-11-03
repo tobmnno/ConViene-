@@ -28,9 +28,11 @@ class DiscountEngine {
           promotion.appliesToCategory(product.category) &&
           promotion.appliesToProduct(product) &&
           promotion.appliesToBranch(branchId) &&
+          promotion.hasKnownCapUsage(fecha, usedRefundCaps) &&
           (purchaseTotal ?? precioOriginal) >= promotion.compraMinima &&
           (promotion.promotionKind == 'store_product' ||
-              !hasStoreOffer || promotion.allowsStacking) &&
+              !hasStoreOffer ||
+              promotion.allowsStacking) &&
           hasPaymentMethod;
     });
 

@@ -219,6 +219,19 @@ when available; keep all unverified offers out of the calculable total.
   a cold-start improvement. The cart quote regression showed three quantity
   updates now reuse one complete equivalence request instead of three.
   No commit or push.
+
+2026-11-02 guest access (local implementation, remote verification pending):
+- AppShell now opens with a guest AppState and separate local cart/favorites/
+  payment data. Sign-in is reachable from Home and from the contribution
+  action; writes require a verified session. A one-time import prompt merges
+  guest cart/favorites without changing existing account lines or payment data.
+- Added limited public Supabase read RPC migration; no author IDs are returned
+  and existing verified-only write RLS remains unchanged. Migration has not yet
+  been applied to the remote project, so guest community reads are not claimed
+  live-working. Official catalog lookup remains available if they fail.
+- Focused repository/AppState/search tests: 19 passed; analyzer clean. Next:
+  promotion classification and hover consistency, then apply and verify the
+  remote migration with anon and authenticated sessions.
 - 2026-10-28 narrow-layout follow-up: browser at 320 px showed the best-per-
   product card squeezing text and total. A widget test also found an 8 px
   RenderFlex overflow. The amount now sits below the summary on narrow cards;
@@ -430,3 +443,159 @@ when available; keep all unverified offers out of the calculable total.
   brand mark has weak contrast on the dark background; revisit its approved
   dark asset separately without inventing a replacement logo. Local API and
   web server remain available on ports 8000 and 53246. No commit or push.
+
+2026-11-02 Copilot handoff (changes committed on 2026-10-30):
+- Commit `3326f74` (`Save uncommitted changes`) is on local and remote main;
+  the worktree was clean before this log update. It changed seven files:
+  the web launcher, two auth screens, PriceComparisonService and three tests.
+- Copilot reported that partial equivalence responses had removed confirmed
+  cached prices from other stores. The service now merges healthy results
+  while replacing a store price when that store explicitly returns an error,
+  unavailable or not_found state. A regression test covers this behavior.
+- Copilot also reported narrow auth tabs rendering `Registrarme` vertically;
+  both auth screens now use single-line fitted labels, with widget tests.
+  The web launcher resolves the local Supabase define file by absolute path,
+  prefers the installed Flutter SDK and retains the API URL on port 8000.
+  Never log or commit the local define file or its values.
+- Copilot reported a browser walkthrough of auth, search, comparison, detail,
+  cart, favorites, scanner input, discounts, payment methods, sharing and
+  light/dark layouts; a release web build and local HTTP 200 checks. This
+  agent has not independently repeated those UI/build checks. Copilot said
+  the test cart was restored to empty.
+- Independently rerun on 2026-11-02: backend 122 passed, 8 optional live
+  skipped and 103 subtests passed; Flutter 156 passed, 2 optional live
+  skipped; `flutter analyze --no-pub` found no issues. No Android build or
+  physical barcode scan was performed in this verification.
+- Existing limits still apply: no live eligible 2x1 was confirmed, stock and
+  consumed bank caps are unknown, checkout prices are estimates, and the
+  original logo has weak dark-mode contrast. This log-only update has not
+  been committed or pushed.
+
+2026-11-02 supplied logo update:
+- Added the user's four original PNG attachments as separate assets for
+  American Express, Banco Patagonia, Mercado Pago and La Gallega; existing
+  assets remain untouched. PaymentMethodService and MockRepository reference
+  the new paths. These are the supplied pixels, not redrawn SVGs or upscales.
+- The new PNGs have white or blue opaque backgrounds and lower pixel counts
+  than some previous transparent assets. PaymentMethodLogo and StoreLogo crop
+  their blank vertical margins only at render time so the marks stay legible
+  on compact cards. Do not claim an increase in source resolution.
+- A focused asset test checks all four paths and decodes each PNG. Four logo
+  tests passed; `flutter analyze --no-pub` was clean and the release web build
+  passed. The local API health endpoint returned HTTP 200 after restart.
+  Browser review confirmed the logos render on Home and Payment Methods;
+  no account selection was changed. No Android build or commit/push.
+
+2026-11-02 logo clarity follow-up:
+- The supplied 148 px American Express and Mercado Pago PNGs looked soft and
+  too small in Home. Restored the existing 1000 px American Express PNG and
+  784 px transparent Mercado Pago PNG, which depict the same original marks.
+  The existing Mercado Pago SVG was tried but Flutter ignored its CSS classes
+  and rendered a black mark, so it is not used. The PNG is cropped and scaled
+  only at render time; it remains within the logo slot.
+- Replaced the 404 px La Gallega copy with the user's earlier 725 px full
+  wordmark (`Downloads/images.png`) under the same asset path. Preserved the
+  newer supplied Banco Patagonia PNG and all untouched original assets.
+  No brand artwork was redrawn or artificially upscaled.
+- The changed PNG kept an old filesystem timestamp, causing Flutter's
+  incremental test bundle to retain the previous 404 px copy. Updated that
+  timestamp and confirmed the bundle decodes the 725 px source. Four focused
+  logo tests passed; release web build passed. Browser screenshots of Home
+  confirmed legible Mercado Pago and La Gallega marks after the final change.
+  No Android build, commit or push was made.
+
+2026-11-02 promotion audit and calculation:
+- Live local API `/discounts?date=2026-11-02` returned 23 rows: 16 Coto
+  and 7 Carrefour, all `restricted` official-API records; no product EAN
+  bindings. La Gallega returned no confirmed current bank discount and its
+  official benefits page showed payment methods without full promo terms.
+  No general bank saving or La Gallega quantity offer was asserted.
+- DiscountEngine now requires a known personal cap balance before a capped
+  benefit reduces compared price. Unknown caps remain visible as conditional.
+  Product detail and quick comparison share the same assessment of EAN,
+  source freshness, channel/branch, payment and quantity conditions.
+- Focused discount/assessment/detail/comparison tests pass. Next: verify
+  hover rendering and remote guest RPC; full regression/build/browser review.
+
+2026-11-02 guest/promotions/comparison closure:
+- Applied the limited public read functions to the existing Supabase project
+  through SQL Editor. Anonymous HTTP RPC returned 200. The table currently
+  contains zero community prices, so a real returned row could not be checked;
+  mock contracts cover both search and saved-price lookup. Existing insert
+  policies still require a signed-in Supabase user or verified Firebase user.
+  No production contribution row was inserted for testing.
+- In a release web build on port 53247, verified guest Home, login/return,
+  official search, quick comparison, dark/light mode, local cart persistence
+  across tabs and cart cleanup. A Carrefour product kept its published price;
+  seven restricted store-wide benefits were labeled as conditioned, not
+  deducted. Desktop appearance was inspected; physical hover/mobile browser
+  viewport remains covered by widget tests rather than a mouse/device check.
+- A red regression found that payment benefits with an EAN list ignored the
+  list; now product identity is enforced regardless of promotion kind. Another
+  red regression found a disposed guest bootstrap could notify after sign-in;
+  disposal now invalidates in-flight work. Guest edit controls cannot appear
+  for anonymous rows where both author and current-user IDs are null.
+- Final regression before the last tiny auth/dialog and edit-visibility fixes:
+  166 Flutter passed / 2 optional live skipped, backend 122 passed / 8 optional
+  live skipped / 103 subtests; analyzer clean; release web and Android debug
+  APK built. Re-run the focused final tests before shipping. Live import
+  acceptance/rejection and a verified-user write are pending a test-account
+  sign-in; do not claim them as live-verified. No commit or push.
+
+2026-11-03 store expansion, Jumbo stage:
+- Jumbo's public VTEX catalog returned live EAN 7790742358608 with a positive
+  price, product image and direct HTTPS product page; both asset and page
+  responded 200. Name and EAN searches returned products. The online catalog
+  is not evidence of a user's branch or final checkout price.
+- Added a direct Jumbo adapter, source-error handling, backend store alias,
+  image host, Flutter store/filter/comparison/link mapping and an unmodified
+  official logo export. A nonsensical ListPrice was not shown as savings.
+- No Jumbo campaign was assumed calculable. Its discount endpoint currently
+  returns an explicit no-verified-benefits warning, never La Gallega data.
+- Four focused backend tests and 34 focused Flutter tests passed; full backend
+  suite: 126 passed / 8 optional live skipped. A live EAN equivalence query
+  returned Jumbo as found. Supabase store constraint/RPC rollout and final
+  browser walk-through remain pending; do not claim them verified yet.
+- Next: verify and integrate La Reina one store at a time, then shared
+  Supabase migration, full regression and UI review. DAR/La Anonima stay out.
+
+2026-11-03 store expansion, La Reina stage:
+- Its public catalog returned price, official product URL, photo and EAN for
+  7790742358608. Searching by EAN found the same item; a nonsense query
+  returned an explicit empty catalog. Both direct page and image responded 200.
+- The existing ASP catalog parser now accepts an official base URL and validates
+  GTINs in product links, without treating arbitrary internal IDs as barcodes.
+  La Reina is wired into backend/Flutter store IDs, filters, comparison,
+  cart, official-link validation, logo and image proxy. Live backend
+  equivalence found the same EAN at Jumbo and La Reina.
+- No bank or quantity discount was inferred from an offer label. An empty
+  verified-discounts response is reported explicitly for both new stores.
+- Focused backend tests (8) and Flutter tests (47) passed; backend full suite
+  130 passed / 8 optional live skipped. Next: shared Supabase migration,
+  full regressions, build and visual browser review. No commit or push.
+
+2026-11-03 store expansion, final verification:
+- Applied the five-store community-price constraint and limited guest-read RPC
+  in the existing Supabase project. SQL Editor confirmed success; a read-only
+  check showed all five IDs and anonymous EXECUTE permission. Anonymous REST
+  returned HTTP 200 but no contributed row exists for the new stores, so a
+  real community-price display remains unverified. Verified-only writes were
+  not broadened. The local migration is repeatable if later run by CLI.
+- Backend on port 8003 returned both new stores as found for EAN 7790742358608.
+  The release web app on 53248 displayed five prices in quick comparison and
+  product detail, with La Reina first by published price. Adding from its
+  detail kept La Reina selected in the cart; the cart compared all five totals.
+  The test item was removed. On a 390 px viewport, original Jumbo and La Reina
+  logos rendered in the horizontal store selector. Deselecting the original
+  three stores yielded only Jumbo and La Reina search results; all five filters
+  were restored afterward. Discounts showed both new store filters without
+  inventing offers. Desktop and mobile layouts were visually inspected.
+- Final checks: backend 130 passed / 8 opt-in live skipped / 103 subtests;
+  Flutter 169 passed / 2 opt-in live skipped; analyzer clean; release web and
+  Android debug APK builds passed; git diff --check passed. The debug Android
+  build emitted an SDK XML version compatibility warning but completed.
+- Limits: neither new chain has a verified product-specific quantity offer or
+  bank-benefit rule, so neither receives a calculated discount. Prices are
+  public catalog observations, not a branch, stock or checkout guarantee.
+  DAR and La Anonima were not added. No physical barcode scan, live community
+  contribution for the new stores or real checkout was tested. No commit/push.

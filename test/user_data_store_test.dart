@@ -5,6 +5,43 @@ import 'package:conviene/services/user_data_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('guest and signed-in account keep separate local data', () async {
+    final preferences = _KeyedPreferences();
+    final guest = LocalUserDataStore(preferences: preferences);
+    final account = LocalUserDataStore(
+      preferences: preferences,
+      userId: 'person-1',
+    );
+    await guest.save(
+      const SavedUserData(
+        cartItems: [
+          CartItem(productId: 'milk', quantity: 2, selectedStoreId: 'coto'),
+        ],
+        productSnapshots: [],
+        activePaymentMethodIds: {'visa'},
+        customPaymentMethods: [],
+      ),
+    );
+    expect(await account.load(), isNull);
+    await account.save(
+      const SavedUserData(
+        cartItems: [
+          CartItem(
+            productId: 'rice',
+            quantity: 1,
+            selectedStoreId: 'carrefour',
+          ),
+        ],
+        productSnapshots: [],
+        activePaymentMethodIds: {'mastercard'},
+        customPaymentMethods: [],
+      ),
+    );
+    expect((await guest.load())!.cartItems.single.productId, 'milk');
+    expect((await account.load())!.cartItems.single.productId, 'rice');
+    expect((await guest.load())!.activePaymentMethodIds, {'visa'});
+    expect((await account.load())!.activePaymentMethodIds, {'mastercard'});
+  });
   test('serializes shopping choices without card or price details', () async {
     final preferences = _MemoryStringPreferences();
     final store = LocalUserDataStore(preferences: preferences);
@@ -75,6 +112,18 @@ void main() {
     );
     expect((await store.load())?.favoriteProductIds, isEmpty);
   });
+}
+
+class _KeyedPreferences implements StringPreferences {
+  final values = <String, String>{};
+
+  @override
+  Future<String?> getString(String key) async => values[key];
+
+  @override
+  Future<void> setString(String key, String value) async {
+    values[key] = value;
+  }
 }
 
 class _MemoryStringPreferences implements StringPreferences {

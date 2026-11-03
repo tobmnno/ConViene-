@@ -173,6 +173,53 @@ def _carrefour_api_search(query: str, limit: int, context: dict | None = None):
     return [row for row in rows if row.name]
 
 
+def _jumbo_api_search(query: str, limit: int, context: dict | None = None):
+    barcode = valid_gtin(query)
+    params = {"_from": 0, "_to": max(limit - 1, 0)}
+    if barcode:
+        params["fq"] = f"alternateIds_Ean:{barcode}"
+    url = "https://www.jumbo.com.ar/api/catalog_system/pub/products/search"
+    if not barcode:
+        url += "/" + quote(query)
+    response = requests.get(
+        url, params=params, headers=REQUEST_HEADERS,
+        timeout=DIRECT_HTTP_TIMEOUT_SECONDS,
+    )
+    if response.status_code not in {200, 206}:
+        return None
+    payload = response.json()
+    if not isinstance(payload, list):
+        return None
+    rows = []
+    for raw in payload[:limit]:
+        if not isinstance(raw, dict):
+            continue
+        item, offer = _offer_for_vtex_product(raw, barcode)
+        if not item or not offer:
+            continue
+        try:
+            price = float(offer.get("Price"))
+        except (TypeError, ValueError):
+            continue
+        if price <= 0:
+            continue
+        product_url = str(raw.get("link") or "")
+        if not product_url.startswith("https://www.jumbo.com.ar/") or not product_url.endswith("/p"):
+            product_url = None
+        name = str(raw.get("productName") or "").strip()
+        if not name:
+            continue
+        rows.append(Product(
+            store="jumbo", name=name, ean=valid_gtin(str(item.get("ean") or "")),
+            brand=raw.get("brand"), price=price, url=product_url,
+            image=_image_for_vtex_item(item),
+            available=offer.get("IsAvailable") is True,
+            pricing_scope="online_catalog_unknown_location",
+            scraped_at=datetime.now(timezone.utc).isoformat(),
+        ))
+    return rows
+
+
 def _coto_query_candidates(query: str):
     normalized = query.lower()
     candidates = [query]
@@ -448,6 +495,34 @@ def _lagallega_api_search(query: str, limit: int, context: dict | None = None):
         return list(unique.values())[:limit]
 
 
+def _lareina_api_search(query: str, limit: int, context: dict | None = None):
+    base_url = "https://www.lareinaonline.com.ar/"
+    with requests.Session() as session:
+        rows = []
+        for page_number in range(1, min(5, (limit + 19) // 20) + 1):
+            page = read_catalog_page(
+                session, query, page_number, REQUEST_HEADERS,
+                DIRECT_HTTP_TIMEOUT_SECONDS, base_url=base_url,
+            )
+            if page is None:
+                return None
+            if not page.rows:
+                break
+            rows.extend(page.rows)
+            if len(page.rows) < 20 or len(rows) >= limit:
+                break
+        unique = {}
+        for row in rows:
+            if not row["url"] or not row["image"]:
+                continue
+            unique[row["url"]] = Product(
+                store="lareina", **row, available=None,
+                pricing_scope="online_catalog_unknown_location",
+                scraped_at=datetime.now(timezone.utc).isoformat(),
+            )
+        return list(unique.values())[:limit]
+
+
 class CarrefourScraper(BaseScraper):
     store = "carrefour"
     base_url = "https://www.carrefour.com.ar/"
@@ -472,6 +547,34 @@ class CarrefourScraper(BaseScraper):
             if results:
                 return results
         return []
+
+
+class JumboScraper(BaseScraper):
+    store = "jumbo"
+    base_url = "https://www.jumbo.com.ar/"
+
+    async def search_direct(self, query: str, limit: int = 30, context: dict | None = None):
+        return await asyncio.to_thread(_jumbo_api_search, query, limit, context)
+
+    async def search(self, page: Page, query: str, limit: int = 30):
+        result = await self.search_direct(query, limit)
+        if result is not None:
+            return result
+        raise RuntimeError("Jumbo catalog unavailable")
+
+
+class LaReinaScraper(BaseScraper):
+    store = "lareina"
+    base_url = "https://www.lareinaonline.com.ar/"
+
+    async def search_direct(self, query: str, limit: int = 30, context: dict | None = None):
+        return await asyncio.to_thread(_lareina_api_search, query, limit, context)
+
+    async def search(self, page: Page, query: str, limit: int = 30):
+        result = await self.search_direct(query, limit)
+        if result is not None:
+            return result
+        raise RuntimeError("La Reina catalog unavailable")
 
 
 class CotoScraper(BaseScraper):

@@ -17,6 +17,10 @@ STORE_ALIASES = {
     "la_gallega": "la_gallega",
     "la-gallega": "la_gallega",
     "la gallega": "la_gallega",
+    "jumbo": "jumbo",
+    "lareina": "lareina",
+    "la reina": "lareina",
+    "la_reina": "lareina",
 }
 
 _SEARCH_CACHE_TTL_SECONDS = 120

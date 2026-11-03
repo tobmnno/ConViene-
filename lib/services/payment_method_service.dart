@@ -94,7 +94,7 @@ class PaymentMethodService {
         entity: 'Banco Patagonia',
         displayName: 'Banco Patagonia',
         active: false,
-        logoAsset: 'assets/logos/payment_banco_patagonia.png',
+        logoAsset: 'assets/logos/payment_banco_patagonia_user.png',
       ),
       PaymentMethod(
         id: 'carrefour_banco',

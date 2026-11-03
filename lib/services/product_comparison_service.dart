@@ -17,7 +17,13 @@ class ProductComparisonService {
   final _cache = <String, (DateTime, EquivalentProductsResult)>{};
   final _pending = <String, Future<EquivalentProductsResult>>{};
   int _cacheEpoch = 0;
-  static const storeIds = {'coto', 'carrefour', 'lagallega'};
+  static const storeIds = {
+    'coto',
+    'carrefour',
+    'lagallega',
+    'jumbo',
+    'lareina',
+  };
 
   void invalidateCache() {
     ++_cacheEpoch;
@@ -137,6 +143,8 @@ class ProductComparisonService {
           'coto': 'error',
           'carrefour': 'error',
           'lagallega': 'error',
+          'jumbo': 'error',
+          'lareina': 'error',
         },
       );
     }

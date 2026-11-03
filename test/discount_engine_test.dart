@@ -24,6 +24,7 @@ void main() {
     entidad: 'Visa',
     porcentajeDescuento: 20,
     topeReintegro: 5000,
+    capFrequency: 'monthly',
     diasSemana: const {DateTime.thursday},
     fechaInicio: DateTime(2026, 1, 1),
     fechaFin: DateTime(2026, 12, 31),
@@ -66,6 +67,43 @@ void main() {
     expect(calculate('restricted').precioFinal, 1000);
     expect(calculate('unknown').precioFinal, 1000);
     expect(calculate('general_confirmed').precioFinal, 800);
+  });
+
+  test('un tope personal desconocido no baja el precio comparado', () {
+    final capped = Promotion(
+      id: 'capped',
+      storeId: 'coto',
+      tipoMedioPago: PaymentMethodType.card,
+      entidad: 'Visa',
+      porcentajeDescuento: 20,
+      topeReintegro: 100,
+      capFrequency: 'monthly',
+      diasSemana: {date.weekday},
+      fechaInicio: date,
+      fechaFin: date,
+      condiciones: '',
+      categorias: const ['todos'],
+      applicabilityScope: 'general_confirmed',
+    );
+    final unknown = engine.calcularPrecioFinal(
+      product: product,
+      supermercado: 'coto',
+      precioOriginal: 1000,
+      fecha: date,
+      mediosPagoUsuario: const [visa],
+      promociones: [capped],
+    );
+    expect(unknown.precioFinal, 1000);
+    final known = engine.calcularPrecioFinal(
+      product: product,
+      supermercado: 'coto',
+      precioOriginal: 1000,
+      fecha: date,
+      mediosPagoUsuario: const [visa],
+      promociones: [capped],
+      usedRefundCaps: {capped.capUsageKey(date)!: 0},
+    );
+    expect(known.precioFinal, 900);
   });
 
   test('evidencia antigua o feed externo no calculan ahorro', () {
@@ -112,6 +150,7 @@ void main() {
       fecha: date,
       mediosPagoUsuario: const [visa],
       promociones: [promotion],
+      usedRefundCaps: {promotion.capUsageKey(date)!: 0},
     );
 
     expect(quote.descuentoAplicado, isTrue);
@@ -143,6 +182,7 @@ void main() {
       entidad: 'Visa',
       porcentajeDescuento: 20,
       topeReintegro: 100,
+      capFrequency: 'monthly',
       diasSemana: const {DateTime.thursday},
       fechaInicio: DateTime(2026, 1, 1),
       fechaFin: DateTime(2026, 12, 31),
@@ -158,6 +198,7 @@ void main() {
       fecha: date,
       mediosPagoUsuario: const [visa],
       promociones: [cappedPromotion],
+      usedRefundCaps: {cappedPromotion.capUsageKey(date)!: 0},
     );
 
     expect(quote.rawDiscount, closeTo(319.8, 0.001));
@@ -276,6 +317,7 @@ void main() {
       entidad: 'Visa, debito y saldo',
       porcentajeDescuento: 20,
       topeReintegro: 10000,
+      capFrequency: 'monthly',
       diasSemana: const {DateTime.thursday},
       fechaInicio: DateTime(2026, 1, 1),
       fechaFin: DateTime(2026, 12, 31),
@@ -303,6 +345,7 @@ void main() {
       fecha: date,
       mediosPagoUsuario: const [saldo],
       promociones: [mixedPromotion],
+      usedRefundCaps: {mixedPromotion.capUsageKey(date)!: 0},
     );
 
     expect(quote.descuentoAplicado, isTrue);
@@ -317,6 +360,7 @@ void main() {
       entidad: 'MODO',
       porcentajeDescuento: 30,
       topeReintegro: 9000,
+      capFrequency: 'monthly',
       diasSemana: const {DateTime.thursday},
       fechaInicio: DateTime(2026, 1, 1),
       fechaFin: DateTime(2026, 12, 31),
@@ -355,6 +399,7 @@ void main() {
       fecha: date,
       mediosPagoUsuario: const [modo],
       promociones: [combinedPromotion],
+      usedRefundCaps: {combinedPromotion.capUsageKey(date)!: 0},
     );
     final complete = engine.calcularPrecioFinal(
       product: product,
@@ -363,6 +408,7 @@ void main() {
       fecha: date,
       mediosPagoUsuario: const [modo, credicoop],
       promociones: [combinedPromotion],
+      usedRefundCaps: {combinedPromotion.capUsageKey(date)!: 0},
     );
 
     expect(incomplete.descuentoAplicado, isFalse);
@@ -561,7 +607,7 @@ void main() {
     expect(quote.descuentoAplicado, isFalse);
   });
 
-  test('un reintegro informado por la fuente se marca como estimado', () {
+  test('un reintegro informado sigue siendo estimado con tope conocido', () {
     final estimated = Promotion(
       id: 'estimado',
       storeId: 'coto',
@@ -585,6 +631,7 @@ void main() {
       fecha: date,
       mediosPagoUsuario: const [visa],
       promociones: [estimated],
+      usedRefundCaps: {estimated.capUsageKey(date)!: 0},
     );
     expect(quote.importeDescuento, 100);
     expect(quote.estimated, isTrue);

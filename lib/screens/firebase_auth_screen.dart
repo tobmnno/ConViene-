@@ -26,9 +26,14 @@ String firebaseAuthError(FirebaseAuthException error) {
 }
 
 class FirebaseAuthScreen extends StatefulWidget {
-  const FirebaseAuthScreen({super.key, required this.auth});
+  const FirebaseAuthScreen({
+    super.key,
+    required this.auth,
+    this.onContinueAsGuest,
+  });
 
   final FirebaseAuth auth;
+  final VoidCallback? onContinueAsGuest;
 
   @override
   State<FirebaseAuthScreen> createState() => _FirebaseAuthScreenState();
@@ -142,6 +147,14 @@ class _FirebaseAuthScreenState extends State<FirebaseAuthScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Center(child: ConvieneLogo(compact: true)),
+                  if (widget.onContinueAsGuest != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: widget.onContinueAsGuest,
+                        child: const Text('Seguir como invitado'),
+                      ),
+                    ),
                   const SizedBox(height: 30),
                   Text(
                     _register ? 'Creá tu cuenta' : 'Bienvenido de nuevo',

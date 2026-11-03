@@ -33,7 +33,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
     await tester.pump();
 
-    expect(state.selectedStoreIds, {'carrefour', 'lagallega'});
+    expect(state.selectedStoreIds, {
+      'carrefour',
+      'lagallega',
+      'jumbo',
+      'lareina',
+    });
 
     state.dispose();
   });

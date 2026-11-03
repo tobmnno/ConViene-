@@ -133,7 +133,7 @@ def scrape_discounts(
                         store_warnings.append("carrefour: catalogo local sin verificacion actual; no se calcula en precios finales")
             elif store == "coto":
                 rows = _scrape_coto(current_date, store_warnings)
-            else:
+            elif store == "la_gallega":
                 rows = _scrape_lagallega(current_date, store_warnings)
                 catalog = refresh_lagallega_catalog()
                 catalog_rows = _lagallega_blink_promotions(catalog, current_date)
@@ -150,6 +150,9 @@ def scrape_discounts(
                     rows.extend(fallback_rows)
                     if fallback_rows:
                         store_warnings.append("la_gallega: catalogo local sin verificacion actual; no se calcula en precios finales")
+            else:
+                rows = []
+                store_warnings.append(f"{store}: no hay beneficios bancarios verificables integrados")
             rows = _validated_promotions(rows, store_warnings)
             fingerprint = hashlib.sha256(
                 json.dumps(

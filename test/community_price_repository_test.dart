@@ -15,6 +15,98 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
   test(
+    'guest reads the public RPC but cannot publish a contribution',
+    () async {
+      final requests = <http.Request>[];
+      final client = SupabaseClient(
+        'https://example.supabase.co',
+        'sb_publishable_test',
+        authOptions: const AuthClientOptions(autoRefreshToken: false),
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          return http.Response(
+            jsonEncode([
+              {
+                'id': '43b78369-0fbd-4219-ab68-a62beb610e9e',
+                'supermarket_id': 'coto',
+                'name': 'Leche entera',
+                'brand': 'Ilolay',
+                'presentation': '1 L',
+                'unit': 'L',
+                'category': 'Lacteos',
+                'ean': '7790000000001',
+                'image_url': '',
+                'source_url': '',
+                'price': 1800,
+                'unit_price': 1800,
+                'in_stock': true,
+                'username': 'lucia',
+                'updated_at': '2026-11-02T10:00:00Z',
+              },
+            ]),
+            200,
+            headers: {'content-type': 'application/json'},
+            request: request,
+          );
+        }),
+      );
+      addTearDown(client.dispose);
+      final repository = CommunityPriceRepository(
+        MockRepository(),
+        client,
+        allowContributions: false,
+      );
+      final results = await repository.searchProducts(
+        query: 'Leche entera',
+        storeIds: {'coto'},
+      );
+      expect(
+        results.where((row) => row.isCommunityPrice).single.contributorName,
+        'lucia',
+      );
+      expect(
+        requests.single.url.path,
+        '/rest/v1/rpc/search_public_community_prices',
+      );
+      final reloaded = CommunityPriceRepository(
+        MockRepository(),
+        client,
+        allowContributions: false,
+      );
+      final communityId = results
+          .singleWhere((row) => row.isCommunityPrice)
+          .product
+          .id;
+      expect(
+        (await reloaded.getPricesForProduct(communityId)).single.priceOriginal,
+        1800,
+      );
+      expect(
+        requests.last.url.path,
+        '/rest/v1/rpc/public_community_price_by_id',
+      );
+      expect(repository.currentUserId, isNull);
+      await expectLater(
+        repository.saveContribution(
+          supermarketId: 'coto',
+          name: 'Leche entera',
+          brand: 'Ilolay',
+          presentation: '1 L',
+          unit: 'L',
+          category: 'Lacteos',
+          ean: '',
+          imageUrl: '',
+          sourceUrl: '',
+          price: 1800,
+          unitPrice: 1800,
+          inStock: true,
+        ),
+        throwsStateError,
+      );
+      expect(requests, hasLength(2));
+    },
+  );
+  test(
     'community wrapper forwards official results before all stores finish',
     () async {
       final source = _ControlledProgressiveRepository();
@@ -121,7 +213,11 @@ void main() {
         }),
       );
       addTearDown(client.dispose);
-      final repository = CommunityPriceRepository(MockRepository(), client);
+      final repository = CommunityPriceRepository(
+        MockRepository(),
+        client,
+        userId: 'verified-test-user',
+      );
 
       await repository.saveContribution(
         id: '43b78369-0fbd-4219-ab68-a62beb610e9e',

@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  Flutter · FastAPI · Firebase Auth · Supabase · Coto · Carrefour · La Gallega
+  Flutter · FastAPI · Firebase Auth · Supabase · 5 supermercados
 </p>
 
 Conviene unifica precios y promociones publicas de supermercados argentinos en
@@ -22,7 +22,7 @@ combinacion mas barata entre distintas tiendas.
 
 ## Que ofrece
 
-- Busqueda simultanea en Coto, Carrefour y La Gallega.
+- Busqueda simultanea en Coto, Carrefour, La Gallega, Jumbo y La Reina.
 - Precios, disponibilidad e imagenes obtenidos de fuentes publicas.
 - El codigo de barras identifica el producto; si falta su EAN en otra tienda,
   se busca por nombre y se verifica marca, cantidad, presentacion, pack y variante.
@@ -48,7 +48,7 @@ combinacion mas barata entre distintas tiendas.
 Usuario
   |
   v
-Flutter app  --->  FastAPI  --->  Coto / Carrefour / La Gallega
+Flutter app  --->  FastAPI  --->  Coto / Carrefour / La Gallega / Jumbo / La Reina
      |
      +--------> Firebase Auth (cuentas y correo)
      +--------> Supabase Postgres (aportes de usuarios)
@@ -117,8 +117,9 @@ $env:CONVIENE_ENV = 'development'
 
 ## Configuracion
 
-Flutter usa `CONVIENE_API_BASE_URL` para localizar el backend y requiere
-`SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY` para iniciar sesion:
+Flutter usa `CONVIENE_API_BASE_URL` para localizar el backend. La consulta de
+catalogos funciona como invitado; `SUPABASE_URL` y
+`SUPABASE_PUBLISHABLE_KEY` habilitan cuentas y aportes comunitarios:
 
 ```powershell
 flutter run -d chrome `
@@ -144,8 +145,9 @@ cuando la disponibilidad no esta confirmada. Los importes pueden variar segun
 la ubicacion, el canal de venta y el momento de la compra.
 Las ofertas por cantidad se consultan junto con el producto y solo se calculan
 para su EAN y sucursal durante los 30 minutos posteriores a la captura. Si no
-registraste cuanto reintegro ya usaste, el ahorro con tope es un maximo
-estimado. Conviene no tiene acceso a los consumos bancarios, al stock definitivo
+registraste cuanto reintegro ya usaste, el beneficio con tope queda visible
+como condicionado y no reduce el precio comparado. Conviene no tiene acceso
+a los consumos bancarios, al stock definitivo
 ni al ticket de caja: el total final siempre debe confirmarse en el comercio.
 
 Para desplegar el backend con Docker:
@@ -206,9 +208,11 @@ falla; los resultados de las otras tiendas siguen visibles con una advertencia.
 
 ## Descuentos
 
-Las promociones se obtienen desde las fuentes publicas de cada comercio y se
+Las promociones que pueden verificarse se obtienen de fuentes publicas y se
 normalizan por entidad, porcentaje, tope, dia, vigencia y canal. La app resalta
-los beneficios compatibles con los medios de pago activos.
+los beneficios compatibles con los medios de pago activos. Jumbo y La Reina
+tienen precios de catalogo integrados, pero no beneficios bancarios calculables
+confirmados: sus campanas no se convierten en ahorros por inferencia.
 
 La API distingue promociones de medio de pago y ofertas del supermercado. El
 motor admite reglas estructuradas por EAN (2x1, 3x2, segunda unidad y precio
@@ -220,9 +224,11 @@ como base. Un beneficio bancario no se acumula automaticamente con esa oferta.
 
 Las promociones de un catalogo local sin verificacion reciente se muestran
 solo como referencia y no reducen el total. Los beneficios publicados por
-fuentes actuales pueden producir un **total estimado**: exclusiones, consumos
-previos de un tope semanal/mensual, sucursal y aprobacion del medio de pago se
-confirman en caja. La ficha indica origen, fecha de consulta y condiciones.
+fuentes actuales pueden producir un **total estimado**: los de sucursal o
+canal no confirmado, o con tope personal desconocido, quedan aparte y no bajan
+el precio. Ficha y comparacion rapida distinguen ofertas del EAN exacto de
+beneficios generales del supermercado e indican origen y fecha de consulta.
+Las exclusiones y la aprobacion del medio de pago se confirman en caja.
 El plan mixto recalcula sus subtotales por tienda, pero la seleccion inicial
 por producto no optimiza globalmente compras minimas entre tiendas.
 
@@ -232,28 +238,41 @@ inventar una fecha o un porcentaje.
 
 ## Cuentas y aportes
 
-El primer acceso pide nombre de usuario publico, correo y contrasena. Firebase
-Authentication gestiona registro, inicio de sesion, verificacion del correo y
-recuperacion de contrasena; Supabase solo guarda perfiles publicos y aportes.
+La app abre directamente como invitado: busqueda, escaner, comparacion,
+descuentos, favoritos, medios de pago y changuito funcionan sin cuenta. Los
+datos del invitado se guardan localmente, separados de cada cuenta. Al iniciar
+sesion se pregunta una sola vez si se desean importar changuito y favoritos;
+se conserva el supermercado elegido y los medios de pago no se mezclan.
+
+Para publicar o editar aportes se requiere nombre de usuario publico, correo
+y contrasena. Firebase Authentication gestiona registro, inicio de sesion,
+verificacion del correo y recuperacion de contrasena; Supabase solo guarda
+perfiles publicos y aportes.
 La app no guarda contrasenas en la base de datos ni en el repositorio. El
-correo debe estar verificado antes de entrar o publicar precios. Firebase
-envia los correos con sus plantillas predeterminadas, sin requerir un dominio
+correo debe estar verificado antes de publicar precios. Firebase envia los
+correos con sus plantillas predeterminadas, sin requerir un dominio
 propio. Consulta las [cuotas de envio](https://firebase.google.com/docs/auth/limits)
 antes de ampliar el servicio.
 
 Al final de los resultados, **Ayuda a agregar productos** permite publicar
-un precio que falta en Coto, Carrefour o La Gallega. El formulario incluye
+un precio que falta en Coto, Carrefour, La Gallega, Jumbo o La Reina. El formulario incluye
 producto, marca, presentacion, codigo de barras opcional, precio, disponibilidad
 y enlaces de imagen/fuente. El aporte aparece en futuras busquedas de otros
 usuarios, con su autor y fecha; solo su autor puede editarlo. Estos precios
 son aportes comunitarios, no cotizaciones verificadas por el supermercado.
 
+Los invitados leen aportes mediante funciones publicas de Supabase que
+devuelven producto, precio, nombre publico del colaborador y fecha, pero no
+identificadores de autor. Una falla de Supabase no impide consultar catalogos
+oficiales.
+
 Las migraciones en `supabase/migrations/` crean los perfiles, los precios y las
 politicas de seguridad a nivel de fila (RLS). Para otra instancia, aplica las
 migraciones en orden y conecta su proyecto Firebase en **Supabase >
 Authentication > Third-Party Auth**. Las politicas exigen el ID de proyecto,
-emisor y correo verificado; la clave publicable por si sola no permite leer
-los aportes. Actualiza esos identificadores en la migracion si usas otro
+emisor y correo verificado para escribir aportes. La lectura publica usa RPC
+limitadas; la clave publicable por si sola no autoriza publicar o editar.
+Actualiza esos identificadores en la migracion si usas otro
 proyecto. Configura los dominios autorizados de Firebase Auth para tu dominio
 publico y sirve la app y la API por HTTPS. Las cuentas creadas antes con
 Supabase Auth no se migran automaticamente a Firebase Auth; sus datos de base
@@ -310,8 +329,11 @@ backend/scraper_api/tests/   Pruebas del backend
 - El matching reduce errores, pero no reemplaza un catalogo maestro basado en EAN.
 - Sin el backend, la interfaz conserva datos locales, pero las busquedas,
   cotizaciones y promociones reales muestran error en vez de precios de muestra.
-- Sin Supabase configurado no se puede iniciar sesion ni ver los aportes.
+- Sin Supabase configurado, el modo invitado conserva busqueda y changuito,
+  pero no puede mostrar aportes ni habilitar inicio de sesion.
 
 Fuentes: [Coto](https://www.coto.com.ar/),
-[Carrefour Argentina](https://www.carrefour.com.ar/) y
-[La Gallega](https://www.lagallega.com.ar/).
+[Carrefour Argentina](https://www.carrefour.com.ar/),
+[La Gallega](https://www.lagallega.com.ar/),
+[Jumbo](https://www.jumbo.com.ar/) y
+[La Reina](https://www.lareinaonline.com.ar/).

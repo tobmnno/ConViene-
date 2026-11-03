@@ -22,9 +22,10 @@ import 'favorites_screen.dart';
 import 'contribution_screen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key, required this.onBack});
+  const SearchScreen({super.key, required this.onBack, this.onRequestSignIn});
 
   final VoidCallback onBack;
+  final VoidCallback? onRequestSignIn;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -169,7 +170,8 @@ class _SearchScreenState extends State<SearchScreen> {
                         barcode: normalizedBarcode(state.searchQuery) != null,
                         identified: state.searchNotice != null,
                       ),
-                      if (state.canContribute) ...[
+                      if (state.canContribute ||
+                          widget.onRequestSignIn != null) ...[
                         const SizedBox(height: 20),
                         _contributionButton(state),
                       ],
@@ -179,7 +181,11 @@ class _SearchScreenState extends State<SearchScreen> {
                     itemCount:
                         state.searchResults.length +
                         skeletonCount +
-                        (state.canContribute && !state.isSearching ? 1 : 0),
+                        ((state.canContribute ||
+                                    widget.onRequestSignIn != null) &&
+                                !state.isSearching
+                            ? 1
+                            : 0),
                     separatorBuilder: (context, index) =>
                         const SizedBox(height: 12),
                     itemBuilder: (context, index) {
@@ -215,6 +221,8 @@ class _SearchScreenState extends State<SearchScreen> {
                           isBest: isBest,
                           isFavorite: state.isFavorite(result.product.id),
                           canEdit:
+                              state.canContribute &&
+                              result.contributorId != null &&
                               result.contributorId == state.currentUserId &&
                               result.isCommunityPrice,
                           onEdit: () =>
@@ -246,9 +254,15 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _contributionButton(AppState state) => OutlinedButton.icon(
-    onPressed: () => _openContribution(state),
+    onPressed: state.canContribute
+        ? () => _openContribution(state)
+        : widget.onRequestSignIn,
     icon: const Icon(Icons.add_circle_outline),
-    label: const Text('Ayuda a agregar productos'),
+    label: Text(
+      state.canContribute
+          ? 'Ayuda a agregar productos'
+          : 'Ingresá para agregar productos',
+    ),
   );
 
   Future<void> _openContribution(

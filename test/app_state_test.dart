@@ -4,6 +4,7 @@ import 'package:conviene/models/cart_item.dart';
 import 'package:conviene/models/discount.dart';
 import 'package:conviene/models/price_quote.dart';
 import 'package:conviene/models/shopping_context.dart';
+import 'package:conviene/models/supermarket.dart';
 import 'package:conviene/models/payment_method.dart';
 import 'package:conviene/models/product.dart';
 import 'package:conviene/repositories/mock_repository.dart';
@@ -12,6 +13,69 @@ import 'package:conviene/state/app_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('sign-in can dispose an unfinished guest bootstrap safely', () async {
+    final repo = _DelayedGuestRepository();
+    final state = AppState(repository: repo);
+    final loading = state.initialize();
+    state.dispose();
+    repo.finish.complete(await MockRepository().getSupermarkets());
+    await loading;
+  });
+  test('guest import keeps existing quantities and chosen stores', () async {
+    final guest = AppState(
+      repository: MockRepository(),
+      userDataStore: _MemoryUserDataStore(),
+    );
+    final account = AppState(
+      repository: MockRepository(),
+      userDataStore: _MemoryUserDataStore(),
+    );
+    await guest.initialize();
+    await account.initialize();
+    final shared = guest.products.first;
+    final extra = guest.products.last;
+    await guest.addProductToCart(shared.id, selectedStoreId: 'coto');
+    await guest.addProductToCart(extra.id, selectedStoreId: 'lagallega');
+    guest.toggleFavorite(extra);
+    await account.addProductToCart(shared.id, selectedStoreId: 'carrefour');
+    await account.updateCartQuantity(
+      shared.id,
+      3,
+      selectedStoreId: 'carrefour',
+    );
+    final methodsBefore = account.paymentMethods
+        .map((method) => method.id)
+        .toList();
+
+    await account.importGuestCartAndFavorites(guest.guestImportSnapshot());
+
+    expect(account.cartItems, hasLength(2));
+    expect(
+      account.cartItems
+          .singleWhere((item) => item.productId == shared.id)
+          .quantity,
+      3,
+    );
+    expect(
+      account.cartItems
+          .singleWhere((item) => item.productId == shared.id)
+          .selectedStoreId,
+      'carrefour',
+    );
+    expect(
+      account.cartItems
+          .singleWhere((item) => item.productId == extra.id)
+          .selectedStoreId,
+      'lagallega',
+    );
+    expect(account.favoriteProductIds, contains(extra.id));
+    expect(
+      account.paymentMethods.map((method) => method.id).toList(),
+      methodsBefore,
+    );
+    guest.dispose();
+    account.dispose();
+  });
   test(
     'clears old results on search failure and exposes discount failures',
     () async {
@@ -144,6 +208,13 @@ void main() {
     expect(state.isComparing, isFalse);
     state.dispose();
   });
+}
+
+class _DelayedGuestRepository extends MockRepository {
+  final finish = Completer<List<Supermarket>>();
+
+  @override
+  Future<List<Supermarket>> getSupermarkets() => finish.future;
 }
 
 class _DelayedPricesRepository extends MockRepository {

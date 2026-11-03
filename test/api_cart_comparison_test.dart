@@ -46,6 +46,77 @@ Map<String, dynamic> offer(
 
 void main() {
   test(
+    'Jumbo and La Reina compare one EAN without changing the chosen store',
+    () async {
+      const ean = '7790742358608';
+      final jumbo = offer(
+        'jumbo',
+        'Leche Uat Proteina 1 Lt La Serenisima',
+        ean,
+        'La Serenisima',
+        3350,
+      );
+      final reina = offer(
+        'lareina',
+        'leche c/ protein uat bot la serenisima 1 lt',
+        ean,
+        'La Serenisima',
+        2614,
+      );
+      final repository = ApiRepository(
+        baseUrl: Uri.parse('http://localhost:8010'),
+        fallback: MockRepository(),
+        client: MockClient((request) async {
+          if (request.url.path == '/search') {
+            return http.Response(
+              jsonEncode({
+                'results': [reina],
+              }),
+              200,
+            );
+          }
+          return http.Response(
+            jsonEncode({
+              'results': [jumbo, reina],
+              'store_status': {'jumbo': 'found', 'lareina': 'found'},
+            }),
+            200,
+          );
+        }),
+      );
+      final selected = (await repository.searchProducts(
+        query: ean,
+        storeIds: {'lareina'},
+      )).single;
+      final result =
+          await PriceComparisonService(
+            repository,
+            const DiscountEngine(),
+          ).compareCartOptions(
+            cartItems: [
+              CartItem(
+                productId: selected.product.id,
+                quantity: 2,
+                selectedStoreId: 'lareina',
+              ),
+            ],
+            fecha: DateTime.now(),
+            mediosPagoUsuario: const [],
+            promociones: const [],
+            storeIds: {'jumbo', 'lareina'},
+          );
+      final totals = {
+        for (final row in result.singleStoreComparisons)
+          row.supermarket.id: row.totalFinal,
+      };
+      expect(totals['jumbo'], 6700);
+      expect(totals['lareina'], 5228);
+      expect(result.selectedStoresPlan!.items.single.supermarket.id, 'lareina');
+      expect(result.bestPerProductPlan!.items.single.supermarket.id, 'lareina');
+    },
+  );
+
+  test(
     'mixed cart is complete only per product when no store has both SKUs',
     () async {
       final sweet = offer(

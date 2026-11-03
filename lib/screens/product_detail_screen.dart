@@ -400,8 +400,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   String _pendingReason(AppState state, SearchResult row, Promotion p) {
-    if (p.verificationStatus == 'unverified' ||
-        (p.sourceType.isNotEmpty && !p.isEvidenceFresh)) {
+    final assessment = assessPromotion(
+      promotion: p,
+      result: row,
+      date: state.selectedDate,
+      paymentMethods: state.activePaymentMethods,
+      quantity: _quantity,
+      usedRefundCaps: state.usedRefundCaps,
+    );
+    if (assessment == PromotionAssessment.unverified) {
       return 'Sin verificación actual';
     }
     if (p.applicabilityScope == 'restricted') {
@@ -409,6 +416,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
     if (p.applicabilityScope != 'general_confirmed') {
       return 'Alcance sin confirmar; no incluido en el total';
+    }
+    if (!p.hasKnownCapUsage(state.selectedDate, state.usedRefundCaps)) {
+      return 'Tope personal sin confirmar; no incluido en el total';
     }
     if (!p.appliesToBranch(row.price.branchId)) return 'Requiere otra sucursal';
     if (!p.isCompatibleWithAny(state.activePaymentMethods))
@@ -440,7 +450,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           : p.nombreVisible,
       style: const TextStyle(fontWeight: FontWeight.w700),
     ),
-    subtitle: Text(subtitle),
+    subtitle: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(promotionReach(p), style: const TextStyle(fontSize: 11)),
+        Text(subtitle),
+      ],
+    ),
     children: [
       Align(
         alignment: Alignment.centerLeft,

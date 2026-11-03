@@ -17,20 +17,28 @@ Future<void> main() async {
     SupabaseClient? client;
     FirebaseAuth? firebaseAuth;
     if (supabaseUrl.isNotEmpty && supabaseKey.isNotEmpty) {
-      await Firebase.initializeApp(
-        options: ConvieneFirebaseOptions.currentPlatform,
-      );
-      firebaseAuth = FirebaseAuth.instance;
-      await Supabase.initialize(
-        url: supabaseUrl,
-        publishableKey: supabaseKey,
-        accessToken: () async {
-          final user = firebaseAuth?.currentUser;
-          if (user == null || !user.emailVerified) return null;
-          return user.getIdToken();
-        },
-      );
-      client = Supabase.instance.client;
+      try {
+        await Firebase.initializeApp(
+          options: ConvieneFirebaseOptions.currentPlatform,
+        );
+        firebaseAuth = FirebaseAuth.instance;
+        await Supabase.initialize(
+          url: supabaseUrl,
+          publishableKey: supabaseKey,
+          accessToken: () async {
+            final user = firebaseAuth?.currentUser;
+            if (user == null || !user.emailVerified) return null;
+            return user.getIdToken();
+          },
+        );
+        client = Supabase.instance.client;
+      } catch (error, stackTrace) {
+        FlutterError.reportError(
+          FlutterErrorDetails(exception: error, stack: stackTrace),
+        );
+        firebaseAuth = null;
+        client = null;
+      }
     }
     runApp(
       ConvieneApp(

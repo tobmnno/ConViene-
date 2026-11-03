@@ -13,6 +13,9 @@ class StoreLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     if (supermarket.logoAsset.isNotEmpty) {
       final isSvg = supermarket.logoAsset.toLowerCase().endsWith('.svg');
+      final cropVertical = supermarket.logoAsset.endsWith(
+        'la_gallega_user.png',
+      );
       final logo = isSvg
           ? SvgPicture.asset(
               supermarket.logoAsset,
@@ -21,14 +24,25 @@ class StoreLogo extends StatelessWidget {
             )
           : Image.asset(
               supermarket.logoAsset,
-              fit: BoxFit.contain,
+              fit: cropVertical ? BoxFit.cover : BoxFit.contain,
               semanticLabel: supermarket.name,
             );
       return SizedBox(
         width: size * 1.7,
         height: size,
         child: Center(
-          child: Padding(padding: EdgeInsets.all(size * 0.04), child: logo),
+          child: Container(
+            decoration: {'jumbo', 'lareina'}.contains(supermarket.id)
+                ? BoxDecoration(
+                    color: Color(supermarket.brandColor),
+                    borderRadius: BorderRadius.circular(4),
+                  )
+                : null,
+            padding: EdgeInsets.all(size * 0.04),
+            child: cropVertical
+                ? SizedBox(width: size * 1.6, height: size * 0.48, child: logo)
+                : logo,
+          ),
         ),
       );
     }

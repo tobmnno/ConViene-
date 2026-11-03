@@ -25,7 +25,13 @@ class DiscountsScreen extends StatefulWidget {
 
 class _DiscountsScreenState extends State<DiscountsScreen> {
   var _filter = DiscountFilter.all;
-  Set<String> _selectedStoreIds = const {'coto', 'carrefour', 'lagallega'};
+  Set<String> _selectedStoreIds = const {
+    'coto',
+    'carrefour',
+    'lagallega',
+    'jumbo',
+    'lareina',
+  };
 
   @override
   Widget build(BuildContext context) {

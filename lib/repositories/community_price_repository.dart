@@ -18,16 +18,23 @@ class CommunityPriceRepository
         ProgressiveSearchRepository,
         PromotionStatusRepository,
         SearchStatusRepository {
-  CommunityPriceRepository(this._source, this._client, {this.userId});
+  CommunityPriceRepository(
+    this._source,
+    this._client, {
+    this.userId,
+    this.allowContributions = true,
+  });
 
   final ConvieneRepository _source;
   final SupabaseClient _client;
   final String? userId;
+  final bool allowContributions;
   final Map<String, SearchResult> _cached = {};
   String? _communityWarning;
   String? _officialWarning;
 
-  String? get currentUserId => userId ?? _client.auth.currentUser?.id;
+  String? get currentUserId =>
+      allowContributions ? (userId ?? _client.auth.currentUser?.id) : null;
 
   @override
   String? get lastSearchWarning {
@@ -76,14 +83,26 @@ class CommunityPriceRepository
     }
     final id = productId.substring('community_'.length);
     try {
-      final row = await _client
-          .from('community_prices')
-          .select()
-          .eq('id', id)
-          .maybeSingle();
+      final Map<String, dynamic>? row;
+      if (allowContributions) {
+        row = await _client
+            .from('community_prices')
+            .select()
+            .eq('id', id)
+            .maybeSingle();
+      } else {
+        final rows = await _client.rpc<List<dynamic>>(
+          'public_community_price_by_id',
+          params: {'price_id': id},
+        );
+        row = rows.isEmpty
+            ? null
+            : Map<String, dynamic>.from(rows.first as Map);
+      }
       if (row == null) return [];
       final stores = await getSupermarkets();
-      final store = stores.where((item) => item.id == row['supermarket_id']);
+      final storeId = row['supermarket_id'];
+      final store = stores.where((item) => item.id == storeId);
       if (store.isEmpty) return [];
       final result = _fromRow(row, store.first);
       _cached[result.product.id] = result;
@@ -185,7 +204,9 @@ class CommunityPriceRepository
   ) async {
     try {
       final rows = await _client.rpc<List<dynamic>>(
-        'search_community_prices',
+        allowContributions
+            ? 'search_community_prices'
+            : 'search_public_community_prices',
         params: {'query_text': query.trim(), 'store_ids': storeIds.toList()},
       );
       final stores = {
@@ -260,6 +281,9 @@ class CommunityPriceRepository
     required double unitPrice,
     required bool inStock,
   }) async {
+    if (!allowContributions || currentUserId == null) {
+      throw StateError('Los aportes requieren una cuenta verificada.');
+    }
     final fields = <String, dynamic>{
       'name': name.trim(),
       'brand': brand.trim(),

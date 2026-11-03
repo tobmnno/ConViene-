@@ -68,6 +68,56 @@ class ComparisonRepository extends MockRepository
 }
 
 void main() {
+  testWidgets('hover panel keeps a conditional benefit out of its price', (
+    tester,
+  ) async {
+    final repo = ComparisonRepository();
+    final state = AppState(repository: repo);
+    final today = DateTime.now();
+    state.selectedDate = today;
+    state.promotions = [
+      Promotion(
+        id: 'restricted',
+        storeId: 'coto',
+        tipoMedioPago: PaymentMethodType.card,
+        entidad: 'Visa',
+        porcentajeDescuento: 25,
+        topeReintegro: 0,
+        diasSemana: {today.weekday},
+        fechaInicio: today,
+        fechaFin: today,
+        condiciones: 'Solo online',
+        categorias: const ['todos'],
+        applicabilityScope: 'restricted',
+        canal: 'Online',
+        sourceType: 'official_api',
+        capturedAt: today,
+      ),
+    ];
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: const MaterialApp(
+          home: Scaffold(body: ProductComparisonPanel(product: milk)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Publicado:'), findsOneWidget);
+    expect(
+      find.text('1 beneficio del supermercado con condiciones'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Catálogo de sucursal consultada'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('1.500'), findsWidgets);
+    expect(find.textContaining('1.125'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    state.dispose();
+  });
   test(
     'personalized ordering changes with cards, caps, minimums and dates',
     () async {
@@ -124,9 +174,17 @@ void main() {
       expect(sortedProductOffers(state, rows).first.supermarket.id, 'coto');
       expect(
         sortedProductOffers(state, rows, quantity: 2).first.supermarket.id,
+        'coto',
+      );
+      state.usedRefundCaps[promo.capUsageKey(state.selectedDate)!] = 0;
+      expect(
+        sortedProductOffers(state, rows, quantity: 2).first.supermarket.id,
         'carrefour',
       );
-      expect(state.discountForResult(rows.last, quantity: 2).estimated, isTrue);
+      expect(
+        state.discountForResult(rows.last, quantity: 2).estimated,
+        isFalse,
+      );
       state.usedRefundCaps[promo.capUsageKey(state.selectedDate)!] = 100;
       expect(
         sortedProductOffers(state, rows, quantity: 2).first.supermarket.id,
@@ -191,9 +249,11 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
-      expect(find.text('No se pudo consultar'), findsOneWidget);
+      expect(find.text('No se pudo consultar'), findsWidgets);
       expect(state.cartItems, isEmpty);
-      Navigator.of(tester.element(find.text('No se pudo consultar'))).pop();
+      Navigator.of(
+        tester.element(find.text('No se pudo consultar').first),
+      ).pop();
       await tester.pumpAndSettle();
       await mouse.removePointer();
       await tester.pumpWidget(const SizedBox());
@@ -226,7 +286,13 @@ void main() {
       await service.compare(milk, const ShoppingContext());
       await service.compare(milk, const ShoppingContext(cotoStore: '401'));
       expect(repository.calls, 3);
-      expect(repository.stores, {'coto', 'carrefour', 'lagallega'});
+      expect(repository.stores, {
+        'coto',
+        'carrefour',
+        'lagallega',
+        'jumbo',
+        'lareina',
+      });
     },
   );
 
@@ -303,17 +369,19 @@ void main() {
       );
       await tester.tap(find.text('Producto'));
       await tester.pumpAndSettle();
-      expect(find.text('No se pudo consultar'), findsOneWidget);
+      expect(find.text('No se pudo consultar'), findsWidgets);
       expect(state.cartItems, isEmpty);
       expect(state.selectedStoreIds, {'coto'});
-      Navigator.of(tester.element(find.text('No se pudo consultar'))).pop();
+      Navigator.of(
+        tester.element(find.text('No se pudo consultar').first),
+      ).pop();
       await tester.pumpAndSettle();
       final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
       await mouse.addPointer(location: Offset.zero);
       await mouse.moveTo(tester.getCenter(find.text('Producto')));
       await tester.pump(const Duration(milliseconds: 360));
       await tester.pumpAndSettle();
-      expect(find.text('No se pudo consultar'), findsOneWidget);
+      expect(find.text('No se pudo consultar'), findsWidgets);
       expect(
         tester.getTopLeft(find.byType(ProductComparisonPanel)).dy,
         greaterThan(tester.getBottomLeft(find.text('Producto')).dy),

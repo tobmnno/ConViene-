@@ -56,6 +56,27 @@ void main() {
   }
   test('only direct HTTPS official product URLs can be opened', () {
     expect(
+      officialProductUri(
+        'jumbo',
+        'https://www.jumbo.com.ar/leche-uat-proteina-1-lts-la-serenisima/p',
+      ),
+      isNotNull,
+    );
+    expect(
+      officialProductUri(
+        'lareina',
+        'https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790742358608',
+      ),
+      isNotNull,
+    );
+    expect(
+      officialProductUri(
+        'lareina',
+        'https://www.lareinaonline.com.ar/login.asp',
+      ),
+      isNull,
+    );
+    expect(
       officialProductUri('carrefour', 'https://www.carrefour.com.ar/leche/p'),
       isNotNull,
     );
@@ -265,6 +286,7 @@ void main() {
             entidad: 'Visa',
             porcentajeDescuento: 25,
             topeReintegro: 30000,
+            capFrequency: 'monthly',
             diasSemana: const {DateTime.monday},
             fechaInicio: DateTime(2026, 10, 1),
             fechaFin: DateTime(2026, 10, 31),
@@ -290,6 +312,10 @@ void main() {
             titulo: '20% Mastercard',
           ),
         ];
+      state.usedRefundCaps[state.promotions.first.capUsageKey(
+            state.selectedDate,
+          )!] =
+          0;
       await tester.pumpWidget(
         AppScope(
           notifier: state,

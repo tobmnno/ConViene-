@@ -10,6 +10,82 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test('maps La Reina EAN listing with its official photo and link', () async {
+    final repository = ApiRepository(
+      baseUrl: Uri.parse('http://127.0.0.1:8000'),
+      fallback: MockRepository(),
+      client: MockClient(
+        (request) async => http.Response(
+          jsonEncode({
+            'results': [
+              {
+                'product': {
+                  'store': 'lareina',
+                  'name': 'leche c/ protein uat bot la serenisima 1 lt',
+                  'ean': '7790742358608',
+                  'price': 2614,
+                  'image':
+                      'https://www.lareinaonline.com.ar/Fotos/Articulos/7790742358608.jpg',
+                  'url':
+                      'https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790742358608',
+                  'scraped_at': DateTime.now().toUtc().toIso8601String(),
+                },
+              },
+            ],
+          }),
+          200,
+        ),
+      ),
+    );
+    final result = (await repository.searchProducts(
+      query: '7790742358608',
+      storeIds: {'lareina'},
+    )).single;
+    expect(result.supermarket.id, 'lareina');
+    expect(result.price.priceOriginal, 2614);
+    expect(result.product.ean, '7790742358608');
+    expect(result.product.imageUrl, contains('/image?'));
+    expect(result.price.url, contains('productosdet.asp?Pr='));
+  });
+
+  test('maps Jumbo catalog price, image and official product link', () async {
+    final repository = ApiRepository(
+      baseUrl: Uri.parse('http://127.0.0.1:8000'),
+      fallback: MockRepository(),
+      client: MockClient(
+        (request) async => http.Response(
+          jsonEncode({
+            'results': [
+              {
+                'product': {
+                  'store': 'jumbo',
+                  'name': 'Leche Uat Proteina 1 Lt La Serenisima',
+                  'ean': '7790742358608',
+                  'price': 3350,
+                  'image':
+                      'https://jumboargentina.vteximg.com.br/arquivos/ids/907867/test.jpg',
+                  'url':
+                      'https://www.jumbo.com.ar/leche-uat-proteina-1-lts-la-serenisima/p',
+                  'scraped_at': DateTime.now().toUtc().toIso8601String(),
+                },
+              },
+            ],
+          }),
+          200,
+        ),
+      ),
+    );
+    final result = (await repository.searchProducts(
+      query: '7790742358608',
+      storeIds: {'jumbo'},
+    )).single;
+    expect(result.supermarket.id, 'jumbo');
+    expect(result.price.priceOriginal, 3350);
+    expect(result.product.ean, '7790742358608');
+    expect(result.product.imageUrl, contains('/image?'));
+    expect(result.price.url, endsWith('/p'));
+  });
+
   test('keeps Carrefour channel offer visible but out of the total', () async {
     final captured = DateTime.now().toUtc().toIso8601String();
     final repository = ApiRepository(
@@ -554,6 +630,8 @@ void main() {
             'carrefour',
             'coto',
             'la_gallega',
+            'jumbo',
+            'lareina',
           ]);
           return http.Response(
             jsonEncode({

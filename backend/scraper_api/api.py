@@ -199,7 +199,7 @@ async def health():
     return {
         "status": "ok",
         "stores": list(SCRAPERS),
-        "app_store_ids": ["carrefour", "coto", "lagallega"],
+        "app_store_ids": ["carrefour", "coto", "lagallega", "jumbo", "lareina"],
     }
 
 
@@ -259,7 +259,7 @@ async def image_proxy(url: str = Query(min_length=8, max_length=1200)):
 async def stores():
     return {
         "stores": list(SCRAPERS),
-        "app_store_ids": ["carrefour", "coto", "lagallega"],
+        "app_store_ids": ["carrefour", "coto", "lagallega", "jumbo", "lareina"],
     }
 
 
