@@ -349,6 +349,9 @@ La referencia compartida esta en `test/fixtures/product_identity_cases.json`.
 - Las caches de productos y equivalencias tienen un maximo de entradas; un
   resultado vacio de busqueda general se reintenta en la siguiente solicitud.
 - Los descuentos se almacenan durante 5 minutos por fecha y conjunto de tiendas.
+- Las paginas legales oficiales de Jumbo y La Reina comparten una copia de
+  HTML validado durante 5 minutos entre fechas; una falla o estructura rota
+  no queda cacheada y se reintenta.
 - Las solicitudes simultaneas identicas comparten el mismo trabajo en curso.
 
 La cache vive en memoria y se elimina al reiniciar el proceso.
@@ -360,6 +363,10 @@ La cache vive en memoria y se elimina al reiniciar el proceso.
   para fechas no cubiertas por el archivo.
 - La Gallega: feed estructurado vigente, legal de Banco Coinag y catalogo
   versionado como respaldo cuando una fuente no esta disponible.
+- Jumbo: pagina oficial de legales; las campanas sin EAN se informan pero no
+  afectan el precio ni activan 2x1 en el changuito.
+- La Reina: pagina institucional oficial; se auditan vigencias y estructura.
+  Las tarjetas vencidas o sin condiciones completas no producen descuentos.
 
 Los datos versionados viven en `data/`. El backend interpreta dias, fechas
 especificas, porcentajes, cuotas, topes, compras minimas y medios compatibles.

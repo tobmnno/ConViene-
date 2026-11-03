@@ -76,6 +76,30 @@ class _SearchScreenState extends State<SearchScreen> {
         : state.searchResults
               .map((result) => state.discountForResult(result).precioFinal)
               .reduce((a, b) => a < b ? a : b);
+    final leading = <Widget>[
+      if (state.lastError != null)
+        _SearchError(
+          message: state.lastError!,
+          onRetry: () => unawaited(state.retrySearch()),
+        ),
+      if (state.searchWarning != null)
+        _SearchWarning(message: state.searchWarning!),
+      if (state.searchNotice != null)
+        _SearchNotice(message: state.searchNotice!),
+      if (!state.paymentSetupComplete || state.activePaymentMethods.isEmpty)
+        const _NoPaymentMethodsHint(),
+    ];
+    final empty =
+        state.searchResults.isEmpty &&
+        !state.isSearching &&
+        state.lastError == null;
+    final showContribution =
+        state.canContribute || widget.onRequestSignIn != null;
+    final resultCount = state.lastError != null && state.searchResults.isEmpty
+        ? 0
+        : state.searchResults.length +
+              skeletonCount +
+              (showContribution && !state.isSearching ? 1 : 0);
 
     return ScreenFrame(
       child: Column(
@@ -141,104 +165,75 @@ class _SearchScreenState extends State<SearchScreen> {
           const SizedBox(height: 14),
           _SortTabs(value: state.searchSort, onChanged: state.setSearchSort),
           const SizedBox(height: 14),
-          if (state.lastError != null) ...[
-            _SearchError(
-              message: state.lastError!,
-              onRetry: () => unawaited(state.retrySearch()),
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (state.searchWarning != null) ...[
-            _SearchWarning(message: state.searchWarning!),
-            const SizedBox(height: 12),
-          ],
-          if (state.searchNotice != null) ...[
-            _SearchNotice(message: state.searchNotice!),
-            const SizedBox(height: 12),
-          ],
-          if (!state.paymentSetupComplete || state.activePaymentMethods.isEmpty)
-            const _NoPaymentMethodsHint(),
           Expanded(
-            child: state.lastError != null && state.searchResults.isEmpty
-                ? const SizedBox.shrink()
-                : state.searchResults.isEmpty && !state.isSearching
-                ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+            child: ListView.separated(
+              itemCount: leading.length + (empty ? 1 : resultCount),
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                if (index < leading.length) return leading[index];
+                index -= leading.length;
+                if (empty) {
+                  return Column(
                     children: [
                       _EmptyResults(
                         partial: state.searchWarning != null,
                         barcode: normalizedBarcode(state.searchQuery) != null,
                         identified: state.searchNotice != null,
                       ),
-                      if (state.canContribute ||
-                          widget.onRequestSignIn != null) ...[
+                      if (showContribution) ...[
                         const SizedBox(height: 20),
                         _contributionButton(state),
                       ],
                     ],
-                  )
-                : ListView.separated(
-                    itemCount:
-                        state.searchResults.length +
-                        skeletonCount +
-                        ((state.canContribute ||
-                                    widget.onRequestSignIn != null) &&
-                                !state.isSearching
-                            ? 1
-                            : 0),
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      if (index >= state.searchResults.length &&
-                          index < state.searchResults.length + skeletonCount) {
-                        return const ProductSkeletonCard();
-                      }
-                      if (index >= state.searchResults.length + skeletonCount) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 4, bottom: 20),
-                          child: _contributionButton(state),
-                        );
-                      }
-                      final result = state.searchResults[index];
-                      final discount = state.discountForResult(result);
-                      final isBest =
-                          bestPrice != null &&
-                          (discount.precioFinal - bestPrice).abs() < 0.01;
-                      return ProductComparisonTrigger(
-                        product: result.product,
-                        onDetails: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => AppScope(
-                              notifier: state,
-                              child: ProductDetailScreen(
-                                product: result.product,
-                              ),
-                            ),
-                          ),
-                        ),
-                        child: _ResultCard(
-                          result: result,
-                          isBest: isBest,
-                          isFavorite: state.isFavorite(result.product.id),
-                          canEdit:
-                              state.canContribute &&
-                              result.contributorId != null &&
-                              result.contributorId == state.currentUserId &&
-                              result.isCommunityPrice,
-                          onEdit: () =>
-                              _openContribution(state, existing: result),
-                          onToggleFavorite: () =>
-                              state.toggleFavorite(result.product),
-                          onAdd: () => _addProductToCart(
-                            state,
-                            result.product.id,
-                            result.product.name,
-                            result.supermarket.id,
-                          ),
-                        ),
-                      );
-                    },
+                  );
+                }
+                if (index >= state.searchResults.length &&
+                    index < state.searchResults.length + skeletonCount) {
+                  return const ProductSkeletonCard();
+                }
+                if (index >= state.searchResults.length + skeletonCount) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 20),
+                    child: _contributionButton(state),
+                  );
+                }
+                final result = state.searchResults[index];
+                final discount = state.discountForResult(result);
+                final isBest =
+                    bestPrice != null &&
+                    (discount.precioFinal - bestPrice).abs() < 0.01;
+                return ProductComparisonTrigger(
+                  product: result.product,
+                  onDetails: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => AppScope(
+                        notifier: state,
+                        child: ProductDetailScreen(product: result.product),
+                      ),
+                    ),
                   ),
+                  child: _ResultCard(
+                    result: result,
+                    isBest: isBest,
+                    isFavorite: state.isFavorite(result.product.id),
+                    canEdit:
+                        state.canContribute &&
+                        result.contributorId != null &&
+                        result.contributorId == state.currentUserId &&
+                        result.isCommunityPrice,
+                    onEdit: () => _openContribution(state, existing: result),
+                    onToggleFavorite: () =>
+                        state.toggleFavorite(result.product),
+                    onAdd: () => _addProductToCart(
+                      state,
+                      result.product.id,
+                      result.product.name,
+                      result.supermarket.id,
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),

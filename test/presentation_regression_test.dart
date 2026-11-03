@@ -216,6 +216,48 @@ void main() {
     state.dispose();
   });
 
+  testWidgets('campana sin EAN es informativa y no promete 2x1', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final date = DateTime(2026, 11, 3);
+    final state = AppState(repository: MockRepository(), initialDate: date);
+    state.supermarkets = await MockRepository().getSupermarkets();
+    state.promotions = [
+      Promotion(
+        id: 'jumbo-cyber',
+        storeId: 'jumbo',
+        tipoMedioPago: PaymentMethodType.card,
+        entidad: '',
+        porcentajeDescuento: 0,
+        topeReintegro: 0,
+        diasSemana: const {1, 2, 3, 4, 5, 6, 7},
+        fechaInicio: date,
+        fechaFin: date,
+        condiciones: 'Hasta 2x1 en productos seleccionados',
+        categorias: const ['campana_sin_ean'],
+        titulo: 'Cyber Jumbo: productos seleccionados',
+        promotionKind: 'store_product',
+        sourceType: 'official_page',
+        calculationStatus: 'not_calculable',
+        applicabilityScope: 'restricted',
+        fuenteUrl: 'https://www.jumbo.com.ar/legales',
+        capturedAt: DateTime.now(),
+      ),
+    ];
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: const MaterialApp(home: Scaffold(body: DiscountsScreen())),
+      ),
+    );
+    expect(find.text('Cyber Jumbo: productos seleccionados'), findsOneWidget);
+    expect(find.text('Info'), findsOneWidget);
+    expect(find.text('Compatible'), findsNothing);
+    expect(find.text('1 u'), findsNothing);
+    expect(state.promotions.single.canCalculate, isFalse);
+    state.dispose();
+  });
+
   testWidgets('el escaner es el acceso central y no esta en la busqueda', (
     tester,
   ) async {

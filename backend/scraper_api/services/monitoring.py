@@ -18,7 +18,9 @@ LOG_FILE = RUNTIME_DIR / "scraper-events.jsonl"
 _lock = Lock()
 _events: deque[dict[str, Any]] = deque(maxlen=150)
 _stats: dict[str, dict[str, Any]] = defaultdict(
-    lambda: {"successes": 0, "failures": 0, "consecutive_failures": 0, "last_success_at": None, "last_error": None, "last_duration_ms": None}
+    lambda: {"successes": 0, "failures": 0, "consecutive_failures": 0,
+             "last_check_at": None, "last_success_at": None,
+             "last_error": None, "last_count": None, "last_duration_ms": None}
 )
 
 
@@ -57,11 +59,13 @@ def record_check(source: str, *, success: bool, duration_ms: float, detail: str 
     }
     with _lock:
         state = _stats[source]
+        state["last_check_at"] = event["at"]
         state["last_duration_ms"] = event["duration_ms"]
         if success:
             state["successes"] += 1
             state["consecutive_failures"] = 0
             state["last_success_at"] = event["at"]
+            state["last_count"] = count
         else:
             state["failures"] += 1
             state["consecutive_failures"] += 1

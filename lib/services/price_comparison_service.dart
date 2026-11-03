@@ -771,7 +771,11 @@ class PriceComparisonService {
     if (!sameEan && !_isComparableSize(selectedProduct, candidateProduct)) {
       return false;
     }
-    if (_hasProductTypeConflict(selectedProduct.name, candidateProduct.name)) {
+    if (_hasProductTypeConflict(
+      selectedProduct.name,
+      candidateProduct.name,
+      sameEan: sameEan,
+    )) {
       return false;
     }
     if (_hasVariantConflict(selectedProduct.name, candidateProduct.name) &&
@@ -810,7 +814,11 @@ class PriceComparisonService {
     return common > 0 && coverage >= 0.6;
   }
 
-  bool _hasProductTypeConflict(String selectedName, String candidateName) {
+  bool _hasProductTypeConflict(
+    String selectedName,
+    String candidateName, {
+    required bool sameEan,
+  }) {
     final selected = _variantTokens(selectedName);
     final candidate = _variantTokens(candidateName);
     for (final marker in {
@@ -837,8 +845,11 @@ class PriceComparisonService {
       }
       final selectedModel = _condomModel(selectedName);
       final candidateModel = _condomModel(candidateName);
-      if (selectedModel == null ||
-          candidateModel == null ||
+      if ((selectedModel == null || candidateModel == null) && !sameEan) {
+        return true;
+      }
+      if (selectedModel != null &&
+          candidateModel != null &&
           selectedModel != candidateModel) {
         return true;
       }

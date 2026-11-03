@@ -7,6 +7,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('el aviso largo no desborda en orientacion horizontal', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(640, 320));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final state = AppState(repository: MockRepository());
+    await tester.runAsync(() => state.initialize());
+    state.searchNotice =
+        'Codigo identificado: Leche Protein La Serenisima 1L. '
+        'Codigo identificado: Leche Descremada La Serenisima Protein X 1 Lt. '
+        'Codigo identificado: Leche Uat Proteina 1 Lt La Serenisima.';
+    await tester.pumpWidget(
+      AppScope(
+        notifier: state,
+        child: MaterialApp(
+          home: Scaffold(body: SearchScreen(onBack: () {})),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    state.dispose();
+  });
+
   testWidgets('aplica el filtro de supermercados desde resultados', (
     tester,
   ) async {

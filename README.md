@@ -183,6 +183,15 @@ clave o es demasiado corta. Se envia en `X-Admin-Key`. CORS no sustituye la
 autenticacion. El refresco de La Gallega usa un bloqueo compartido por los
 procesos que montan el mismo directorio `data/runtime`.
 
+Antes de compartir una build de prueba: ejecutar las suites de backend y
+Flutter, `flutter analyze`, los contratos live de fuentes y ambos builds;
+servir la web por HTTPS con `CONVIENE_API_BASE_URL` publico; configurar origenes
+CORS exactos y una clave administrativa fuerte; revisar `/operations` y sus
+fechas de ultima consulta y ultima verificacion. No distribuir una build con
+la URL local predeterminada ni publicar `supabase.local.json` o claves de
+administracion. El APK de prueba no reemplaza una version Android firmada.
+El importe final de caja sigue sin garantia.
+
 ## Comparacion del changuito
 
 Conviene presenta tres perspectivas:
@@ -213,6 +222,12 @@ normalizan por entidad, porcentaje, tope, dia, vigencia y canal. La app resalta
 los beneficios compatibles con los medios de pago activos. Jumbo y La Reina
 tienen precios de catalogo integrados, pero no beneficios bancarios calculables
 confirmados: sus campanas no se convierten en ahorros por inferencia.
+Jumbo publica legales de campanas para productos seleccionados sin una lista
+verificable de EAN; cuando la vigencia coincide se muestran como informacion,
+sin aplicar un 2x1 al changuito. La pagina institucional de La Reina contiene
+beneficios vencidos o sin condiciones completas; no se trasladan a fechas
+nuevas. Una falla de estas paginas queda registrada como error de fuente, no
+como prueba de que el supermercado no tenga promociones.
 
 La API distingue promociones de medio de pago y ofertas del supermercado. El
 motor admite reglas estructuradas por EAN (2x1, 3x2, segunda unidad y precio

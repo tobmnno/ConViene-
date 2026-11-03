@@ -13,7 +13,10 @@ import json
 from pathlib import Path
 
 from models import Product
-from scrapers.stores import _carrefour_api_search, _coto_api_search, _lagallega_api_search
+from scrapers.stores import (
+    _carrefour_api_search, _coto_api_search, _jumbo_api_search,
+    _lagallega_api_search, _lareina_api_search,
+)
 from services.catalog import _size_is_compatible, normalize_text, valid_gtin
 
 
@@ -25,6 +28,8 @@ SOURCES = {
     "coto": _coto_api_search,
     "carrefour": _carrefour_api_search,
     "la_gallega": _lagallega_api_search,
+    "jumbo": _jumbo_api_search,
+    "lareina": _lareina_api_search,
 }
 OUTPUT = Path(__file__).resolve().parents[3] / ".pytest_cache" / "product_identity_candidates.json"
 

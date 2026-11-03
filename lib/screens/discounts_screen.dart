@@ -542,10 +542,11 @@ class _PromotionCard extends StatelessWidget {
                         _MethodBadge(label: promotion.tipoMedioPago.label),
                       ] else
                         const _MethodBadge(label: 'Oferta del super'),
-                      _MethodBadge(
-                        label: compatible ? 'Compatible' : 'No esta en perfil',
-                        highlighted: calculable,
-                      ),
+                      if (promotion.promotionKind == 'payment')
+                        _MethodBadge(
+                          label: compatible ? 'Compatible' : 'No esta en perfil',
+                          highlighted: calculable,
+                        ),
                       _MethodBadge(label: _statusText(promotion)),
                     ],
                   ),
@@ -788,6 +789,9 @@ class _PromotionCard extends StatelessWidget {
 
   String _benefitBadge(Promotion promotion) {
     if (promotion.promotionKind == 'store_product') {
+      if (promotion.productEans.isEmpty && !promotion.canCalculate) {
+        return 'Info';
+      }
       return promotion.mechanic == 'second_unit_discount'
           ? '${formatPercent(promotion.secondUnitDiscount)} 2a'
           : promotion.mechanic == 'buy_n_pay_m'

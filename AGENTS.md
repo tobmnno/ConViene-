@@ -599,3 +599,89 @@ when available; keep all unverified offers out of the calculable total.
   public catalog observations, not a branch, stock or checkout guarantee.
   DAR and La Anonima were not added. No physical barcode scan, live community
   contribution for the new stores or real checkout was tested. No commit/push.
+
+2026-11-03 release-readiness work, stage 1 complete:
+- Extended the opt-in official-catalog candidate collector to Jumbo and La
+  Reina. Reviewed and froze 60 additional pairs with source URLs, EANs and
+  capture time: 30 same-SKU and 30 distinct size/flavor/model pairs. The
+  shared fixture now has 120 dated cases across all five supermarkets.
+- Red regressions exposed Oreo Original/vanilla wording for the same EAN in
+  Python and an omitted Classic condom model at Coto for the same EAN in
+  Flutter. Narrow fixes preserve rejection of conflicting EAN, quantity,
+  size and explicit model. Backend shared identity: 134 subtests passed;
+  Flutter local parity passed. Full backend: 130 passed, 8 optional live
+  skipped, 163 subtests; full Flutter: 169 passed, 2 optional live skipped.
+- These are dated public-catalog observations, not a fresh availability or
+  live-price guarantee. Next: official promotion-source review and adapters;
+  do not present old or incomplete conditions as calculable savings.
+
+2026-11-03 release-readiness work, stage 2 complete:
+- Rechecked Coto's structured promotion API, Carrefour's promotion records
+  and public cart contract, and La Gallega's official benefits page through
+  the opt-in live contracts. Added live structure checks for Jumbo legal text
+  and La Reina's official benefit cards; all 6 live contracts passed today.
+- Jumbo's official legal page describes a 02-04 Nov 2026 online campaign with
+  "hasta 2x1" for selected products but no participating EANs. The reader
+  exposes it only as an informational, restricted, noncalculable campaign.
+  It cannot lower a product price or trigger a cart quantity suggestion.
+- La Reina's official page exposed 12 expired cards and one card without
+  sufficient validity/eligibility. The reader reports these conditions and
+  produces no calculable promotion. La Gallega likewise remains noncalculable
+  without complete official terms. Existing Coto/Carrefour adapters remain.
+- Added parser, API error/recovery and UI tests; updated an older Jumbo test
+  to assert the new noncalculable semantics without live-network dependence.
+  Focused backend contracts: 13 passed. Full backend: 137 passed / 10 optional
+  skipped / 163 subtests. Flutter: 170 passed / 2 optional skipped; analyzer
+  clean. No savings were inferred from a campaign title. No commit or push.
+- Next: benchmark first-useful/full-result latency and request counts on five
+  chains, then change only duplicated work demonstrated by the measurements.
+
+2026-11-03 release-readiness work, stage 3 complete:
+- Extended the opt-in benchmark to all five chains and six product families.
+  One cold sample: first useful p50 0.501 s / p95 0.682 s; complete p50
+  1.597 s / p95 4.181 s; six upstream calls per chain, zero errors. Warm:
+  zero upstream calls and about 1 ms completion. The six-query sample is not
+  an end-to-end latency guarantee; upstream load can vary substantially.
+- Direct catalog search already used one request per chain/query in this
+  sample. No search or matching rule was relaxed merely to claim speed.
+- Date switching redownloaded the same large Jumbo/La Reina legal page.
+  Added a five-minute per-URL HTML cache with in-flight coalescing; two dates
+  now use one fetch instead of two. Failures are not cached, expired entries
+  refetch, and explicit discount-cache clearing also clears these pages.
+  Eleven focused reader/cache tests pass, including failure recovery and
+  concurrent dates. Full backend: 141 passed / 10 optional skipped / 163
+  subtests. No commit or push.
+- Next: inspect operations alerts, image proxy, CORS/admin/community access
+  and environment setup; run builds and live UI/Android review.
+
+2026-11-03 release-readiness work, stage 4 and final walkthrough:
+- Reviewed admin-only `/operations`, production CORS, image-host/type validation,
+  release API defines and the existing guest-read Supabase migration. Added
+  `last_check_at` and `last_count` to per-source diagnostics while preserving
+  `last_success_at` after failures. A malformed HTTP 200 benefits page no
+  longer enters the shared cache; the next request can recover. Existing
+  production admin-key and CORS tests remain green. README files now describe
+  the five promotion sources, conservative calculation and release checklist.
+- Live browser review at mobile and desktop sizes: EAN 7790742358608 returned
+  five published prices; quick comparison, detail Prices/Benefits, selected
+  La Reina add and all-store cart totals worked. The test line was removed.
+  Jumbo's non-EAN campaign appeared as `Info`/conditioned; removed an erroneous
+  `Compatible` payment chip from store-product campaigns. Five store filters
+  were restored after inspection. Web app remains on 127.0.0.1:53249 and the
+  development API on 127.0.0.1:8004 for manual review.
+- Android emulator installed the fresh debug APK. EAN search and quick
+  comparison loaded five stores. Rotating to a low-height landscape viewport
+  reproduced a 49 px SearchScreen overflow. Added a red widget test, moved
+  variable-length notices into the results scroller, and verified no overflow
+  on the same emulator screen after rebuilding/reinstalling. No physical
+  camera or real Android phone was available in this run.
+- Final verification: backend 144 passed / 10 optional skipped / 163
+  subtests; six opt-in live promotion contracts passed; Flutter 171 passed /
+  two optional skipped; analyzer clean; release web and Android debug APK
+  builds passed. `git diff --check` reported no whitespace errors. The web
+  bundle targets the local test API and is not a deployable production URL.
+- Remaining limits: no current verified EAN-level Jumbo/La Reina quantity
+  promotion or fully calculable bank benefit; no live eligible 2x1 checkout,
+  consumed bank caps, guaranteed stock, final ticket total, physical barcode
+  scan, signed release AAB or public HTTPS deployment. Cold upstream response
+  time may vary despite warm-cache savings. No commit or push.

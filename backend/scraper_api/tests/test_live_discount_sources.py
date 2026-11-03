@@ -19,6 +19,13 @@ from services.discounts import (
     _master_data,
 )
 from services.refresh import LAGALLEGA_BLINK_URL
+from services.retailer_benefits import (
+    JUMBO_LEGALS_URL,
+    LAREINA_BENEFITS_URL,
+    _PageParagraphs,
+    inspect_lareina_benefits,
+)
+from datetime import date
 from scrapers.stores import REQUEST_HEADERS
 from scrapers.carrefour_offers import SIMULATION_URL
 
@@ -75,3 +82,18 @@ def test_lagallega_public_page_and_external_feed():
     feed = requests.get(LAGALLEGA_BLINK_URL, timeout=25)
     feed.raise_for_status()
     assert 'id="blink-merchant-bootstrap"' in feed.text
+
+
+def test_jumbo_official_legals_page_contract():
+    response = requests.get(JUMBO_LEGALS_URL, headers=REQUEST_HEADERS, timeout=25)
+    response.raise_for_status()
+    paragraphs = [text for text, _ in _PageParagraphs(response.text).paragraphs]
+    assert paragraphs, "Jumbo legal page no longer exposes readable paragraphs"
+    assert any("JUMBO" in text.upper() for text in paragraphs)
+
+
+def test_lareina_official_benefits_page_contract():
+    response = requests.get(LAREINA_BENEFITS_URL, headers=REQUEST_HEADERS, timeout=25)
+    response.raise_for_status()
+    audit = inspect_lareina_benefits(response.text, date.today())
+    assert audit.parsed_cards > 0, "La Reina benefits cards changed structure"

@@ -472,6 +472,9 @@ def same_catalog_product(reference, candidate: Product) -> bool:
         for dimension in ("milk", "diet", "sugar", "lactose", "flavor", "intensity", "stems", "condom", "form"):
             requested, offered = left_variants[dimension], right_variants[dimension]
             if requested and offered and requested.isdisjoint(offered):
+                if (dimension == "flavor" and "oreo" in left_tokens & right_tokens
+                        and requested | offered == {"original", "vainilla"}):
+                    continue
                 if dimension == "milk":
                     percentages = set(left.percentages) | set(right.percentages)
                     milk_aliases = {1.0: {"liviana", "descremada"},

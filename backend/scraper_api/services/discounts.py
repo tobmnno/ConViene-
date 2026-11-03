@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from calendar import monthrange
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import date, datetime, timezone
 from functools import lru_cache
 import hashlib
@@ -10,7 +10,8 @@ import json
 from pathlib import Path
 import re
 import time
-from typing import Any
+from threading import Lock
+from typing import Any, Callable
 
 import requests
 
@@ -18,6 +19,10 @@ from models import DiscountPromotion, DiscountsResponse
 from scrapers.stores import REQUEST_HEADERS
 from services.monitoring import timed_check
 from services.refresh import refresh_lagallega_catalog
+from services.retailer_benefits import (
+    JUMBO_LEGALS_URL, LAREINA_BENEFITS_URL,
+    _PageParagraphs, inspect_lareina_benefits, parse_jumbo_legals,
+)
 from services.scraper import resolve_stores
 
 
@@ -101,10 +106,57 @@ _DEGRADED_CACHE_TTL_SECONDS = 120
 _DISCOUNT_CACHE_MAX_ENTRIES = 128
 _discount_cache: dict[tuple, tuple[float, int, DiscountsResponse]] = {}
 _source_fingerprints: dict[tuple[str, str], str] = {}
+_official_page_cache: dict[str, tuple[float, str]] = {}
+_official_page_inflight: dict[str, Future[str]] = {}
+_official_page_lock = Lock()
 
 
 def clear_discount_cache() -> None:
     _discount_cache.clear()
+    with _official_page_lock:
+        _official_page_cache.clear()
+
+
+def _jumbo_legal_structure(html: str) -> bool:
+    return any("JUMBO" in text.upper() for text, _ in _PageParagraphs(html).paragraphs)
+
+
+def _lareina_benefits_structure(html: str) -> bool:
+    return inspect_lareina_benefits(html, date.today()).parsed_cards > 0
+
+
+def _official_page(url: str, max_bytes: int, valid_structure: Callable[[str], bool]) -> str:
+    with _official_page_lock:
+        cached = _official_page_cache.get(url)
+        if cached and time.monotonic() - cached[0] < 300:
+            return cached[1]
+        in_flight = _official_page_inflight.get(url)
+        if in_flight is None:
+            in_flight = Future()
+            _official_page_inflight[url] = in_flight
+            owner = True
+        else:
+            owner = False
+    if not owner:
+        return in_flight.result()
+    try:
+        response = requests.get(url, headers=REQUEST_HEADERS, timeout=25)
+        response.raise_for_status()
+        if not response.content or len(response.content) > max_bytes:
+            raise ValueError("Official benefits page is empty or exceeds the size limit")
+        html = response.text
+        if not html.strip() or not valid_structure(html):
+            raise ValueError("Official benefits page structure could not be verified")
+        with _official_page_lock:
+            _official_page_cache[url] = (time.monotonic(), html)
+        in_flight.set_result(html)
+        return html
+    except Exception as exc:
+        in_flight.set_exception(exc)
+        raise
+    finally:
+        with _official_page_lock:
+            _official_page_inflight.pop(url, None)
 
 
 def scrape_discounts(
@@ -123,6 +175,7 @@ def scrape_discounts(
     def scrape_store(store: str):
         store_warnings: list[str] = []
         finish_check = timed_check(f"promotions.{store}")
+        source_checked = False
         try:
             if store == "carrefour":
                 rows = _scrape_carrefour(current_date, store_warnings)
@@ -150,6 +203,27 @@ def scrape_discounts(
                     rows.extend(fallback_rows)
                     if fallback_rows:
                         store_warnings.append("la_gallega: catalogo local sin verificacion actual; no se calcula en precios finales")
+            elif store == "jumbo":
+                html = _official_page(JUMBO_LEGALS_URL, 5_000_000, _jumbo_legal_structure)
+                rows = parse_jumbo_legals(html, current_date)
+                source_checked = True
+                if rows:
+                    store_warnings.append("jumbo: campana oficial sin EAN; no se calcula ahorro por producto")
+                else:
+                    store_warnings.append("jumbo: no se confirmo una campana vigente con productos identificados")
+            elif store == "lareina":
+                html = _official_page(LAREINA_BENEFITS_URL, 1_000_000, _lareina_benefits_structure)
+                audit = inspect_lareina_benefits(html, current_date)
+                source_checked = audit.parsed_cards > 0
+                rows = []
+                if audit.expired:
+                    store_warnings.append(f"lareina: {audit.expired} beneficios oficiales vencidos omitidos")
+                if audit.unverifiable:
+                    store_warnings.append(
+                        f"lareina: {audit.unverifiable} beneficio(s) sin vigencia o condiciones completas; no calculables"
+                    )
+                if not source_checked:
+                    store_warnings.append("lareina: la estructura de beneficios no pudo verificarse")
             else:
                 rows = []
                 store_warnings.append(f"{store}: no hay beneficios bancarios verificables integrados")
@@ -165,7 +239,7 @@ def scrape_discounts(
             previous = _source_fingerprints.get(fingerprint_key)
             _source_fingerprints[fingerprint_key] = fingerprint
             change = "catalogo modificado" if previous and previous != fingerprint else ""
-            finish_check(success=bool(rows), count=len(rows), detail="; ".join(store_warnings + ([change] if change else [])))
+            finish_check(success=source_checked or bool(rows), count=len(rows), detail="; ".join(store_warnings + ([change] if change else [])))
         except Exception as exc:
             rows = []
             store_warnings.append(f"{store}: no se pudieron leer descuentos ({type(exc).__name__})")

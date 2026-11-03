@@ -12,7 +12,7 @@ from models import EquivalentsResponse, Product, SearchMatch
 from services.scraper import SearchQueryResult
 from services.images import ImageProxyError, MAX_IMAGE_BYTES, fetch_image, validate_image_url
 from services.refresh import RefreshInProgress
-from services.monitoring import _safe_detail
+from services.monitoring import _safe_detail, record_check, status_snapshot
 
 TEST_ADMIN_KEY = "test-admin-key-with-at-least-24-chars"
 
@@ -116,6 +116,17 @@ class MonitoringSecurityTests(unittest.TestCase):
         self.assertNotIn("private", detail)
         self.assertNotIn("example.com", detail)
         self.assertIn("timeout", detail)
+
+    def test_source_status_keeps_last_check_and_last_verified_separate(self):
+        source = "promotions.release-contract-test"
+        record_check(source, success=True, duration_ms=12, count=3)
+        verified = status_snapshot()["sources"][source]["last_success_at"]
+        record_check(source, success=False, duration_ms=24, detail="structure changed")
+        state = status_snapshot()["sources"][source]
+        self.assertEqual(state["last_success_at"], verified)
+        self.assertIsNotNone(state["last_check_at"])
+        self.assertEqual(state["last_count"], 3)
+        self.assertEqual(state["consecutive_failures"], 1)
 
 
 class ApiSecurityTests(unittest.TestCase):

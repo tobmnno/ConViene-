@@ -1378,5 +1378,1385 @@
       "https://www.carrefour.com.ar/preservativo-super-fino-tulipan-12-u/p"
     ],
     "captured_at": "2026-10-30T08:03:00.996041-03:00"
+  },
+  {
+    "id": "official_five_store_positive_0",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=21271&P=1&producto=Crema-de-leche-la-serenisima-0-A?A?-lactosa",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790742142009&P=1&producto=crema-d/leche-p/--batir-zero-lacto-la-serenisima--200-ml"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "lareina",
+      "name": "crema d/leche p/ batir zero lacto la serenisima 200 ml",
+      "brand": "",
+      "ean": "7790742142009",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790742142009&P=1&producto=crema-d/leche-p/--batir-zero-lacto-la-serenisima--200-ml"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "crema de leche la serenisima 0 lactosa",
+      "brand": "",
+      "ean": "7790742142009",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=21271&P=1&producto=Crema-de-leche-la-serenisima-0-A?A?-lactosa"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_1",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=25104&P=1&producto=Crema-de-leche-la-serenisima-para-cociar-x-330-ml.",
+      "https://www.jumbo.com.ar/crema-la-serenisima-culinaria-330ml/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Crema La Serenisima Culinaria 330ml",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742141705",
+      "url": "https://www.jumbo.com.ar/crema-la-serenisima-culinaria-330ml/p"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "crema de leche la serenisima para cociar x 330 ml",
+      "brand": "",
+      "ean": "7790742141705",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=25104&P=1&producto=Crema-de-leche-la-serenisima-para-cociar-x-330-ml."
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_2",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=36550&P=1&producto=Crema-de-leche-la-serenisima-uat-x-200-ml.batir",
+      "https://www.jumbo.com.ar/crema-la-serenisima-batir-200ml/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Crema para Batir Clásica 200 Ml La Serenisima",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742011701",
+      "url": "https://www.jumbo.com.ar/crema-la-serenisima-batir-200ml/p"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "crema de leche la serenisima uat x 200 ml.batir",
+      "brand": "",
+      "ean": "7790742011701",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=36550&P=1&producto=Crema-de-leche-la-serenisima-uat-x-200-ml.batir"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_3",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=36548&P=1&producto=Crema-de-leche-la-serenisima-uat-x-330-ml.",
+      "https://www.jumbo.com.ar/crema-la-serenisima-batir-330ml/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Crema La Serenisima Batir 330ml",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742141101",
+      "url": "https://www.jumbo.com.ar/crema-la-serenisima-batir-330ml/p"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "crema de leche la serenisima uat x 330 ml",
+      "brand": "",
+      "ean": "7790742141101",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=36548&P=1&producto=Crema-de-leche-la-serenisima-uat-x-330-ml."
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_4",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=37966&P=1&producto=crema-de-leche-la-serenisima-x-200-ml-liviana-para-cocinar",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790742141903&P=1&producto=crema-d/leche-liviana-descremada-b-la-serenisima--200-ml"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "lareina",
+      "name": "crema d/leche liviana descremada b la serenisima 200 ml",
+      "brand": "",
+      "ean": "7790742141903",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790742141903&P=1&producto=crema-d/leche-liviana-descremada-b-la-serenisima--200-ml"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "crema de leche la serenisima x 200 ml liviana para cocinar",
+      "brand": "",
+      "ean": "7790742141903",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=37966&P=1&producto=crema-de-leche-la-serenisima-x-200-ml-liviana-para-cocinar"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_5",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00532300-00532300-200",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7622201735258&P=1&producto=galletitas-rellenas-vainilla-tripa-oreo--354-gr"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "lareina",
+      "name": "galletitas rellenas vainilla tripa oreo 354 gr",
+      "brand": "",
+      "ean": "7622201735258",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7622201735258&P=1&producto=galletitas-rellenas-vainilla-tripa-oreo--354-gr"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Rellenas Con Crema Sabor Original 354g",
+      "brand": "OREO",
+      "ean": "7622201735258",
+      "url": "https://www.coto.com.ar/productos_/R-00532300-00532300-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_6",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00532297-00532297-200",
+      "https://www.jumbo.com.ar/galletitas-oreo-rellenas-con-crema-sabor-original-118-gr-2/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Galletitas Oreo Rellenas Con Crema Sabor Original 118 Gr",
+      "brand": "OREO",
+      "ean": "7622201735296",
+      "url": "https://www.jumbo.com.ar/galletitas-oreo-rellenas-con-crema-sabor-original-118-gr-2/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Rellenas Con Crema Sabor Original 118g",
+      "brand": "OREO",
+      "ean": "7622201735296",
+      "url": "https://www.coto.com.ar/productos_/R-00532297-00532297-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_7",
+    "evidence": [
+      "https://www.carrefour.com.ar/galletitas-oreo-rellena-con-crema-sabor-original-1825-g-715950/p",
+      "https://www.jumbo.com.ar/galletitas-oreo-rellenas-con-crema-sabor-original-182-5-gr-2/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Galletitas Sabor Original 182,5 Grs Oreo",
+      "brand": "OREO",
+      "ean": "7622201735821",
+      "url": "https://www.jumbo.com.ar/galletitas-oreo-rellenas-con-crema-sabor-original-182-5-gr-2/p"
+    },
+    "selected": {
+      "store": "carrefour",
+      "name": "Galletitas Oreo rellenas con crema sabor original 182,5 g.",
+      "brand": "Oreo",
+      "ean": "7622201735821",
+      "url": "https://www.carrefour.com.ar/galletitas-oreo-rellena-con-crema-sabor-original-1825-g-715950/p"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_8",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00182704-00182704-200",
+      "https://www.jumbo.com.ar/galletitas-oreo-mini-rellenas-sabor-original-50-gr-2/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Galletitas Oreo Mini Rellenas Sabor Original 50 Gr",
+      "brand": "OREO",
+      "ean": "7622201761288",
+      "url": "https://www.jumbo.com.ar/galletitas-oreo-mini-rellenas-sabor-original-50-gr-2/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Mini Rellenas Con Crema Sabor Original 50g",
+      "brand": "OREO",
+      "ean": "7622201761288",
+      "url": "https://www.coto.com.ar/productos_/R-00182704-00182704-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_9",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00520010-00520010-200",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7622201806538&P=1&producto=galletitas-golden-oreo--354-gr"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "lareina",
+      "name": "galletitas golden oreo 354 gr",
+      "brand": "",
+      "ean": "7622201806538",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7622201806538&P=1&producto=galletitas-golden-oreo--354-gr"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Golden Sabor Vainilla Rellenas Con Crema 354g",
+      "brand": "OREO",
+      "ean": "7622201806538",
+      "url": "https://www.coto.com.ar/productos_/R-00520010-00520010-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_10",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00582738-00582738-200",
+      "https://www.jumbo.com.ar/galletitas-sin-tacc-95-gr-oreo/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Galletitas Sin Tacc 95 Gr Oreo",
+      "brand": "OREO",
+      "ean": "7622202038099",
+      "url": "https://www.jumbo.com.ar/galletitas-sin-tacc-95-gr-oreo/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Sin Gluten 95g",
+      "brand": "OREO",
+      "ean": "7622202038099",
+      "url": "https://www.coto.com.ar/productos_/R-00582738-00582738-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_11",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=16865&P=1&producto=GALL.OREO-X118GR.REG.CCACAO",
+      "https://www.jumbo.com.ar/oreo-chocolate-118-g-2/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Galletitas Sabor Chocolate 118 Grs Oreo",
+      "brand": "OREO",
+      "ean": "7622202049033",
+      "url": "https://www.jumbo.com.ar/oreo-chocolate-118-g-2/p"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "gall.oreo x118gr.reg.ccacao",
+      "brand": "",
+      "ean": "7622202049033",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=16865&P=1&producto=GALL.OREO-X118GR.REG.CCACAO"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_12",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00584001-00584001-200",
+      "https://www.jumbo.com.ar/galletitas-mini-oreo-rellenas-con-crema-sabor-original-150-gr-2/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Galletitas Mini Oreo Rellenas Con Crema Sabor Original 150 Gr",
+      "brand": "OREO",
+      "ean": "7622202219337",
+      "url": "https://www.jumbo.com.ar/galletitas-mini-oreo-rellenas-con-crema-sabor-original-150-gr-2/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas Mini OREO Rellenas Con Crema Sabor Original 150g",
+      "brand": "OREO",
+      "ean": "7622202219337",
+      "url": "https://www.coto.com.ar/productos_/R-00584001-00584001-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_13",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00507766-00507766-200",
+      "https://www.jumbo.com.ar/yerba-mate-4flex-sin-palo-taragui-1-kg/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Yerba Mate Sin Palo 4flex 1 Kg Taragui",
+      "brand": "TARAGUI",
+      "ean": "7790387013498",
+      "url": "https://www.jumbo.com.ar/yerba-mate-4flex-sin-palo-taragui-1-kg/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Sin Pal Taragui Paq 1 Kgm",
+      "brand": "TARAGUI",
+      "ean": "7790387013498",
+      "url": "https://www.coto.com.ar/productos_/R-00507766-00507766-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_14",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00507761-00507761-200",
+      "https://www.jumbo.com.ar/yerba-mate-4flex-sin-palo-taragui-500-gr/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Yerba Mate Sin Palo 500 Grs Taragui",
+      "brand": "TARAGUI",
+      "ean": "7790387013504",
+      "url": "https://www.jumbo.com.ar/yerba-mate-4flex-sin-palo-taragui-500-gr/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Sin Pal Taragui Paq 500 Grm",
+      "brand": "TARAGUI",
+      "ean": "7790387013504",
+      "url": "https://www.coto.com.ar/productos_/R-00507761-00507761-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_15",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00499474-00499474-200",
+      "https://www.jumbo.com.ar/yerba-mate-4flex-taragui-1-kg/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Yerba Mate con Palo 1 Kg Taragui",
+      "brand": "TARAGUI",
+      "ean": "7790387013610",
+      "url": "https://www.jumbo.com.ar/yerba-mate-4flex-taragui-1-kg/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Taragui 1 Kg",
+      "brand": "TARAGUI",
+      "ean": "7790387013610",
+      "url": "https://www.coto.com.ar/productos_/R-00499474-00499474-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_16",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00499473-00499473-200",
+      "https://www.jumbo.com.ar/yerba-mate-4flex-taragui-1-2kg/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Yerba Mate con Palo 500 Grs Taragui",
+      "brand": "TARAGUI",
+      "ean": "7790387013627",
+      "url": "https://www.jumbo.com.ar/yerba-mate-4flex-taragui-1-2kg/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex TARAGUI 500 Gr",
+      "brand": "TARAGUI",
+      "ean": "7790387013627",
+      "url": "https://www.coto.com.ar/productos_/R-00499473-00499473-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_17",
+    "selected": {
+      "store": "la_gallega",
+      "name": "dulce de leche la paulina x 400 gr",
+      "brand": "",
+      "ean": "7794990878581",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=14364&P=1&producto=Dulce-de-leche-la-paulina-x-400-gr."
+    },
+    "candidate": {
+      "store": "lareina",
+      "name": "dulce de leche la paulina 400 gr",
+      "brand": "",
+      "ean": "7794990878581",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7794990878581&P=1&producto=dulce-de-leche-la-paulina--400-gr"
+    },
+    "same_product": true,
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=14364&P=1&producto=Dulce-de-leche-la-paulina-x-400-gr.",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7794990878581&P=1&producto=dulce-de-leche-la-paulina--400-gr"
+    ],
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_18",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00003750-00003750-200",
+      "https://www.jumbo.com.ar/gaseosa-coca-cola-sabor-original-354-ml/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Gaseosa Coca-cola Sabor Original 354 Ml",
+      "brand": "COCA COLA",
+      "ean": "7790895000232",
+      "url": "https://www.jumbo.com.ar/gaseosa-coca-cola-sabor-original-354-ml/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Sabor Original 354 Ml",
+      "brand": "COCA COLA",
+      "ean": "7790895000232",
+      "url": "https://www.coto.com.ar/productos_/R-00003750-00003750-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_19",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=63173&P=1&producto=Bebida-sin-alcohol-coca-cola-x-500-ml.",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790895000782&P=1&producto=gaseosa-coca-cola--500-cc"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "lareina",
+      "name": "gaseosa coca cola 500 cc",
+      "brand": "",
+      "ean": "7790895000782",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790895000782&P=1&producto=gaseosa-coca-cola--500-cc"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "bebida sin alcohol coca cola x 500 ml",
+      "brand": "",
+      "ean": "7790895000782",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=63173&P=1&producto=Bebida-sin-alcohol-coca-cola-x-500-ml."
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_20",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00014450-00014450-200",
+      "https://www.jumbo.com.ar/gaseosa-coca-cola-sabor-original-2-25-l/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Gaseosa Cola Sabor Original 2.25 Lts Coca Cola",
+      "brand": "COCA COLA",
+      "ean": "7790895000997",
+      "url": "https://www.jumbo.com.ar/gaseosa-coca-cola-sabor-original-2-25-l/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Sabor Original 2,25 Lt",
+      "brand": "COCA COLA",
+      "ean": "7790895000997",
+      "url": "https://www.coto.com.ar/productos_/R-00014450-00014450-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_21",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=70961&P=1&producto=Coca-cola-light-x-1,5-lt.",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790895001451&P=1&producto=gaseosa-light-coca-cola-1500-cc"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "lareina",
+      "name": "gaseosa light coca cola 1500 cc",
+      "brand": "",
+      "ean": "7790895001451",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790895001451&P=1&producto=gaseosa-light-coca-cola-1500-cc"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "coca-cola light x 1,5 lt",
+      "brand": "",
+      "ean": "7790895001451",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=70961&P=1&producto=Coca-cola-light-x-1,5-lt."
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_22",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=22376&P=1&producto=Gaseosa-coca-cola-light-x-2,25-lt.",
+      "https://www.jumbo.com.ar/coca-cola-sabor-liviano-2-25-lt/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Gaseosa Cola Sabor Liviano 2,25 Lts Coca Cola",
+      "brand": "COCA COLA",
+      "ean": "7790895005312",
+      "url": "https://www.jumbo.com.ar/coca-cola-sabor-liviano-2-25-lt/p"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "gaseosa coca cola light x 2,25 lt",
+      "brand": "",
+      "ean": "7790895005312",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=22376&P=1&producto=Gaseosa-coca-cola-light-x-2,25-lt."
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_23",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00478989-00478989-200",
+      "https://www.jumbo.com.ar/gaseosa-coca-cola-zero-1-75lt/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Gaseosa Cola Sin Azúcar 1.75 Lts Coca Cola",
+      "brand": "COCA COLA",
+      "ean": "7790895012259",
+      "url": "https://www.jumbo.com.ar/gaseosa-coca-cola-zero-1-75lt/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Zero 1,75l",
+      "brand": "COCA COLA",
+      "ean": "7790895012259",
+      "url": "https://www.coto.com.ar/productos_/R-00478989-00478989-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_24",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00180416-00180416-200",
+      "https://www.jumbo.com.ar/coca-cola-zero-2-25-lt/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Gaseosa Cola Zero 2,25 Lts Coca Cola",
+      "brand": "COCA COLA",
+      "ean": "7790895067570",
+      "url": "https://www.jumbo.com.ar/coca-cola-zero-2-25-lt/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Zero 2,25 Lt",
+      "brand": "COCA COLA",
+      "ean": "7790895067570",
+      "url": "https://www.coto.com.ar/productos_/R-00180416-00180416-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_25",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00179844-00179844-200",
+      "https://www.jumbo.com.ar/coca-cola-zero-354-ml/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Gaseosa Sin Azúcar Sabor Cola 354 Ml Coca Cola",
+      "brand": "COCA COLA",
+      "ean": "7790895067587",
+      "url": "https://www.jumbo.com.ar/coca-cola-zero-354-ml/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Zero 354 Ml",
+      "brand": "COCA COLA",
+      "ean": "7790895067587",
+      "url": "https://www.coto.com.ar/productos_/R-00179844-00179844-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_26",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=26499&P=1&producto=Dulce-de-leche-la-paulina-repostero-x-1-kg.",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790398000326&P=1&producto=dulce-de-leche-repostero-la-paulina----1-kg"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "lareina",
+      "name": "dulce de leche repostero la paulina 1 kg",
+      "brand": "",
+      "ean": "7790398000326",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790398000326&P=1&producto=dulce-de-leche-repostero-la-paulina----1-kg"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "dulce de leche la paulina repostero x 1 kg",
+      "brand": "",
+      "ean": "7790398000326",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=26499&P=1&producto=Dulce-de-leche-la-paulina-repostero-x-1-kg."
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_27",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=25007&P=1&producto=Dulce-de-leche-la-paulina-repostero-x-400-gr.",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7794990866977&P=1&producto=dulce-de-leche-repostero-la-paulina--400-gr"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "lareina",
+      "name": "dulce de leche repostero la paulina 400 gr",
+      "brand": "",
+      "ean": "7794990866977",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7794990866977&P=1&producto=dulce-de-leche-repostero-la-paulina--400-gr"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "dulce de leche la paulina repostero x 400 gr",
+      "brand": "",
+      "ean": "7794990866977",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=25007&P=1&producto=Dulce-de-leche-la-paulina-repostero-x-400-gr."
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_28",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00103812-00103812-200",
+      "https://www.jumbo.com.ar/preservativos-tulipan-clasico-6-u/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Preservativos Tulipan Clasico 6 U",
+      "brand": "TULIPAN",
+      "ean": "7791014001512",
+      "url": "https://www.jumbo.com.ar/preservativos-tulipan-clasico-6-u/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Preservativos . TULIPAN Bli 6 Uni",
+      "brand": "TULIPAN",
+      "ean": "7791014001512",
+      "url": "https://www.coto.com.ar/productos_/R-00103812-00103812-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_positive_29",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00103376-00103376-200",
+      "https://www.jumbo.com.ar/preservativos-tulipan-superfino-6-u/p"
+    ],
+    "same_product": true,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Preservativos Tulipan Superfino 6 U",
+      "brand": "TULIPAN",
+      "ean": "7791014001536",
+      "url": "https://www.jumbo.com.ar/preservativos-tulipan-superfino-6-u/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Preservativos Sup/Fino TULIPAN Bli 6 Uni",
+      "brand": "TULIPAN",
+      "ean": "7791014001536",
+      "url": "https://www.coto.com.ar/productos_/R-00103376-00103376-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_0",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=21271&P=1&producto=Crema-de-leche-la-serenisima-0-A?A?-lactosa",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790742141903&P=1&producto=crema-d/leche-liviana-descremada-b-la-serenisima--200-ml"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "lareina",
+      "name": "crema d/leche liviana descremada b la serenisima 200 ml",
+      "brand": "",
+      "ean": "7790742141903",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790742141903&P=1&producto=crema-d/leche-liviana-descremada-b-la-serenisima--200-ml"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "crema de leche la serenisima 0 lactosa",
+      "brand": "",
+      "ean": "7790742142009",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=21271&P=1&producto=Crema-de-leche-la-serenisima-0-A?A?-lactosa"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_1",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=25104&P=1&producto=Crema-de-leche-la-serenisima-para-cociar-x-330-ml.",
+      "https://www.jumbo.com.ar/crema-la-serenisima-batir-330ml/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Crema La Serenisima Batir 330ml",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742141101",
+      "url": "https://www.jumbo.com.ar/crema-la-serenisima-batir-330ml/p"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "crema de leche la serenisima para cociar x 330 ml",
+      "brand": "",
+      "ean": "7790742141705",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=25104&P=1&producto=Crema-de-leche-la-serenisima-para-cociar-x-330-ml."
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_2",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=36550&P=1&producto=Crema-de-leche-la-serenisima-uat-x-200-ml.batir",
+      "https://www.jumbo.com.ar/crema-la-serenisima-batir-330ml/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Crema La Serenisima Batir 330ml",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742141101",
+      "url": "https://www.jumbo.com.ar/crema-la-serenisima-batir-330ml/p"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "crema de leche la serenisima uat x 200 ml.batir",
+      "brand": "",
+      "ean": "7790742011701",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=36550&P=1&producto=Crema-de-leche-la-serenisima-uat-x-200-ml.batir"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_3",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=25104&P=1&producto=Crema-de-leche-la-serenisima-para-cociar-x-330-ml.",
+      "https://www.jumbo.com.ar/crema-la-serenisima-batir-200ml/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Crema para Batir Clásica 200 Ml La Serenisima",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742011701",
+      "url": "https://www.jumbo.com.ar/crema-la-serenisima-batir-200ml/p"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "crema de leche la serenisima para cociar x 330 ml",
+      "brand": "",
+      "ean": "7790742141705",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=25104&P=1&producto=Crema-de-leche-la-serenisima-para-cociar-x-330-ml."
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_4",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=36550&P=1&producto=Crema-de-leche-la-serenisima-uat-x-200-ml.batir",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790742141903&P=1&producto=crema-d/leche-liviana-descremada-b-la-serenisima--200-ml"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "lareina",
+      "name": "crema d/leche liviana descremada b la serenisima 200 ml",
+      "brand": "",
+      "ean": "7790742141903",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7790742141903&P=1&producto=crema-d/leche-liviana-descremada-b-la-serenisima--200-ml"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "crema de leche la serenisima uat x 200 ml.batir",
+      "brand": "",
+      "ean": "7790742011701",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=36550&P=1&producto=Crema-de-leche-la-serenisima-uat-x-200-ml.batir"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_5",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=21271&P=1&producto=Crema-de-leche-la-serenisima-0-A?A?-lactosa",
+      "https://www.jumbo.com.ar/crema-la-serenisima-culinaria-330ml/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Crema La Serenisima Culinaria 330ml",
+      "brand": "LA SERENISIMA",
+      "ean": "7790742141705",
+      "url": "https://www.jumbo.com.ar/crema-la-serenisima-culinaria-330ml/p"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "crema de leche la serenisima 0 lactosa",
+      "brand": "",
+      "ean": "7790742142009",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=21271&P=1&producto=Crema-de-leche-la-serenisima-0-A?A?-lactosa"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_6",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00532300-00532300-200",
+      "https://www.jumbo.com.ar/galletitas-oreo-rellenas-con-crema-sabor-original-118-gr-2/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Galletitas Oreo Rellenas Con Crema Sabor Original 118 Gr",
+      "brand": "OREO",
+      "ean": "7622201735296",
+      "url": "https://www.jumbo.com.ar/galletitas-oreo-rellenas-con-crema-sabor-original-118-gr-2/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Rellenas Con Crema Sabor Original 354g",
+      "brand": "OREO",
+      "ean": "7622201735258",
+      "url": "https://www.coto.com.ar/productos_/R-00532300-00532300-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_7",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00182704-00182704-200",
+      "https://www.jumbo.com.ar/galletitas-mini-oreo-rellenas-con-crema-sabor-original-150-gr-2/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Galletitas Mini Oreo Rellenas Con Crema Sabor Original 150 Gr",
+      "brand": "OREO",
+      "ean": "7622202219337",
+      "url": "https://www.jumbo.com.ar/galletitas-mini-oreo-rellenas-con-crema-sabor-original-150-gr-2/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Mini Rellenas Con Crema Sabor Original 50g",
+      "brand": "OREO",
+      "ean": "7622201761288",
+      "url": "https://www.coto.com.ar/productos_/R-00182704-00182704-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_8",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00532297-00532297-200",
+      "https://www.jumbo.com.ar/galletitas-sin-tacc-95-gr-oreo/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Galletitas Sin Tacc 95 Gr Oreo",
+      "brand": "OREO",
+      "ean": "7622202038099",
+      "url": "https://www.jumbo.com.ar/galletitas-sin-tacc-95-gr-oreo/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Rellenas Con Crema Sabor Original 118g",
+      "brand": "OREO",
+      "ean": "7622201735296",
+      "url": "https://www.coto.com.ar/productos_/R-00532297-00532297-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_9",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00532300-00532300-200",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7622201806538&P=1&producto=galletitas-golden-oreo--354-gr"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "lareina",
+      "name": "galletitas golden oreo 354 gr",
+      "brand": "",
+      "ean": "7622201806538",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7622201806538&P=1&producto=galletitas-golden-oreo--354-gr"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Rellenas Con Crema Sabor Original 354g",
+      "brand": "OREO",
+      "ean": "7622201735258",
+      "url": "https://www.coto.com.ar/productos_/R-00532300-00532300-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_10",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00532297-00532297-200",
+      "https://www.jumbo.com.ar/oreo-chocolate-118-g-2/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Galletitas Sabor Chocolate 118 Grs Oreo",
+      "brand": "OREO",
+      "ean": "7622202049033",
+      "url": "https://www.jumbo.com.ar/oreo-chocolate-118-g-2/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Rellenas Con Crema Sabor Original 118g",
+      "brand": "OREO",
+      "ean": "7622201735296",
+      "url": "https://www.coto.com.ar/productos_/R-00532297-00532297-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_11",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00532300-00532300-200",
+      "https://www.jumbo.com.ar/galletitas-oreo-rellenas-con-crema-sabor-original-182-5-gr-2/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Galletitas Sabor Original 182,5 Grs Oreo",
+      "brand": "OREO",
+      "ean": "7622201735821",
+      "url": "https://www.jumbo.com.ar/galletitas-oreo-rellenas-con-crema-sabor-original-182-5-gr-2/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Galletitas OREO Rellenas Con Crema Sabor Original 354g",
+      "brand": "OREO",
+      "ean": "7622201735258",
+      "url": "https://www.coto.com.ar/productos_/R-00532300-00532300-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_12",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00499474-00499474-200",
+      "https://www.jumbo.com.ar/yerba-mate-4flex-sin-palo-taragui-1-kg/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Yerba Mate Sin Palo 4flex 1 Kg Taragui",
+      "brand": "TARAGUI",
+      "ean": "7790387013498",
+      "url": "https://www.jumbo.com.ar/yerba-mate-4flex-sin-palo-taragui-1-kg/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Taragui 1 Kg",
+      "brand": "TARAGUI",
+      "ean": "7790387013610",
+      "url": "https://www.coto.com.ar/productos_/R-00499474-00499474-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_13",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00499474-00499474-200",
+      "https://www.jumbo.com.ar/yerba-mate-4flex-taragui-1-2kg/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Yerba Mate con Palo 500 Grs Taragui",
+      "brand": "TARAGUI",
+      "ean": "7790387013627",
+      "url": "https://www.jumbo.com.ar/yerba-mate-4flex-taragui-1-2kg/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Taragui 1 Kg",
+      "brand": "TARAGUI",
+      "ean": "7790387013610",
+      "url": "https://www.coto.com.ar/productos_/R-00499474-00499474-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_14",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00507761-00507761-200",
+      "https://www.jumbo.com.ar/yerba-mate-4flex-taragui-1-2kg/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Yerba Mate con Palo 500 Grs Taragui",
+      "brand": "TARAGUI",
+      "ean": "7790387013627",
+      "url": "https://www.jumbo.com.ar/yerba-mate-4flex-taragui-1-2kg/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Sin Pal Taragui Paq 500 Grm",
+      "brand": "TARAGUI",
+      "ean": "7790387013504",
+      "url": "https://www.coto.com.ar/productos_/R-00507761-00507761-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_15",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00507761-00507761-200",
+      "https://www.jumbo.com.ar/yerba-mate-4flex-sin-palo-taragui-1-kg/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Yerba Mate Sin Palo 4flex 1 Kg Taragui",
+      "brand": "TARAGUI",
+      "ean": "7790387013498",
+      "url": "https://www.jumbo.com.ar/yerba-mate-4flex-sin-palo-taragui-1-kg/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Sin Pal Taragui Paq 500 Grm",
+      "brand": "TARAGUI",
+      "ean": "7790387013504",
+      "url": "https://www.coto.com.ar/productos_/R-00507761-00507761-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_16",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00499474-00499474-200",
+      "https://www.jumbo.com.ar/yerba-mate-taragui-20-saquitos-x-caja-1-u/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Yerba Mate Taragui 20 Saquitos X Caja - 1 U",
+      "brand": "TARAGUI",
+      "ean": "7790387011852",
+      "url": "https://www.jumbo.com.ar/yerba-mate-taragui-20-saquitos-x-caja-1-u/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Taragui 1 Kg",
+      "brand": "TARAGUI",
+      "ean": "7790387013610",
+      "url": "https://www.coto.com.ar/productos_/R-00499474-00499474-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_17",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00507761-00507761-200",
+      "https://www.jumbo.com.ar/yerba-mate-taragui-20-saquitos-x-caja-1-u/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Yerba Mate Taragui 20 Saquitos X Caja - 1 U",
+      "brand": "TARAGUI",
+      "ean": "7790387011852",
+      "url": "https://www.jumbo.com.ar/yerba-mate-taragui-20-saquitos-x-caja-1-u/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Yerba Mate 4 Flex Sin Pal Taragui Paq 500 Grm",
+      "brand": "TARAGUI",
+      "ean": "7790387013504",
+      "url": "https://www.coto.com.ar/productos_/R-00507761-00507761-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_18",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00014450-00014450-200",
+      "https://www.jumbo.com.ar/coca-cola-zero-2-25-lt/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Gaseosa Cola Zero 2,25 Lts Coca Cola",
+      "brand": "COCA COLA",
+      "ean": "7790895067570",
+      "url": "https://www.jumbo.com.ar/coca-cola-zero-2-25-lt/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Sabor Original 2,25 Lt",
+      "brand": "COCA COLA",
+      "ean": "7790895000997",
+      "url": "https://www.coto.com.ar/productos_/R-00014450-00014450-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_19",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00003750-00003750-200",
+      "https://www.jumbo.com.ar/coca-cola-zero-354-ml/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Gaseosa Sin Azúcar Sabor Cola 354 Ml Coca Cola",
+      "brand": "COCA COLA",
+      "ean": "7790895067587",
+      "url": "https://www.jumbo.com.ar/coca-cola-zero-354-ml/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Sabor Original 354 Ml",
+      "brand": "COCA COLA",
+      "ean": "7790895000232",
+      "url": "https://www.coto.com.ar/productos_/R-00003750-00003750-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_20",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00014450-00014450-200",
+      "https://www.jumbo.com.ar/coca-cola-sabor-liviano-2-25-lt/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Gaseosa Cola Sabor Liviano 2,25 Lts Coca Cola",
+      "brand": "COCA COLA",
+      "ean": "7790895005312",
+      "url": "https://www.jumbo.com.ar/coca-cola-sabor-liviano-2-25-lt/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Sabor Original 2,25 Lt",
+      "brand": "COCA COLA",
+      "ean": "7790895000997",
+      "url": "https://www.coto.com.ar/productos_/R-00014450-00014450-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_21",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00180416-00180416-200",
+      "https://www.jumbo.com.ar/gaseosa-coca-cola-zero-1-75lt/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Gaseosa Cola Sin Azúcar 1.75 Lts Coca Cola",
+      "brand": "COCA COLA",
+      "ean": "7790895012259",
+      "url": "https://www.jumbo.com.ar/gaseosa-coca-cola-zero-1-75lt/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Zero 2,25 Lt",
+      "brand": "COCA COLA",
+      "ean": "7790895067570",
+      "url": "https://www.coto.com.ar/productos_/R-00180416-00180416-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_22",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00611336-00611336-200",
+      "https://www.jumbo.com.ar/gaseosa-zero-x-600-ml-coca-cola/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Gaseosa Zero Sabor Cola 600 Ml Coca Cola",
+      "brand": "COCA COLA",
+      "ean": "7790895650840",
+      "url": "https://www.jumbo.com.ar/gaseosa-zero-x-600-ml-coca-cola/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Sabor Original Coca Cola 600ml",
+      "brand": "COCA COLA",
+      "ean": "7790895650833",
+      "url": "https://www.coto.com.ar/productos_/R-00611336-00611336-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_23",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00014450-00014450-200",
+      "https://www.jumbo.com.ar/gaseosa-sabor-original-x-600-ml-coca-cola/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Gaseosa Sabor Original 600 Ml Coca-cola",
+      "brand": "COCA COLA",
+      "ean": "7790895650833",
+      "url": "https://www.jumbo.com.ar/gaseosa-sabor-original-x-600-ml-coca-cola/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Gaseosa Coca-Cola Sabor Original 2,25 Lt",
+      "brand": "COCA COLA",
+      "ean": "7790895000997",
+      "url": "https://www.coto.com.ar/productos_/R-00014450-00014450-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_24",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=25007&P=1&producto=Dulce-de-leche-la-paulina-repostero-x-400-gr.",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7794990878581&P=1&producto=dulce-de-leche-la-paulina--400-gr"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "lareina",
+      "name": "dulce de leche la paulina 400 gr",
+      "brand": "",
+      "ean": "7794990878581",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7794990878581&P=1&producto=dulce-de-leche-la-paulina--400-gr"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "dulce de leche la paulina repostero x 400 gr",
+      "brand": "",
+      "ean": "7794990866977",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=25007&P=1&producto=Dulce-de-leche-la-paulina-repostero-x-400-gr."
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_25",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=26499&P=1&producto=Dulce-de-leche-la-paulina-repostero-x-1-kg.",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7794990866977&P=1&producto=dulce-de-leche-repostero-la-paulina--400-gr"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "lareina",
+      "name": "dulce de leche repostero la paulina 400 gr",
+      "brand": "",
+      "ean": "7794990866977",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7794990866977&P=1&producto=dulce-de-leche-repostero-la-paulina--400-gr"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "dulce de leche la paulina repostero x 1 kg",
+      "brand": "",
+      "ean": "7790398000326",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=26499&P=1&producto=Dulce-de-leche-la-paulina-repostero-x-1-kg."
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_26",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=28769&P=1&producto=Dulce-de-leche-la-paulina-x-1-kg.",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7794990878581&P=1&producto=dulce-de-leche-la-paulina--400-gr"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "lareina",
+      "name": "dulce de leche la paulina 400 gr",
+      "brand": "",
+      "ean": "7794990878581",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7794990878581&P=1&producto=dulce-de-leche-la-paulina--400-gr"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "dulce de leche la paulina x 1 kg",
+      "brand": "",
+      "ean": "7790398100026",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=28769&P=1&producto=Dulce-de-leche-la-paulina-x-1-kg."
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_27",
+    "evidence": [
+      "https://www.lagallega.com.ar/productosdet.asp?Pr=13341&P=1&producto=Dulce-de-leche-la-paulina-x-200-gr.",
+      "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7794990878581&P=1&producto=dulce-de-leche-la-paulina--400-gr"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "lareina",
+      "name": "dulce de leche la paulina 400 gr",
+      "brand": "",
+      "ean": "7794990878581",
+      "url": "https://www.lareinaonline.com.ar/productosdet.asp?Pr=7794990878581&P=1&producto=dulce-de-leche-la-paulina--400-gr"
+    },
+    "selected": {
+      "store": "la_gallega",
+      "name": "dulce de leche la paulina x 200 gr",
+      "brand": "",
+      "ean": "7794990184897",
+      "url": "https://www.lagallega.com.ar/productosdet.asp?Pr=13341&P=1&producto=Dulce-de-leche-la-paulina-x-200-gr."
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_28",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00103812-00103812-200",
+      "https://www.jumbo.com.ar/preservativos-tulipan-superfino-6-u/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Preservativos Tulipan Superfino 6 U",
+      "brand": "TULIPAN",
+      "ean": "7791014001536",
+      "url": "https://www.jumbo.com.ar/preservativos-tulipan-superfino-6-u/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Preservativos . TULIPAN Bli 6 Uni",
+      "brand": "TULIPAN",
+      "ean": "7791014001512",
+      "url": "https://www.coto.com.ar/productos_/R-00103812-00103812-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
+  },
+  {
+    "id": "official_five_store_negative_29",
+    "evidence": [
+      "https://www.coto.com.ar/productos_/R-00103812-00103812-200",
+      "https://www.jumbo.com.ar/preservativos-tulipan-clasico-3u/p"
+    ],
+    "same_product": false,
+    "candidate": {
+      "store": "jumbo",
+      "name": "Preservativos Tulipan Clasico 3u",
+      "brand": "TULIPAN",
+      "ean": "7791014090325",
+      "url": "https://www.jumbo.com.ar/preservativos-tulipan-clasico-3u/p"
+    },
+    "selected": {
+      "store": "coto",
+      "name": "Preservativos . TULIPAN Bli 6 Uni",
+      "brand": "TULIPAN",
+      "ean": "7791014001512",
+      "url": "https://www.coto.com.ar/productos_/R-00103812-00103812-200"
+    },
+    "captured_at": "2026-11-03T09:42:15.032386-03:00"
   }
 ]

@@ -1,8 +1,9 @@
 import unittest
+from datetime import date
 from unittest.mock import patch
 
 from scrapers.stores import _jumbo_api_search
-from services.discounts import scrape_discounts
+from services.discounts import clear_discount_cache, scrape_discounts
 from services.scraper import resolve_stores
 
 
@@ -41,8 +42,21 @@ class JumboCatalogTest(unittest.TestCase):
         self.assertEqual(resolve_stores(["jumbo"]), ["jumbo"])
 
     def test_unverified_discount_source_does_not_borrow_another_store(self):
-        response = scrape_discounts(["jumbo"])
-        self.assertEqual(response.results, [])
+        html = (
+            '<p>1)CYBER JUMBO Promocion del 02/11/2026 al 04/11/2026: '
+            'hasta 2x1 en productos seleccionados.</p>'
+        )
+        page = type("Page", (), {
+            "content": html.encode(), "text": html,
+            "raise_for_status": lambda self: None,
+        })()
+        clear_discount_cache()
+        with patch("services.discounts.requests.get", return_value=page):
+            response = scrape_discounts(["jumbo"], date(2026, 11, 3))
+        self.assertTrue(response.results)
+        self.assertTrue(all(row.store == "jumbo" for row in response.results))
+        self.assertTrue(all(row.calculation_status == "not_calculable"
+                            and not row.product_eans for row in response.results))
         self.assertTrue(any("jumbo" in warning for warning in response.warnings))
 
 

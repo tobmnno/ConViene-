@@ -19,7 +19,7 @@ QUERIES = (
     "leche la serenisima", "oreo", "yerba taragui", "coca cola",
     "dulce de leche la paulina", "preservativo tulipan",
 )
-STORES = ("coto", "carrefour", "la_gallega")
+STORES = ("coto", "carrefour", "la_gallega", "jumbo", "lareina")
 ROOT = Path(__file__).resolve().parents[3]
 OUTPUT = ROOT / ".pytest_cache" / "search-benchmark.json"
 
