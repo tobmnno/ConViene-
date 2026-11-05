@@ -762,3 +762,26 @@ when available; keep all unverified offers out of the calculable total.
   focused monitor tests and the full backend suite (159 passed, 10 optional
   skipped, 163 subtests) pass. Re-dispatch the test workflow after the token
   appears, then verify both GitHub run success and receipt in Telegram.
+
+2026-11-05 Telegram activation and GitHub CI:
+- The owner had placed bot secrets in the Actions Environment named
+  `TELEGRAM_BOT_TOKEN`, rather than repository secrets. The source-watch job
+  now uses that environment. Its older `TELEGRAM_BOT_TOKEN` value returned
+  HTTP 401; the later `TELEGRAM_BOT_TOKEN1` value succeeded. Neither token
+  value was read or committed. The environment `TELEGRAM_CHAT_ID` was set to
+  the owner's supplied private chat ID through GitHub's encrypted-secret API;
+  no ID is stored in the repository.
+- Manual Telegram test workflow run `42028233889` succeeded, and the owner
+  confirmed receiving the test message. A normal monitor run checked all ten
+  sources: the five product catalogs and four benefit sources passed, while
+  Jumbo benefits failed. A second run restored the previous monitor state,
+  saw the same Jumbo failure and logged no Telegram delivery error. This is a
+  real source incident, not evidence that Jumbo has no promotions; no new
+  EAN-level offer qualified for the digest. The owner has not separately
+  confirmed receipt of the Jumbo incident notification.
+- GitHub CI initially failed because the backend job omitted pytest. After
+  adding `pytest>=9,<10` to that job, run `42029012877` passed both backend
+  and Flutter jobs, including Flutter analysis and web release build. Local
+  backend suite after Telegram diagnostics: 160 passed, 10 optional skipped,
+  163 subtests. The latest code changes are on remote main. Remaining beta
+  gates from the production-readiness document are unchanged.
