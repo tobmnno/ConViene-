@@ -44,10 +44,13 @@ Activation requires:
    Obtain the positive numeric private chat ID with the local command below.
    Alternatively, add the bot to a group and use its negative numeric chat ID.
    Keep the bot token private; do not paste it into chat or a repository file.
-2. Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in GitHub repository
-   **Settings > Secrets and variables > Actions**. Never put either in chat,
-   a commit or a workflow file. Protect changes to the default branch before
-   storing the token, because scheduled workflows execute code from that branch.
+2. In this repository, the workflow uses the GitHub Actions Environment named
+   `TELEGRAM_BOT_TOKEN`. Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` as
+   **environment secrets** under **Settings > Environments >
+   TELEGRAM_BOT_TOKEN**. The job explicitly references that environment;
+   repository-level secrets alone are not needed for this setup. Never put
+   the token in chat, a commit or a workflow file. Protect changes to the
+   default branch because scheduled workflows execute code from that branch.
 3. After the workflow is committed to the default branch, use **Actions >
    Source watch > Run workflow** with `test_message` checked. Confirm that the
    chat receives the test message. Then run without it and inspect source

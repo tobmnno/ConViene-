@@ -20,6 +20,7 @@ concurrency:
 jobs:
   check-sources:
     runs-on: ubuntu-latest
+    environment: TELEGRAM_BOT_TOKEN
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
