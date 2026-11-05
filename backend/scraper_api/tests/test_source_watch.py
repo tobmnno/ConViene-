@@ -196,6 +196,19 @@ def test_telegram_rejects_invalid_chat_id_before_network():
     open_url.assert_not_called()
 
 
+def test_telegram_http_error_reports_only_status_not_token(capsys):
+    from urllib.error import HTTPError
+
+    error = HTTPError("https://api.telegram.org/botsecret-token/sendMessage", 401,
+                      "Unauthorized", {}, None)
+    with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "secret-token", "TELEGRAM_CHAT_ID": "123"}), \
+            patch.object(source_watch, "urlopen", side_effect=error):
+        assert not source_watch.telegram_send("test")
+    output = capsys.readouterr().out
+    assert "HTTP 401" in output
+    assert "secret-token" not in output
+
+
 def test_discover_private_chat_id_only_prints_ids_not_token(capsys):
     from io import BytesIO
 

@@ -17,6 +17,7 @@ from pathlib import Path
 import re
 from typing import Callable
 from urllib.parse import urlparse
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -230,6 +231,9 @@ def telegram_send(message: str) -> bool:
     try:
         with urlopen(request, timeout=15) as response:
             return response.status == 200 and json.load(response).get("ok") is True
+    except HTTPError as error:
+        print(f"Telegram delivery failed (HTTP {error.code}); will retry on the next run.")
+        return False
     except Exception:
         # Exception strings may include the token-bearing request URL.
         print("Telegram delivery failed; will retry on the next run.")
