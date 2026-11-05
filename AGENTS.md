@@ -685,3 +685,69 @@ when available; keep all unverified offers out of the calculable total.
   consumed bank caps, guaranteed stock, final ticket total, physical barcode
   scan, signed release AAB or public HTTPS deployment. Cold upstream response
   time may vary despite warm-cache savings. No commit or push.
+
+2026-11-04 promotion and operations follow-up (local implementation complete):
+- Checked Jumbo official legal text and one public VTEX EAN. The catalog had a
+  unit price but official cart simulation returned ORD027/no payable item for
+  quantities 1-4; 20 sampled beer/milk items had no product-level teaser.
+  No new quantity discount was enabled. La Reina and La Gallega
+  still lack complete EAN-level evidence. A low-volume live monitor probe saw
+  all five product and five benefit sources respond, but zero product offers
+  met the exact official-EAN evidence gate.
+- Added an hourly GitHub Actions source-watch workflow plus a stateful Telegram
+  notifier. Focused tests cover two-failure threshold, recovery, failed-send
+  retry, daily digest deduplication and strict promotion evidence. The bot,
+  chat and Actions secrets are not yet configured; the workflow is local only
+  until a separately requested commit/push. No live Telegram delivery claimed.
+- Added an in-process load probe with simulated stores (no retailer traffic).
+  A smoke run passed. The full 15+2-minute run handled 8,870 requests at 10
+  users (p95 10.2 ms) plus 2,377 at 20 users (p95 7.5 ms), zero errors;
+  traced memory peaked at 16.69 MB. Each simulated source was called nine
+  times as caches expired. This is not a live-retailer or hosted-load SLA.
+- Read-only Supabase audit: RLS enabled on three public tables; public read
+  functions and RLS policies exist. Security Advisor has zero errors and five
+  warnings (four intentional definer-function exposures and paid-plan leaked-
+  password protection). The community table is empty, so anonymous isolation
+  was not proven against a real row. Remote migration history stops at
+  20261019113412 despite newer public RPC behavior; reconcile before applying
+  more SQL. Firebase integration is enabled in Supabase; Supabase Auth CAPTCHA
+  is disabled. Firebase console required teammate login; its settings and
+  cross-user permission tests remain pending. Public signup is not cleared by
+  this partial audit. No remote permissions changed.
+- Final local regression: backend 156 passed / 10 optional skipped / 163
+  subtests; six opt-in live promotion contracts passed. Flutter 171 passed /
+  two optional skipped; analyzer clean; release web and Android debug APK
+  built. Monitor dry-run saw all ten sources healthy and zero complete
+  product-level promotions. No live Telegram delivery, physical Android
+  session, public deployment or commit/push was performed in this turn.
+
+2026-11-04 beta preparation follow-up:
+- Started the local API and release web app without duplicate listeners; both
+  health checks returned HTTP 200.
+- Added `.github/workflows/ci.yml` for backend tests, Flutter tests, analyzer
+  and release web build on pushes, pull requests and manual runs. It uses
+  placeholder public defines only and never reads local credentials.
+- Local regression after the CI change: backend 156 passed / 10 skipped /
+  163 subtests; Flutter 171 passed / 2 skipped; analyzer clean.
+- Firebase console review, isolated-account authorization tests, remote
+  migration reconciliation, Telegram setup and hosted HTTPS/API validation
+  remain external beta gates. No commit or push was made.
+
+2026-11-05 Telegram private-chat preparation:
+- Source watch now accepts a positive private chat ID as well as a negative
+  group ID. Added a local `--discover-chat-id` command that prompts for the
+  bot token with hidden input, reads recent private `/start` updates and prints
+  only numeric chat IDs; it does not persist the token or print request errors
+  that could contain it. Updated the workflow label and setup documentation.
+- Fourteen focused source-watch tests pass, including private delivery,
+  invalid ID rejection and token-safe discovery. A real Telegram message has
+  not been sent: the bot, destination ID and GitHub Actions secrets are still
+  needed. Full backend regression: 158 passed, 10 optional skipped and 163
+  subtests passed. `git diff --check` found no whitespace errors. No commit
+  or push was made.
+- Live source-watch dry run: all five product catalog checks passed; Coto,
+  Carrefour, La Gallega and La Reina benefit checks passed, while Jumbo
+  returned `no se pudieron leer descuentos (ValueError)`. Zero EAN-level
+  offers qualified. This is a source failure to monitor, not evidence that
+  Jumbo has no promotions. Telegram secrets were reported configured by the
+  owner, but no delivery has yet been independently verified.

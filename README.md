@@ -326,6 +326,17 @@ flutter build web
 Los casos de identidad compartidos por Python y Dart viven en
 `test/fixtures/product_identity_cases.json`.
 
+## Preparacion para beta
+
+La auditoria de promociones por EAN, el monitor de fuentes con alertas a
+Telegram, la prueba de carga y los controles pendientes de Supabase/Firebase
+estan documentados en [Production readiness](docs/PRODUCTION_READINESS.md).
+El monitor necesita un bot, un chat privado o grupo y secretos de GitHub Actions antes de
+enviar avisos; las campañas sin evidencia completa no reducen los totales.
+Cada push o pull request contra `main` ejecuta backend, Flutter, análisis y
+build web mediante el workflow de CI; los contratos live y el despliegue
+HTTPS siguen siendo validaciones separadas.
+
 ## Estructura
 
 ```text

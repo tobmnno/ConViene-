@@ -19,5 +19,6 @@ backend/scraper_api/output.json
 .env.*
 !.env.example
 supabase.local.json
+.source-watch-state.json
 supabase/.temp/
 *.tmp

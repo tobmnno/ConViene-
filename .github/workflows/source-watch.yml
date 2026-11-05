@@ -1,0 +1,55 @@
+name: Source watch
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      test_message:
+        description: Send a test message to the configured Telegram chat
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-watch-main
+  cancel-in-progress: false
+
+jobs:
+  check-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/cache/restore@v4
+        with:
+          path: .source-watch-state.json
+          key: source-watch-${{ github.run_id }}
+          restore-keys: |
+            source-watch-
+      - name: Install minimal source dependencies
+        run: python -m pip install 'pydantic>=2.11,<3' 'requests>=2.34,<3' 'rapidfuzz>=3.13,<4'
+      - name: Check public sources and notify Telegram
+        if: ${{ !inputs.test_message }}
+        working-directory: backend/scraper_api
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python -m tools.source_watch --state ../../.source-watch-state.json
+      - name: Send Telegram test message
+        if: ${{ inputs.test_message }}
+        working-directory: backend/scraper_api
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python -m tools.source_watch --test-telegram
+      - uses: actions/cache/save@v4
+        if: always() && hashFiles('.source-watch-state.json') != ''
+        with:
+          path: .source-watch-state.json
+          key: source-watch-${{ github.run_id }}
