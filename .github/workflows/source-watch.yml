@@ -39,14 +39,14 @@ jobs:
         if: ${{ !inputs.test_message }}
         working-directory: backend/scraper_api
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN1 }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python -m tools.source_watch --state ../../.source-watch-state.json
       - name: Send Telegram test message
         if: ${{ inputs.test_message }}
         working-directory: backend/scraper_api
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN1 }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python -m tools.source_watch --test-telegram
       - uses: actions/cache/save@v4

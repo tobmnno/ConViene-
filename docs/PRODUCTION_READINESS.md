@@ -45,7 +45,8 @@ Activation requires:
    Alternatively, add the bot to a group and use its negative numeric chat ID.
    Keep the bot token private; do not paste it into chat or a repository file.
 2. In this repository, the workflow uses the GitHub Actions Environment named
-   `TELEGRAM_BOT_TOKEN`. Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` as
+   `TELEGRAM_BOT_TOKEN`. The current bot token is stored as
+   `TELEGRAM_BOT_TOKEN1`; add it and `TELEGRAM_CHAT_ID` as
    **environment secrets** under **Settings > Environments >
    TELEGRAM_BOT_TOKEN**. The job explicitly references that environment;
    repository-level secrets alone are not needed for this setup. Never put
