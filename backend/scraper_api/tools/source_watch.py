@@ -279,6 +279,9 @@ def main() -> int:
     if args.discover_chat_id:
         return discover_private_chat_id()
     if args.test_telegram:
+        if not (os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID")):
+            print("Telegram secrets are not configured for this workflow.")
+            return 2
         return 0 if telegram_send("ConViene: mensaje de prueba del monitor de fuentes.") else 1
     if not args.dry_run and not (os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID")):
         print("Telegram secrets are not configured.")

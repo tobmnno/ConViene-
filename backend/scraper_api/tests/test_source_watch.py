@@ -151,12 +151,22 @@ def test_digest_waits_for_current_evidence_and_drops_expired_offers():
 def test_test_message_never_checks_sources_or_writes_state(tmp_path):
     state = tmp_path / "watch.json"
     with patch.object(sys, "argv", ["source_watch", "--test-telegram", "--state", str(state)]), \
+            patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "test", "TELEGRAM_CHAT_ID": "123"}), \
             patch.object(source_watch, "telegram_send", return_value=True) as send, \
             patch.object(source_watch, "collect_observations") as collect:
         assert source_watch.main() == 0
     assert send.call_count == 1
     collect.assert_not_called()
     assert not state.exists()
+
+
+def test_test_message_reports_missing_secrets_without_contacting_telegram(capsys):
+    with patch.object(sys, "argv", ["source_watch", "--test-telegram"]), \
+            patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": ""}), \
+            patch.object(source_watch, "telegram_send") as send:
+        assert source_watch.main() == 2
+    assert "not configured" in capsys.readouterr().out
+    send.assert_not_called()
 
 
 def test_dry_run_never_persists_alert_state(tmp_path):

@@ -751,3 +751,14 @@ when available; keep all unverified offers out of the calculable total.
   offers qualified. This is a source failure to monitor, not evidence that
   Jumbo has no promotions. Telegram secrets were reported configured by the
   owner, but no delivery has yet been independently verified.
+- Commit `836f95c` was pushed to `main` with the source monitor, CI, load
+  probe and production-readiness notes. A manually dispatched Telegram test
+  failed: the GitHub repository reported zero Actions secrets at that point.
+  The private chat ID was then added as `TELEGRAM_CHAT_ID` through GitHub's
+  encrypted-secret API without committing its value. `TELEGRAM_BOT_TOKEN` is
+  still absent from the repository secret list; the owner must add it in
+  GitHub. No bot token was read from the chat, local terminal or repository.
+- The test command now reports missing secrets explicitly and safely. Fifteen
+  focused monitor tests and the full backend suite (159 passed, 10 optional
+  skipped, 163 subtests) pass. Re-dispatch the test workflow after the token
+  appears, then verify both GitHub run success and receipt in Telegram.
